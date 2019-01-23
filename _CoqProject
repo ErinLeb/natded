@@ -1,0 +1,14 @@
+-I .
+-R . NatDed
+
+AsciiOrder.v
+StringOrder.v
+StringUtils.v
+Utils.v
+Defs.v
+Nam.v
+Mix.v
+Proofs.v
+Equiv.v
+Meta.v
+ToCoq.v

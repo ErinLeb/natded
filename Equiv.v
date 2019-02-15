@@ -156,7 +156,8 @@ Lemma nam2mix_term_ok sub sub' t t' :
  nam2mix_term (map fst sub) t = nam2mix_term (map fst sub') t'.
 Proof.
  revert t t' sub sub'.
- fix IH 1. destruct t as [v|f a], t' as [v'|f' a']; intros sub sub' inv; simpl.
+ fix IH 1. destruct t as [v|f a], t' as [v'|f' a']; intros sub sub' inv;
+   simpl; rewrite ?list_assoc_dft_alt.
  - simpl in *.
    destruct (list_assoc v sub) eqn:E, (list_assoc v' sub') eqn:E'.
    + intros <-.
@@ -234,7 +235,8 @@ Lemma nam2mix_term_ok2 sub sub' t t' :
  Nam.term_substs sub t = Nam.term_substs sub' t'.
 Proof.
  revert t t' sub sub'.
- fix IH 1. destruct t as [v|f a], t' as [v'|f' a']; intros sub sub' inv; simpl.
+ fix IH 1. destruct t as [v|f a], t' as [v'|f' a']; intros sub sub' inv;
+   simpl; rewrite ?list_assoc_dft_alt.
  - simpl in *.
    destruct (list_index v) eqn:E, (list_index v') eqn:E';
    intros [= <-].

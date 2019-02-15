@@ -10,6 +10,40 @@ Module VarsP := Properties(Vars).
 Module VarsF := VarsP.FM.
 Ltac varsdec := VarsP.Dec.fsetdec.
 
+Lemma vars_unions_in (l: list Vars.t) v :
+ Vars.In v (vars_unions l) <-> exists vs, Vars.In v vs /\ In vs l.
+Proof.
+ induction l; simpl.
+ - split. varsdec. intros (vs & _ & [ ]).
+ - VarsF.set_iff. rewrite IHl. split.
+   + intros [H | (vs & H1 & H2)].
+     * exists a; intuition.
+     * exists vs; intuition.
+   + intros (vs & H1 & [->|H2]).
+     * now left.
+     * right; now exists vs.
+Qed.
+
+Lemma vars_flatmap_alt {A} (f: A -> Vars.t) (l: list A) :
+ Vars.Equal (vars_flatmap f l) (vars_unions (List.map f l)).
+Proof.
+ induction l; simpl.
+ - varsdec.
+ - rewrite IHl. varsdec.
+Qed.
+
+Lemma vars_flatmap_in {A} (f: A -> Vars.t) (l: list A) v :
+ Vars.In v (vars_flatmap f l) <-> exists a, Vars.In v (f a) /\ In a l.
+Proof.
+ rewrite vars_flatmap_alt.
+ rewrite vars_unions_in.
+ split.
+ - intros (vs & H1 & H2).
+   rewrite in_map_iff in H2. destruct H2 as (a & <- & H3).
+   now exists a.
+ - intros (a & H1 & H2). exists (f a); split; auto using in_map.
+Qed.
+
 Lemma vars_map_in_aux (f : string -> string) l y acc :
  Vars.In y
   (List.fold_left (fun vs a => Vars.add (f a) vs) l acc) <->

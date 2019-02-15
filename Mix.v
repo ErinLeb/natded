@@ -126,31 +126,30 @@ Fixpoint term_bsubst n u t :=
   | Fun f args => Fun f (List.map (term_bsubst n u) args)
   end.
 
+(** General action on the free variables of a term *)
+
+Definition term_vmap (h:variable->term) :=
+  fix vmap t :=
+    match t with
+    | BVar _ => t
+    | FVar x => h x
+    | Fun f args => Fun f (List.map vmap args)
+    end.
+
 (** Substitution of a free variable in a term :
     in [t], free var [v] is replaced by [u]. *)
 
-Fixpoint term_fsubst v u t :=
-  match t with
-  | BVar k => t
-  | FVar x => if v =? x then u else t
-  | Fun f args => Fun f (List.map (term_fsubst v u) args)
-  end.
+Definition fsubst v u x := if v =? x then u else FVar x.
+
+Definition term_fsubst v u := term_vmap (fsubst v u).
 
 (** Same, simultaneously *)
 
 Definition subst := list (variable * term).
 
-Fixpoint term_fsubsts sub t :=
-  match t with
-  | BVar k => t
-  | FVar x =>
-    match list_assoc x sub with
-    | Some u => u
-    | None => t
-    end
-  | Fun f args => Fun f (List.map (term_fsubsts sub) args)
-  end.
+Definition fsubsts sub x := list_assoc_dft x sub (FVar x).
 
+Definition term_fsubsts sub := term_vmap (fsubsts sub).
 
 (** Formulas *)
 
@@ -285,29 +284,29 @@ Fixpoint form_bsubst n t f :=
     Quant q (form_bsubst (S n) t f')
  end.
 
-(** Substitution of free var [v] by term [t] in [f] *)
+(** General action on free variables *)
 
-Fixpoint form_fsubst v t f :=
- match f with
-  | True | False => f
-  | Pred p args => Pred p (List.map (term_fsubst v t) args)
-  | Not f => Not (form_fsubst v t f)
-  | Op o f f' => Op o (form_fsubst v t f) (form_fsubst v t f')
-  | Quant q f' =>
-    Quant q (form_fsubst v t f')
- end.
+Definition form_vmap (h:variable->term) :=
+  fix vmap f :=
+    match f with
+    | True | False => f
+    | Pred p args => Pred p (List.map (term_vmap h) args)
+    | Not f => Not (vmap f)
+    | Op o f f' => Op o (vmap f) (vmap f')
+    | Quant q f' => Quant q (vmap f')
+    end.
+
+(** Substitution of a free variable [v] by term [u] *)
+
+Definition form_fsubst v u : formula -> formula :=
+  form_vmap (fsubst v u).
 
 (** Same, simultaneously *)
 
-Fixpoint form_fsubsts sub f :=
- match f with
-  | True | False => f
-  | Pred p args => Pred p (List.map (term_fsubsts sub) args)
-  | Not f => Not (form_fsubsts sub f)
-  | Op o f f' => Op o (form_fsubsts sub f) (form_fsubsts sub f')
-  | Quant q f' =>
-    Quant q (form_fsubsts sub f')
- end.
+Definition form_fsubsts sub :=
+  form_vmap (fsubsts sub).
+
+(** Boolean equalities *)
 
 Fixpoint term_eqb t1 t2 :=
   match t1, t2 with
@@ -354,18 +353,11 @@ Definition print_ctx Γ :=
 Definition check_ctx sign Γ :=
   List.forallb (check_formula sign) Γ.
 
-Fixpoint freevars_ctx Γ :=
-  match Γ with
-  | [] => Vars.empty
-  | f::Γ => Vars.union (freevars f) (freevars_ctx Γ)
-  end.
+Definition freevars_ctx Γ := vars_flatmap freevars Γ.
 
-Definition ctx_fsubst v t Γ :=
-  List.map (form_fsubst v t) Γ.
-
-Definition ctx_fsubsts sub Γ :=
-  List.map (form_fsubsts sub) Γ.
-
+Definition ctx_vmap h := List.map (form_vmap h).
+Definition ctx_fsubst v u := List.map (form_fsubst v u).
+Definition ctx_fsubsts sub := List.map (form_fsubsts sub).
 Definition ctx_eqb Γ Γ' := list_forallb2 form_eqb Γ Γ'.
 
 Instance eqb_inst_ctx : Eqb context := ctx_eqb.
@@ -387,9 +379,11 @@ Definition check_seq sign '(Γ ⊢ A) :=
 Definition freevars_seq '(Γ ⊢ A) :=
   Vars.union (freevars_ctx Γ) (freevars A).
 
-Definition seq_fsubst v t '(Γ ⊢ A) :=
-  (ctx_fsubst v t Γ ⊢ form_fsubst v t A).
+Definition seq_vmap h '(Γ ⊢ A) :=
+  (ctx_vmap h Γ ⊢ form_vmap h A).
 
+Definition seq_fsubst v u '(Γ ⊢ A) :=
+  (ctx_fsubst v u Γ ⊢ form_fsubst v u A).
 Definition seq_fsubsts sub '(Γ ⊢ A) :=
   (ctx_fsubsts sub Γ ⊢ form_fsubsts sub A).
 
@@ -830,4 +824,21 @@ Qed.
 Lemma Provable_alt lg s : Provable lg s <-> Pr lg s.
 Proof.
  split. apply Provable_Pr. apply Pr_Provable.
+Qed.
+
+Lemma term_ind' (P: term -> Prop) :
+  (forall v, P (FVar v)) ->
+  (forall n, P (BVar n)) ->
+  (forall f args, (forall a, In a args -> P a) -> P (Fun f args)) ->
+  forall t, P t.
+Proof.
+ intros Hv Hn Hl.
+ fix IH 1. destruct t.
+ - apply Hv.
+ - apply Hn.
+ - apply Hl.
+   revert l.
+   fix IH' 1. destruct l; simpl.
+   + intros a [ ].
+   + intros a [<-|H]. apply IH. apply (IH' l a H).
 Qed.

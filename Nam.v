@@ -119,11 +119,7 @@ Definition subst := list (variable * term).
 
 Fixpoint term_substs (sub:subst) t :=
   match t with
-  | Var v =>
-    match list_assoc v sub with
-    | Some u => u
-    | None => t
-    end
+  | Var v => list_assoc_dft v sub t
   | Fun f args => Fun f (List.map (term_substs sub) args)
   end.
 
@@ -321,20 +317,11 @@ Definition print_ctx Γ :=
 Definition check_ctx sign Γ :=
   List.forallb (check_formula sign) Γ.
 
-Fixpoint allvars_ctx Γ :=
-  match Γ with
-  | [] => Vars.empty
-  | f::Γ => Vars.union (allvars f) (allvars_ctx Γ)
-  end.
+Definition allvars_ctx Γ := vars_flatmap allvars Γ.
 
-Fixpoint freevars_ctx Γ :=
-  match Γ with
-  | [] => Vars.empty
-  | f::Γ => Vars.union (freevars f) (freevars_ctx Γ)
-  end.
+Definition freevars_ctx Γ := vars_flatmap freevars Γ.
 
-Definition ctx_subst v t Γ :=
-  List.map (formula_subst v t) Γ.
+Definition ctx_subst v t Γ := List.map (formula_subst v t) Γ.
 
 Definition ctx_eqb Γ Γ' := list_forallb2 alpha_equiv Γ Γ'.
 
@@ -508,4 +495,19 @@ Proof.
  - case eqbspec; [ intros <- | cons ].
    change (list_forallb2 eqb l l') with (l =? l').
    case (@eqbspec_list _ _ IH l l'); cons.
+Qed.
+
+Lemma term_ind' (P: term -> Prop) :
+  (forall v, P (Var v)) ->
+  (forall f args, (forall a, In a args -> P a) -> P (Fun f args)) ->
+  forall t, P t.
+Proof.
+ intros Hv Hl.
+ fix IH 1. destruct t.
+ - apply Hv.
+ - apply Hl.
+   revert l.
+   fix IH' 1. destruct l; simpl.
+   + intros a [ ].
+   + intros a [<-|H]. apply IH. apply (IH' l a H).
 Qed.

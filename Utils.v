@@ -62,6 +62,12 @@ Fixpoint list_assoc {A B}`{Eqb A} x (l:list (A*B)) :=
  | (y,z)::l => if x =? y then Some z else list_assoc x l
  end.
 
+Fixpoint list_assoc_dft {A B}`{Eqb A} x (l:list (A*B)) (d:B) :=
+ match l with
+ | [] => d
+ | (y,z)::l => if x =? y then z else list_assoc_dft x l d
+ end.
+
 Fixpoint list_mem {A}`{Eqb A} x (l:list A) :=
   match l with
   | [] => false
@@ -122,6 +128,16 @@ Proof.
    + rewrite IH. intuition.
 Qed.
 
+Lemma list_assoc_notin {A B}`{EqbSpec A} (l : list (A*B)) x :
+ list_assoc x l = None <-> ~In x (map fst l).
+Proof.
+ induction l as [|(a,b) l IH]; simpl.
+ - easy.
+ - case eqbspec.
+   + intros <-. intuition discriminate.
+   + rewrite IH. intuition.
+Qed.
+
 Lemma list_assoc_in2 {A B}`{EqbSpec A} (l : list (A*B)) x y :
  list_assoc x l = Some y -> In (x,y) l.
 Proof.
@@ -130,6 +146,17 @@ Proof.
  - case eqbspec.
    + intros <- [= <-]. now left.
    + intuition.
+Qed.
+
+Lemma list_assoc_dft_alt {A B}`{EqbSpec A} (l : list (A*B)) x d :
+ list_assoc_dft x l d =
+ match list_assoc x l with
+ | None => d
+ | Some b => b
+ end.
+Proof.
+ induction l as [|(a,b) l IH]; simpl; auto.
+ rewrite IH. now case eqbspec.
 Qed.
 
 Lemma list_index_in {A}`{EqbSpec A} (l : list A) x :

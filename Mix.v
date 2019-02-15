@@ -531,14 +531,6 @@ Definition captcha_bug :=
 
 Compute valid_deriv Intuiti captcha_bug.
 
-(* TODO
-
-  - preuves de lemmes de substitution
-  - definition valid_deriv invariante par alpha
-  - Plongement comme formules Coq + correction
-
-*)
-
 Instance : EqbSpec term.
 Proof.
  red.

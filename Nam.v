@@ -261,8 +261,6 @@ Fixpoint formula_substs sub f :=
 
 Definition formula_subst v t f := formula_substs [(v,t)] f.
 
-(** TODO: verifier que la definition précédente est bien ok *)
-
 Fixpoint term_eqb t1 t2 :=
   match t1, t2 with
   | Var v1, Var v2 => v1 =? v2
@@ -477,15 +475,6 @@ Definition captcha_bug :=
     [Rule Ax ([A("x");A("x")]⊢A("x")) []]].
 
 Compute valid_deriv Intuiti captcha_bug.
-
-(* TODO
-
-  - preuves de lemmes de substitution
-  - definition valid_deriv invariante par alpha
-  - Valid via predicat inductif + adéquation valid_deriv
-  - Plongement comme formules Coq + correction
-
-*)
 
 Instance : EqbSpec term.
 Proof.

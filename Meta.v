@@ -12,7 +12,7 @@ Lemma closed_bsubst n u t :
  term_closed t = true -> term_bsubst n u t = t.
 Proof.
  unfold term_closed.
- case Nat.eqb_spec; [ intros H _ | easy ].
+ case eqbspec; [ intros H _ | easy ].
  revert t H.
  fix IH 1. destruct t; simpl; try easy.
  intros H. f_equal. clear f.
@@ -26,13 +26,14 @@ Lemma freevars_fsubst v u t :
 Proof.
  revert t.
  fix IH 1. destruct t; simpl; trivial.
- - case string_eqb_spec; trivial. intros <-. varsdec.
+ - case eqbspec; trivial. intros <-. varsdec.
  - intros H. f_equal. clear f.
    revert l H.
    fix IH' 1. destruct l; simpl; trivial.
    intros H. f_equal. apply IH. varsdec. apply IH'. varsdec.
 Qed.
 
+(*
 Lemma term_fsubst_bsubst v t n u T :
   ~Vars.In v (term_fvars u) ->
   term_closed t = true ->
@@ -40,9 +41,9 @@ Lemma term_fsubst_bsubst v t n u T :
   term_bsubst n u (term_fsubst v t T).
 Proof.
  revert T. fix IH 1. destruct T; simpl; intros.
- - case string_eqb_spec; simpl; auto.
+ - case eqbspec; simpl; auto.
    intros <-. now rewrite closed_bsubst.
- - case Nat.eqb_spec; simpl; auto.
+ - case eqbspec; simpl; auto.
    intros _. now apply freevars_fsubst.
  - f_equal. clear f.
    revert l. fix IH' 1. destruct l; simpl; trivial.
@@ -59,9 +60,7 @@ Proof.
  induction f; simpl; intros; f_equal; auto.
  injection (term_fsubst_bsubst v t n u (Fun "" l)); auto.
 Qed.
-
-
-Definition subst := list (variable * term).
+*)
 
 Definition subinvars (sub : subst) :=
   List.fold_right (fun p vs => Vars.add (fst p) vs) Vars.empty sub.
@@ -75,25 +74,88 @@ Definition subvars (sub : subst) :=
 Definition sub_closed (sub : subst) :=
   forallb (fun '(_,t) => term_closed t) sub.
 
-Lemma fresh_fsubsts sub s z :
-  Vars.In z (freevars_seq (seq_fsubsts sub s)) ->
-  Vars.In z (Vars.union (freevars_seq s) (subvars sub)).
+Lemma list_assoc_suboutvars sub t v :
+ list_assoc v sub = Some t ->
+ Vars.Subset (term_fvars t) (suboutvars sub).
 Proof.
-destruct s as (c,f). simpl.
-unfold freevars_seq.
-Admitted.
+ induction sub as [|(x,u) sub IH]; simpl.
+ - easy.
+ - case eqbspec.
+   + intros <- [= ->]. varsdec.
+   + intros NE H. specialize (IH H). varsdec.
+Qed.
 
-Lemma form_fsubsts_notIn sub x t A :
+Lemma term_fresh_fsubsts sub t :
+  Vars.Subset (term_fvars (term_fsubsts sub t))
+              (Vars.union (term_fvars t) (subvars sub)).
+Proof.
+ revert t.
+ fix IH 1. destruct t; simpl.
+ - destruct (list_assoc v sub) eqn:E; simpl; [ | varsdec].
+   unfold subvars. apply list_assoc_suboutvars in E. varsdec.
+ - varsdec.
+ - clear f. revert l. fix IH' 1. destruct l; simpl.
+   + varsdec.
+   + specialize (IH t). specialize (IH' l). varsdec.
+Qed.
+
+Lemma fresh_fsubsts sub f :
+  Vars.Subset (freevars (form_fsubsts sub f))
+              (Vars.union (freevars f) (subvars sub)).
+Proof.
+ induction f; simpl; auto; try varsdec.
+ apply (term_fresh_fsubsts sub (Fun "" l)).
+Qed.
+
+Lemma fresh_fsubsts_ctx sub c :
+  Vars.Subset (freevars_ctx (ctx_fsubsts sub c))
+              (Vars.union (freevars_ctx c) (subvars sub)).
+Proof.
+ induction c as [|f c IH]; simpl.
+ - varsdec.
+ - generalize (fresh_fsubsts sub f). varsdec.
+Qed.
+
+Lemma fresh_fsubsts_seq sub s :
+  Vars.Subset (freevars_seq (seq_fsubsts sub s))
+              (Vars.union (freevars_seq s) (subvars sub)).
+Proof.
+ destruct s as (c,f). simpl.
+ generalize (fresh_fsubsts_ctx sub c) (fresh_fsubsts sub f).
+ varsdec.
+Qed.
+
+Lemma term_fsubsts_notIn sub x u t :
+ ~Vars.In x (term_fvars t) ->
+ term_fsubsts ((x, u) :: sub) t = term_fsubsts sub t.
+Proof.
+ revert t.
+ fix IH 1. destruct t; simpl; auto.
+ - case eqbspec; auto. varsdec.
+ - intros NI. f_equal. clear f.
+   revert l NI.
+   fix IH' 1. destruct l; simpl; auto.
+   intros NI. f_equal. apply IH; varsdec. apply IH'; varsdec.
+Qed.
+
+Lemma form_fsubsts_notIn sub x u A :
  ~Vars.In x (freevars A) ->
- form_fsubsts ((x, t) :: sub) A = form_fsubsts sub A.
+ form_fsubsts ((x, u) :: sub) A = form_fsubsts sub A.
 Proof.
-Admitted.
+ induction A; simpl; intro NI; f_equal; auto.
+ - now injection (term_fsubsts_notIn sub x u (Fun "" l)).
+ - apply IHA1. varsdec.
+ - apply IHA2. varsdec.
+Qed.
 
-Lemma ctx_fsubsts_notIn sub x t Γ:
- ~Vars.In x (freevars_ctx Γ) ->
- ctx_fsubsts ((x,t)::sub) Γ = ctx_fsubsts sub Γ.
+Lemma ctx_fsubsts_notIn sub x u c:
+ ~Vars.In x (freevars_ctx c) ->
+ ctx_fsubsts ((x,u)::sub) c = ctx_fsubsts sub c.
 Proof.
-Admitted.
+ induction c; simpl; intro NI; f_equal; auto.
+ apply form_fsubsts_notIn. varsdec.
+ apply IHc. varsdec.
+Qed.
 
 Lemma term_fsubsts_bsubst sub n u t :
  sub_closed sub = true ->
@@ -105,14 +167,10 @@ Proof.
  fix IH 1. destruct t; simpl; auto.
  - destruct (list_assoc v sub) eqn:E; simpl; auto.
    symmetry. apply closed_bsubst.
-   (* TODO sub lemma... *)
-   clear IH.
-   induction sub as [|(x,w) sub IH]; simpl in *; try easy.
-   rewrite andb_true_iff in *.
-   revert E. case string_eqb_spec.
-   + intros <- [= ->]. easy.
-   + intuition.
- - case Nat.eqb_spec; simpl; auto.
+   apply list_assoc_in2 in E.
+   unfold sub_closed in CL. rewrite forallb_forall in CL.
+   now apply (CL (v,t)).
+ - case eqbspec; simpl; auto.
  - f_equal. clear f.
    revert l. fix IH' 1. destruct l; simpl; auto.
    f_equal. apply IH. apply IH'.
@@ -128,7 +186,7 @@ Proof.
  injection (term_fsubsts_bsubst sub n u (Fun "" l)); auto.
 Qed.
 
-Lemma fsubst_bsubst_adhoc sub x t A :
+Lemma fsubsts_bsubst_adhoc sub x t A :
  sub_closed ((x,t)::sub) = true ->
  ~Vars.In x (freevars A) ->
  form_fsubsts ((x,t)::sub) (form_bsubst 0 (FVar x) A) =
@@ -136,7 +194,7 @@ Lemma fsubst_bsubst_adhoc sub x t A :
 Proof.
  intros.
  rewrite fsubsts_bsubst by trivial.
- simpl. case string_eqb_spec; [intros _ |easy].
+ simpl. case eqbspec; [intros _ |easy].
  f_equal.
  now apply form_fsubsts_notIn.
 Qed.
@@ -157,11 +215,11 @@ Proof.
  - set (vars := Vars.union (freevars_seq (Γ⊢A)) (subvars sub)).
    set (z := fresh_var vars).
    apply R_All_i with z.
-   + intros H'. apply (fresh_fsubsts sub (Γ⊢A) z) in H'.
+   + intros H'. apply (fresh_fsubsts_seq sub (Γ⊢A)) in H'.
      apply (fresh_var_ok vars). exact H'.
    + specialize (IHPr ((x,FVar z)::sub)).
      rewrite ctx_fsubsts_notIn in IHPr by varsdec.
-     rewrite <- fsubst_bsubst_adhoc with (x:=x); auto. varsdec.
+     rewrite <- fsubsts_bsubst_adhoc with (x:=x); auto. varsdec.
  - rewrite fsubsts_bsubst by auto.
    apply R_All_e; auto.
  - specialize (IHPr sub).
@@ -170,12 +228,12 @@ Proof.
  - set (vars := Vars.union (freevars_seq (A::Γ⊢B)) (subvars sub)).
    set (z := fresh_var vars).
    apply R_Ex_e with z (form_fsubsts sub A).
-   + intros H'. apply (fresh_fsubsts sub (A::Γ⊢B) z) in H'.
+   + intros H'. apply (fresh_fsubsts_seq sub (A::Γ⊢B) z) in H'.
      apply (fresh_var_ok vars). exact H'.
    + now apply IHPr1.
    + specialize (IHPr2 ((x,FVar z)::sub)).
      rewrite ctx_fsubsts_notIn in IHPr2 by varsdec.
-     rewrite fsubst_bsubst_adhoc in IHPr2; auto; try varsdec.
+     rewrite fsubsts_bsubst_adhoc in IHPr2; auto; try varsdec.
      rewrite form_fsubsts_notIn in IHPr2 by varsdec.
      auto.
  - apply R_Absu with l. auto.

@@ -138,6 +138,8 @@ Fixpoint term_fsubst v u t :=
 
 (** Same, simultaneously *)
 
+Definition subst := list (variable * term).
+
 Fixpoint term_fsubsts sub t :=
   match t with
   | BVar k => t

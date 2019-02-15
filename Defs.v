@@ -90,7 +90,7 @@ Definition op_eqb o1 o2 :=
   end.
 
 Instance eqb_inst_op : Eqb op := op_eqb.
-Arguments eqb_inst_op /.
+Arguments eqb_inst_op !_ !_.
 
 Definition quant_eqb q1 q2 :=
   match q1, q2 with
@@ -99,7 +99,7 @@ Definition quant_eqb q1 q2 :=
   end.
 
 Instance eqb_inst_quant : Eqb quant := quant_eqb.
-Arguments eqb_inst_quant /.
+Arguments eqb_inst_quant !_ !_.
 
 Definition pr_op o :=
   match o with
@@ -114,12 +114,12 @@ Definition pr_quant q :=
   | Ex => "∃"
   end.
 
-Lemma op_eqb_spec o o' : reflect (o=o') (op_eqb o o').
+Instance : EqbSpec op.
 Proof.
- destruct o, o'; simpl; now constructor.
+ intros [ ] [ ]; now constructor.
 Qed.
 
-Lemma quant_eqb_spec q q' : reflect (q=q') (quant_eqb q q').
+Instance : EqbSpec quant.
 Proof.
- destruct q, q'; simpl; now constructor.
+ intros [ ] [ ]; now constructor.
 Qed.

@@ -276,16 +276,15 @@ Fixpoint term_eqb t1 t2 :=
   end.
 
 Instance eqb_inst_term : Eqb term := term_eqb.
-Arguments eqb_inst_term /.
+Arguments eqb_inst_term !_ !_.
 
 Fixpoint alpha_equiv_gen sub1 f1 sub2 f2 :=
   match f1, f2 with
   | True, True | False, False => true
   | Pred p1 args1, Pred p2 args2 =>
      (p1 =? p2) &&&
-     list_forallb2 term_eqb
-      (List.map (term_substs sub1) args1)
-      (List.map (term_substs sub2) args2)
+      (List.map (term_substs sub1) args1 =?
+       List.map (term_substs sub2) args2)
   | Not f1, Not f2 => alpha_equiv_gen sub1 f1 sub2 f2
   | Op o1 f1 f1', Op o2 f2 f2' =>
     (o1 =? o2) &&&
@@ -305,7 +304,7 @@ Definition alpha_equiv f1 f2 := alpha_equiv_gen [] f1 [] f2.
 Definition AlphaEq f f' := alpha_equiv f f' = true.
 
 Instance eqb_inst_form : Eqb formula := alpha_equiv.
-Arguments eqb_inst_form /.
+Arguments eqb_inst_form !_ !_.
 
 Compute alpha_equiv
         (∀ "x", Pred "A" [Var "x"] -> Pred "A" [Var "x"])
@@ -340,7 +339,7 @@ Definition ctx_subst v t Γ :=
 Definition ctx_eqb Γ Γ' := list_forallb2 alpha_equiv Γ Γ'.
 
 Instance eqb_inst_ctx : Eqb context := ctx_eqb.
-Arguments eqb_inst_ctx /.
+Arguments eqb_inst_ctx !_ !_.
 
 (** Sequent *)
 
@@ -368,7 +367,7 @@ Definition seq_eqb '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) :=
   (Γ1 =? Γ2) &&& (A1 =? A2).
 
 Instance eqb_inst_seq : Eqb sequent := seq_eqb.
-Arguments eqb_inst_seq /.
+Arguments eqb_inst_seq !_ !_.
 
 (** Derivation *)
 
@@ -501,13 +500,12 @@ Compute valid_deriv Intuiti captcha_bug.
 
 *)
 
-Ltac cons := constructor; congruence.
-
-Lemma term_eqb_spec t t' : reflect (t=t') (term_eqb t t').
+Instance : EqbSpec term.
 Proof.
- revert t t'.
- fix IH 1. destruct t as [v|f l], t' as [v'|f' l']; simpl; try cons.
- - case string_eqb_spec; cons.
- - case string_eqb_spec; [ intros <- | cons ].
-   case (forallb2_eqb_spec _ IH); cons.
+ red.
+ fix IH 1. destruct x as [v|f l], y as [v'|f' l']; cbn; try cons.
+ - case eqbspec; cons.
+ - case eqbspec; [ intros <- | cons ].
+   change (list_forallb2 eqb l l') with (l =? l').
+   case (@eqbspec_list _ _ IH l l'); cons.
 Qed.

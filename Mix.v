@@ -307,15 +307,6 @@ Fixpoint form_fsubsts sub f :=
     Quant q (form_fsubsts sub f')
  end.
 
-
-Definition list_forallb2 {A B} (f: A -> B -> bool) :=
- fix forallb2 l1 l2 :=
- match l1, l2 with
- | [], [] => true
- | x1::l1, x2::l2 => f x1 x2 &&& forallb2 l1 l2
- | _, _ => false
- end.
-
 Fixpoint term_eqb t1 t2 :=
   match t1, t2 with
   | BVar n1, BVar n2 => n1 =? n2
@@ -326,14 +317,13 @@ Fixpoint term_eqb t1 t2 :=
   end.
 
 Instance eqb_inst_term : Eqb term := term_eqb.
-Arguments eqb_inst_term /.
+Arguments eqb_inst_term !_ !_.
 
 Fixpoint form_eqb f1 f2 :=
   match f1, f2 with
   | True, True | False, False => true
   | Pred p1 args1, Pred p2 args2 =>
-     (p1 =? p2) &&&
-     list_forallb2 term_eqb args1 args2
+    (p1 =? p2) &&& (args1 =? args2)
   | Not f1, Not f2 => form_eqb f1 f2
   | Op o1 f1 f1', Op o2 f2 f2' =>
     (o1 =? o2) &&&
@@ -345,7 +335,7 @@ Fixpoint form_eqb f1 f2 :=
   end.
 
 Instance eqb_inst_form : Eqb formula := form_eqb.
-Arguments eqb_inst_form /.
+Arguments eqb_inst_form !_ !_.
 
 Compute form_eqb
         (∀ (Pred "A" [ #0 ] -> Pred "A" [ #0 ]))%form
@@ -377,7 +367,7 @@ Definition ctx_fsubsts sub Γ :=
 Definition ctx_eqb Γ Γ' := list_forallb2 form_eqb Γ Γ'.
 
 Instance eqb_inst_ctx : Eqb context := ctx_eqb.
-Arguments eqb_inst_ctx /.
+Arguments eqb_inst_ctx !_ !_.
 
 (** Sequent *)
 
@@ -405,7 +395,7 @@ Definition seq_eqb '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) :=
   (Γ1 =? Γ2) &&& (A1 =? A2).
 
 Instance eqb_inst_seq : Eqb sequent := seq_eqb.
-Arguments eqb_inst_seq /.
+Arguments eqb_inst_seq !_ !_.
 
 (** Derivation *)
 
@@ -430,7 +420,7 @@ Inductive logic := Classic | Intuiti.
 
 Definition valid_deriv_step logic '(Rule r s ld) :=
   match r, s, List.map dseq ld with
-  | Ax,     (Γ ⊢ A), [] => List.existsb (form_eqb A) Γ
+  | Ax,     (Γ ⊢ A), [] => list_mem A Γ
   | Tr_i,   (_ ⊢ True), [] => true
   | Fa_e,   (Γ ⊢ _), [s] => s =? (Γ ⊢ False)
   | Not_i,  (Γ ⊢ Not A), [s] => s =? (A::Γ ⊢ False)
@@ -553,45 +543,42 @@ Compute valid_deriv Intuiti captcha_bug.
 
 *)
 
-Lemma term_eqb_spec t t' : reflect (t=t') (term_eqb t t').
+Instance : EqbSpec term.
 Proof.
- revert t t'.
- fix IH 1. destruct t as [v|n|f l], t' as [v'|n'|f' l']; simpl; try cons.
- - case string_eqb_spec; cons.
- - case Nat.eqb_spec; cons.
- - case string_eqb_spec; [ intros <- | cons ].
-   case (forallb2_eqb_spec _ IH); cons.
+ red.
+ fix IH 1. destruct x as [v|n|f l], y as [v'|n'|f' l']; cbn; try cons.
+ - case eqbspec; cons.
+ - case eqbspec; cons.
+ - case eqbspec; [ intros <- | cons ].
+   change (list_forallb2 eqb l l') with (l =? l').
+   change (EqbSpec term) in IH.
+   case eqbspec; cons.
 Qed.
 
-Lemma form_eqb_spec f f' :
-  reflect (f=f') (form_eqb f f').
+Instance : EqbSpec formula.
 Proof.
- revert f'.
- induction f; destruct f'; simpl; try cons.
- - case string_eqb_spec; [ intros <- | cons ].
-   case (forallb2_eqb_spec _  term_eqb_spec); cons.
- - destruct (IHf f'); cons.
- - case op_eqb_spec; [ intros <- | cons ].
-   destruct (IHf1 f'1); [ | cons].
-   destruct (IHf2 f'2); cons.
- - case quant_eqb_spec; [ intros <- | cons ].
-   destruct (IHf f'); cons.
+ red.
+ induction x; destruct y; cbn; try cons.
+ - case eqbspec; [ intros <- | cons ].
+   case eqbspec; cons.
+ - case IHx; cons.
+ - case eqbspec; [ intros <- | cons ].
+   case IHx1; [ intros <- | cons].
+   case IHx2; cons.
+ - case eqbspec; [ intros <- | cons ].
+   case IHx; cons.
 Qed.
 
-Lemma ctx_eqb_spec g g' :
-  reflect (g=g') (ctx_eqb g g').
+Instance : EqbSpec context.
 Proof.
- apply forallb2_eqb_spec. apply form_eqb_spec.
+ apply eqbspec_list.
 Qed.
 
-Lemma seq_eqb_spec s s' :
-  reflect (s=s') (seq_eqb s s').
+Instance : EqbSpec sequent.
 Proof.
- destruct s as (g,f), s' as (g',f').
- simpl.
- case ctx_eqb_spec; [intros <- | cons].
- case form_eqb_spec; cons.
+ intros [] []. cbn. repeat (case eqbspec; try cons).
 Qed.
+
 
 Inductive Pr : logic -> sequent -> Prop :=
  | R_Ax Γ l A : In A Γ -> Pr l (Γ ⊢ A)
@@ -635,15 +622,8 @@ Hint Constructors Pr.
 
 Ltac mysubst :=
  match goal with
- | EQ: form_eqb _ _ = true |- _ =>
-   rewrite <- (reflect_iff _ _ (form_eqb_spec _ _)) in EQ;
-   rewrite EQ in *; clear EQ; mysubst
- | EQ: ctx_eqb _ _ = true |- _ =>
-   rewrite <- (reflect_iff _ _ (ctx_eqb_spec _ _)) in EQ;
-   rewrite EQ in *; clear EQ; mysubst
- | EQ: seq_eqb _ _ = true |- _ =>
-   rewrite <- (reflect_iff _ _ (seq_eqb_spec _ _)) in EQ;
-   rewrite EQ in *; clear EQ; mysubst
+ | EQ: (_ =? _) = true |- _ =>
+   apply eqb_eq in EQ; rewrite EQ in *; clear EQ; mysubst
  | _ => idtac
  end.
 
@@ -690,10 +670,7 @@ Proof.
      + now apply IH.
      + now apply IH'. }
  clear IH H'. simpl in *. Opaque Vars.union. break; mytac.
- - rewrite existsb_exists in *.
-   destruct H as (A & IN & EQ).
-   mysubst.
-   now apply R_Ax.
+ - apply list_mem_in in H. now apply R_Ax.
  - now apply R_Fa_e.
  - now apply R_Not_i.
  - now apply R_Not_e with f0.
@@ -720,21 +697,6 @@ Lemma Provable_Pr logic s :
   Provable logic s -> Pr logic s.
 Proof.
  intros (d & Hd & <-). now apply valid_deriv_Pr.
-Qed.
-
-Lemma form_eqb_refl f : form_eqb f f = true.
-Proof.
- now case form_eqb_spec.
-Qed.
-
-Lemma ctx_eqb_refl c : ctx_eqb c c = true.
-Proof.
- now case ctx_eqb_spec.
-Qed.
-
-Lemma seq_eqb_refl s : seq_eqb s s = true.
-Proof.
- now case seq_eqb_spec.
 Qed.
 
 Lemma Pr_intuit_classic s : Pr Intuiti s -> Pr Classic s.
@@ -800,75 +762,67 @@ Lemma Pr_Provable lg s :
 Proof.
  induction 1.
  - exists (Rule Ax (Γ ⊢ A) []). simpl. split; auto.
-   assert (E : existsb (form_eqb A) Γ = true).
-   apply existsb_exists. exists A; split; auto.
-   case form_eqb_spec; easy.
-   now rewrite E.
+   apply list_mem_in in H. now rewrite H.
  - now exists (Rule Tr_i (Γ ⊢ True) []).
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule Fa_e (Γ ⊢ A) [d]). simpl.
-   rewrite (reflect_iff _ _ (seq_eqb_spec _ _)) in Eq.
-   now rewrite Eq, Hd.
+   apply eqb_eq in Eq. now rewrite Eq, Hd.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule Not_i (Γ ⊢ ~ A) [d]). simpl.
-   rewrite (reflect_iff _ _ (seq_eqb_spec _ _)) in Eq.
-   now rewrite Eq, Hd.
+   apply eqb_eq in Eq. now rewrite Eq, Hd.
  - destruct IHPr1 as (d1 & Hd1 & Eq1).
    destruct IHPr2 as (d2 & Hd2 & Eq2).
    exists (Rule Not_e (Γ ⊢ False) [d1;d2]). simpl.
-   rewrite Eq1, Eq2, Hd1, Hd2.
-   now rewrite form_eqb_refl, !ctx_eqb_refl.
+   now rewrite Eq1, Eq2, Hd1, Hd2, !eqb_refl.
  - destruct IHPr1 as (d1 & Hd1 & Eq1).
    destruct IHPr2 as (d2 & Hd2 & Eq2).
    exists (Rule And_i (Γ ⊢ A /\ B) [d1;d2]). simpl.
-   now rewrite Eq1, Eq2, Hd1, Hd2, !seq_eqb_refl.
+   now rewrite Eq1, Eq2, Hd1, Hd2, !eqb_refl.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule And_e1 (Γ ⊢ A) [d]). simpl.
-   now rewrite Eq, Hd, !form_eqb_refl, !ctx_eqb_refl.
+   now rewrite Eq, Hd, !eqb_refl.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule And_e2 (Γ ⊢ B) [d]). simpl.
-   now rewrite Eq, Hd, !form_eqb_refl, !ctx_eqb_refl.
+   now rewrite Eq, Hd, !eqb_refl.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule Or_i1 (Γ ⊢ A \/ B) [d]). simpl.
-   now rewrite Eq, Hd, !seq_eqb_refl.
+   now rewrite Eq, Hd, !eqb_refl.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule Or_i2 (Γ ⊢ A \/ B) [d]). simpl.
-   now rewrite Eq, Hd, !seq_eqb_refl.
+   now rewrite Eq, Hd, !eqb_refl.
  - destruct IHPr1 as (d1 & Hd1 & Eq1).
    destruct IHPr2 as (d2 & Hd2 & Eq2).
    destruct IHPr3 as (d3 & Hd3 & Eq3).
    exists (Rule Or_e (Γ ⊢ C) [d1;d2;d3]). simpl.
-   now rewrite Eq1, Eq2, Eq3, Hd1, Hd2, Hd3, !seq_eqb_refl, !ctx_eqb_refl.
+   now rewrite Eq1, Eq2, Eq3, Hd1, Hd2, Hd3, !eqb_refl.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule Imp_i (Γ ⊢ A -> B) [d]). simpl.
-   now rewrite Eq, Hd, !seq_eqb_refl.
+   now rewrite Eq, Hd, !eqb_refl.
  - destruct IHPr1 as (d1 & Hd1 & Eq1).
    destruct IHPr2 as (d2 & Hd2 & Eq2).
    exists (Rule Imp_e (Γ ⊢ B) [d1;d2]). simpl.
-   now rewrite Eq1, Eq2, Hd1, Hd2, ?seq_eqb_refl, ?form_eqb_refl,
-    ?ctx_eqb_refl.
+   now rewrite Eq1, Eq2, Hd1, Hd2, ?eqb_refl.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule (All_i x) (Γ ⊢ ∀A) [d]). simpl.
-   rewrite Eq, Hd, ?seq_eqb_refl, ?ctx_eqb_refl, ?form_eqb_refl.
+   rewrite Eq, Hd, ?eqb_refl.
    rewrite <- Vars.mem_spec in H.
    destruct Vars.mem; auto.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule (All_e t) (Γ ⊢ form_bsubst 0 t A) [d]). simpl.
-   now rewrite Eq, Hd, ?seq_eqb_refl, ?ctx_eqb_refl, ?form_eqb_refl.
+   now rewrite Eq, Hd, ?eqb_refl.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule (Ex_i t) (Γ ⊢ ∃A) [d]). simpl.
-   now rewrite Eq, Hd, ?seq_eqb_refl, ?ctx_eqb_refl, ?form_eqb_refl.
+   now rewrite Eq, Hd, ?eqb_refl.
  - destruct IHPr1 as (d1 & Hd1 & Eq1).
    destruct IHPr2 as (d2 & Hd2 & Eq2).
    exists (Rule (Ex_e x) (Γ ⊢ B) [d1;d2]). simpl.
-   rewrite Eq1, Eq2, Hd1, Hd2, ?seq_eqb_refl, ?form_eqb_refl,
-    ?ctx_eqb_refl.
+   rewrite Eq1, Eq2, Hd1, Hd2, ?eqb_refl.
    rewrite <- Vars.mem_spec in H.
    destruct Vars.mem; auto.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule Absu (Γ ⊢ A) [d]). simpl.
    apply any_classic in Hd.
-   now rewrite Eq, Hd, ?seq_eqb_refl, ?ctx_eqb_refl, ?form_eqb_refl.
+   now rewrite Eq, Hd, ?eqb_refl.
 Qed.
 
 Lemma Provable_alt lg s : Provable lg s <-> Pr lg s.

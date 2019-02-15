@@ -33,57 +33,6 @@ Fixpoint nam2mix stack f :=
     Mix.Quant q (nam2mix (v::stack) f)
   end.
 
-(** To generalize someday *)
-
-Lemma list_index_in (v:variable) l :
-  list_index v l <> None <-> In v l.
-Proof.
- induction l as [|a l IH]; simpl.
- - easy.
- - case string_eqb_spec.
-   + intros <-. intuition discriminate.
-   + destruct list_index; simpl. intuition easy. intuition.
-Qed.
-
-Lemma list_assoc_in v (sub:Nam.subst) :
- list_assoc v sub <> None <-> In v (map fst sub).
-Proof.
- induction sub as [|(x,t) sub IH]; simpl.
- - easy.
- - case string_eqb_spec.
-   + intros <-. intuition discriminate.
-   + rewrite IH. intuition.
-Qed.
-
-Lemma list_index_nth n (l:list variable) d :
- NoDup l ->
- (n < List.length l)%nat ->
- list_index (nth n l d) l = Some n.
-Proof.
- revert n.
- induction l; simpl.
- - inversion 2.
- - intros n. inversion_clear 1.
-   destruct n.
-   + case string_eqb_spec. intros; f_equal; omega. easy.
-   + intros Hn.
-     rewrite IHl; auto with arith; simpl.
-     case string_eqb_spec; auto.
-     intros <-. destruct H0. apply nth_In. omega.
-Qed.
-
-Lemma list_index_lt_length (v:variable) l n :
-  list_index v l = Some n -> (n < List.length l)%nat.
-Proof.
- revert n.
- induction l; simpl. easy.
- intros n.
- case string_eqb_spec.
- - intros <- [= <-]. omega.
- - destruct list_index; simpl in *; intros NE [= <-].
-   specialize (IHl n0 eq_refl). omega.
-Qed.
-
 Module Nam2MixProof.
 
 Inductive Inv (vars:Vars.t) : Nam.subst -> Nam.subst -> Prop :=
@@ -124,7 +73,7 @@ Proof.
  induction 1.
  - easy.
  - simpl. intros x t.
-   case string_eqb_spec; eauto.
+   case eqbspec; eauto.
    intros -> [= <-]. now exists z.
 Qed.
 
@@ -133,7 +82,7 @@ Lemma list_assoc_some_in v sub z :
 Proof.
  induction sub as [|(v',t) sub IH]; try easy.
  simpl.
- case string_eqb_spec.
+ case eqbspec.
  - intros <- [= ->]. simpl. varsdec.
  - intros _ E. apply IH in E. simpl. varsdec.
 Qed.
@@ -148,7 +97,7 @@ list_index v' (map fst sub') = Some k.
 Proof.
  induction 1; try easy.
  simpl.
- do 2 case string_eqb_spec.
+ do 2 case eqbspec.
  - intros. now exists 0.
  - intros NE <- [= <-] E. apply list_assoc_some_in in E.
    unfold Nam.subvars in *. varsdec.
@@ -177,7 +126,7 @@ Proof.
  revert n.
  induction inv; try easy.
  simpl.
- do 2 case string_eqb_spec.
+ do 2 case eqbspec.
  - intros <- <- n [= <-] _. now exists (Nam.Var z).
  - intros _ <- n [= <-]. clear IHinv.
    destruct list_index; simpl; congruence.
@@ -196,7 +145,7 @@ Lemma list_assoc_index_none (sub:Nam.subst) v :
 Proof.
  induction sub as [|(x,t) sub IH]; simpl; auto.
  intuition.
- case string_eqb_spec; try easy.
+ case eqbspec; try easy.
  intros NE. rewrite IH.
  destruct list_index; simpl; intuition congruence.
 Qed.
@@ -251,21 +200,21 @@ Lemma nam2mix_canonical_gen sub sub' f f' :
 Proof.
  revert f' sub sub'.
  induction f; destruct f'; intros sub sub'; simpl; try easy.
- - case string_eqb_spec; [ intros <- | easy ].
-   case (forallb2_eqb_spec _ Nam.term_eqb_spec); try discriminate.
+ - case eqbspec; [ intros <- | easy ].
+   case eqbspec; try discriminate.
    intros H inv _.
    f_equal.
    injection (nam2mix_term_ok sub sub' (Nam.Fun "" l) (Nam.Fun "" l0)); auto.
    simpl. now f_equal.
  - intros. f_equal. auto.
- - case op_eqb_spec; [ intros <- | easy].
+ - case eqbspec; [ intros <- | easy].
    rewrite lazy_andb_iff. intros E (H,H'); f_equal.
    + apply IHf1; auto. eapply Inv_weak; eauto; varsdec.
    + apply IHf2; auto. eapply Inv_weak; eauto; varsdec.
  - match goal with
      |- context [fresh_var ?vs] => set (vars := vs)
    end.
-   case quant_eqb_spec; [intros <- | easy].
+   case eqbspec; [intros <- | easy].
    intros inv H. f_equal. apply IHf in H; auto. clear H.
    assert (Fok := fresh_var_ok vars).
    constructor; try (eapply Inv_weak; eauto); varsdec.
@@ -314,20 +263,20 @@ Lemma nam2mix_alpha_gen sub sub' f f' :
 Proof.
  revert f' sub sub'.
  induction f; destruct f'; intros sub sub'; simpl; try easy.
- - case string_eqb_spec; [ intros <- | congruence ].
-   case (forallb2_eqb_spec _ Nam.term_eqb_spec); auto.
+ - case eqbspec; [ intros <- | congruence ].
+   case eqbspec; auto.
    intros NE inv [=]. destruct NE.
    injection (nam2mix_term_ok2 sub sub' (Nam.Fun "" l) (Nam.Fun "" l0)); auto.
    simpl. now f_equal.
  - intros inv [=]. auto.
- - case op_eqb_spec; [ intros <- | congruence].
+ - case eqbspec; [ intros <- | congruence].
    rewrite lazy_andb_iff. intros inv [=]. split.
    + apply IHf1; auto. eapply Inv_weak; eauto; varsdec.
    + apply IHf2; auto. eapply Inv_weak; eauto; varsdec.
  - match goal with
      |- context [fresh_var ?vs] => set (vars := vs)
    end.
-   case quant_eqb_spec; [intros <- | congruence].
+   case eqbspec; [intros <- | congruence].
    intros inv [=]. apply IHf; auto.
    assert (Fok := fresh_var_ok vars).
    constructor; try (eapply Inv_weak; eauto); varsdec.
@@ -391,8 +340,7 @@ Proof.
  revert t. fix IH 1. destruct t; simpl; trivial; intros LE FR.
  - destruct (list_index v stack) eqn:E; auto.
    assert (IN : In v stack).
-   { apply list_index_in.
-     unfold eqb_inst_string. now rewrite E. }
+   { apply list_index_in. now rewrite E. }
    apply FR in IN. varsdec.
  - rewrite list_index_nth; auto.
  - f_equal. clear f.
@@ -442,7 +390,7 @@ Lemma mix_nam_mix f :
   nam2mix [] (mix2nam [] f) = f.
 Proof.
  unfold Mix.closed.
- case Nat.eqb_spec; [ intros E _ | easy ].
+ case eqbspec; [ intros E _ | easy ].
  apply mix_nam_mix_gen; auto.
  constructor.
  simpl. rewrite E. auto.
@@ -474,7 +422,7 @@ Lemma nam2mix_closed f :
   Mix.closed (nam2mix [] f) = true.
 Proof.
  unfold Mix.closed.
- case Nat.eqb_spec; auto.
+ case eqbspec; auto.
  generalize (nam2mix_level [] f). simpl. intros. omega.
 Qed.
 

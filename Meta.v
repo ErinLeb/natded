@@ -65,10 +65,10 @@ Qed.
 *)
 
 Definition subinvars (sub : subst) :=
-  List.fold_right (fun p vs => Vars.add (fst p) vs) Vars.empty sub.
+  vars_unionmap (fun '(v,_) => Vars.singleton v) sub.
 
 Definition suboutvars (sub : subst) :=
-  vars_flatmap (fun '(_,t) => term_fvars t) sub.
+  vars_unionmap (fun '(_,t) => fvars t) sub.
 
 Definition subvars (sub : subst) :=
   Vars.union (subinvars sub) (suboutvars sub).
@@ -94,29 +94,29 @@ Proof.
    + intros NE H. specialize (IH H). varsdec.
 Qed.
 
-Lemma term_vmap_ext h h' t :
- (forall v:variable, Vars.In v (term_fvars t) -> h v = h' v) ->
+Lemma term_vmap_ext h h' (t:term) :
+ (forall v:variable, Vars.In v (fvars t) -> h v = h' v) ->
  term_vmap h t = term_vmap h' t.
 Proof.
  revert t.
- fix IH 1; destruct t; simpl; intros E; trivial.
+ fix IH 1; destruct t; cbn; intros E; trivial.
  - auto with sets.
  - f_equal. clear f. revert l E.
-   fix IH' 1; destruct l; simpl; intros; f_equal; auto with sets.
+   fix IH' 1; destruct l; cbn; intros; f_equal; auto with sets.
 Qed.
 
-Lemma term_vmap_id h t :
- (forall v:variable, Vars.In v (term_fvars t) -> h v = FVar v) ->
+Lemma term_vmap_id h (t:term) :
+ (forall v:variable, Vars.In v (fvars t) -> h v = FVar v) ->
  term_vmap h t = t.
 Proof.
  revert t.
- fix IH 1; destruct t; simpl; intros E; trivial.
+ fix IH 1; destruct t; cbn; intros E; trivial.
  - auto with sets.
  - f_equal. clear f. revert l E.
-   fix IH' 1; destruct l; simpl; intros; f_equal; auto with sets.
+   fix IH' 1; destruct l; cbn; intros; f_equal; auto with sets.
 Qed.
 
-Lemma term_vmap_vmap h h' t :
+Lemma term_vmap_vmap h h' (t:term) :
  term_vmap h (term_vmap h' t) =
  term_vmap (fun v => term_vmap h (h' v)) t.
 Proof.
@@ -126,51 +126,51 @@ Proof.
  fix IH' 1; destruct l; simpl; f_equal; auto.
 Qed.
 
-Lemma form_vmap_ext h h' f :
- (forall v:variable, Vars.In v (freevars f) -> h v = h' v) ->
+Lemma form_vmap_ext h h' (f:formula) :
+ (forall v:variable, Vars.In v (fvars f) -> h v = h' v) ->
  form_vmap h f = form_vmap h' f.
 Proof.
- induction f; simpl; intro; f_equal; auto with sets.
+ induction f; cbn; intro; f_equal; auto with sets.
  now injection (term_vmap_ext h h' (Fun "" l)).
 Qed.
 
-Lemma form_vmap_id h f :
- (forall v:variable, Vars.In v (freevars f) -> h v = FVar v) ->
+Lemma form_vmap_id h (f:formula) :
+ (forall v:variable, Vars.In v (fvars f) -> h v = FVar v) ->
  form_vmap h f = f.
 Proof.
- induction f; simpl; intro; f_equal; auto with sets.
+ induction f; cbn; intro; f_equal; auto with sets.
  now injection (term_vmap_id h (Fun "" l)).
 Qed.
 
-Lemma form_vmap_vmap h h' f :
+Lemma form_vmap_vmap h h' (f:formula) :
  form_vmap h (form_vmap h' f) =
  form_vmap (fun v => term_vmap h (h' v)) f.
 Proof.
- induction f; simpl; f_equal; auto.
+ induction f; cbn; f_equal; auto.
  now injection (term_vmap_vmap h h' (Fun "" l)).
 Qed.
 
-Lemma ctx_vmap_ext h h' c :
- (forall v:variable, Vars.In v (freevars_ctx c) -> h v = h' v) ->
+Lemma ctx_vmap_ext h h' (c:context) :
+ (forall v:variable, Vars.In v (fvars c) -> h v = h' v) ->
  ctx_vmap h c = ctx_vmap h' c.
 Proof.
- induction c; simpl; intros; f_equal;
+ induction c; cbn; intros; f_equal;
   auto using form_vmap_ext with sets.
 Qed.
 
-Lemma ctx_vmap_id h c :
- (forall v:variable, Vars.In v (freevars_ctx c) -> h v = FVar v) ->
+Lemma ctx_vmap_id h (c:context) :
+ (forall v:variable, Vars.In v (fvars c) -> h v = FVar v) ->
  ctx_vmap h c = c.
 Proof.
- induction c; simpl; intros; f_equal;
+ induction c; cbn; intros; f_equal;
   auto using form_vmap_id with sets.
 Qed.
 
-Lemma ctx_vmap_vmap h h' c :
+Lemma ctx_vmap_vmap h h' (c:context) :
  ctx_vmap h (ctx_vmap h' c) =
  ctx_vmap (fun v => term_vmap h (h' v)) c.
 Proof.
- induction c; simpl; f_equal; auto using form_vmap_vmap with sets.
+ induction c; cbn; f_equal; auto using form_vmap_vmap with sets.
 Qed.
 
 Lemma ctx_fsubsts_alt sub c :
@@ -195,58 +195,58 @@ Proof.
    + specialize (IH t). specialize (IH' l). varsdec.
 *)
 
-Lemma term_fvars_fsubsts sub t :
+Lemma term_fvars_fsubsts sub (t:term) :
   Vars.Subset
-    (term_fvars (term_fsubsts sub t))
+    (fvars (term_fsubsts sub t))
     (Vars.union (suboutvars sub)
-                (Vars.diff (term_fvars t) (subinvars sub))).
+                (Vars.diff (fvars t) (subinvars sub))).
 Proof.
  revert t.
- fix IH 1. destruct t; simpl.
+ fix IH 1. destruct t; cbn.
  - unfold fsubsts. rewrite ?list_assoc_dft_alt.
-   destruct (list_assoc v sub) eqn:E; simpl.
+   destruct (list_assoc v sub) eqn:E; cbn.
    + apply list_assoc_suboutvars in E. varsdec.
    + rewrite list_assoc_notin, <- subinvars_in in E. varsdec.
  - varsdec.
- - clear f. revert l. fix IH' 1. destruct l; simpl.
+ - clear f. revert l. fix IH' 1. destruct l; cbn.
    + varsdec.
    + specialize (IH t). specialize (IH' l). varsdec.
 Qed.
 
-Lemma fvars_fsubsts sub f :
+Lemma fvars_fsubsts sub (f:formula) :
   Vars.Subset
-    (freevars (form_fsubsts sub f))
+    (fvars (form_fsubsts sub f))
     (Vars.union (suboutvars sub)
-                (Vars.diff (freevars f) (subinvars sub))).
+                (Vars.diff (fvars f) (subinvars sub))).
 Proof.
- induction f; simpl; auto; try varsdec.
+ induction f; cbn; auto; try varsdec.
  apply (term_fvars_fsubsts sub (Fun "" l)).
 Qed.
 
-Lemma fvars_fsubsts_ctx sub c :
+Lemma fvars_fsubsts_ctx sub (c:context) :
   Vars.Subset
-    (freevars_ctx (ctx_fsubsts sub c))
+    (fvars (ctx_fsubsts sub c))
     (Vars.union (suboutvars sub)
-                (Vars.diff (freevars_ctx c) (subinvars sub))).
+                (Vars.diff (fvars c) (subinvars sub))).
 Proof.
- induction c as [|f c IH]; simpl.
+ induction c as [|f c IH]; cbn.
  - varsdec.
  - generalize (fvars_fsubsts sub f). varsdec.
 Qed.
 
-Lemma fvars_fsubsts_seq sub s :
+Lemma fvars_fsubsts_seq sub (s:sequent) :
   Vars.Subset
-    (freevars_seq (seq_fsubsts sub s))
+    (fvars (seq_fsubsts sub s))
     (Vars.union (suboutvars sub)
-                (Vars.diff (freevars_seq s) (subinvars sub))).
+                (Vars.diff (fvars s) (subinvars sub))).
 Proof.
- destruct s as (c,f). simpl.
+ destruct s as (c,f). cbn.
  generalize (fvars_fsubsts_ctx sub c) (fvars_fsubsts sub f).
  varsdec.
 Qed.
 
 Lemma term_fsubsts_notIn sub (x:variable) u t :
- ~Vars.In x (term_fvars t) ->
+ ~Vars.In x (fvars t) ->
  term_fsubsts ((x, u) :: sub) t = term_fsubsts sub t.
 Proof.
  intros NI. apply term_vmap_ext.
@@ -254,17 +254,17 @@ Proof.
  simpl. case eqbspec; auto with sets.
 Qed.
 
-Lemma form_fsubsts_notIn sub (x:variable) u A :
- ~Vars.In x (freevars A) ->
- form_fsubsts ((x, u) :: sub) A = form_fsubsts sub A.
+Lemma form_fsubsts_notIn sub (x:variable) u f :
+ ~Vars.In x (fvars f) ->
+ form_fsubsts ((x, u) :: sub) f = form_fsubsts sub f.
 Proof.
  intros NI. apply form_vmap_ext.
  intros v IN. unfold fsubsts. rewrite !list_assoc_dft_alt.
  simpl. case eqbspec; auto with sets.
 Qed.
 
-Lemma ctx_fsubsts_notIn sub (x:variable) u c:
- ~Vars.In x (freevars_ctx c) ->
+Lemma ctx_fsubsts_notIn sub (x:variable) u c :
+ ~Vars.In x (fvars c) ->
  ctx_fsubsts ((x,u)::sub) c = ctx_fsubsts sub c.
 Proof.
  intros NI. apply ctx_vmap_ext.
@@ -273,7 +273,7 @@ Proof.
 Qed.
 
 Lemma term_fsubsts_nop sub t :
- Vars.Empty (Vars.inter (subinvars sub) (term_fvars t)) ->
+ Vars.Empty (Vars.inter (subinvars sub) (fvars t)) ->
  term_fsubsts sub t = t.
 Proof.
  intros E. apply term_vmap_id.
@@ -283,9 +283,9 @@ Proof.
  now rewrite H.
 Qed.
 
-Lemma form_fsubsts_nop sub A :
- Vars.Empty (Vars.inter (subinvars sub) (freevars A)) ->
- form_fsubsts sub A = A.
+Lemma form_fsubsts_nop sub f :
+ Vars.Empty (Vars.inter (subinvars sub) (fvars f)) ->
+ form_fsubsts sub f = f.
 Proof.
  intros E. apply form_vmap_id.
  intros v Hv. unfold fsubsts. rewrite list_assoc_dft_alt.
@@ -295,7 +295,7 @@ Proof.
 Qed.
 
 Lemma ctx_fsubsts_nop sub c:
- Vars.Empty (Vars.inter (subinvars sub) (freevars_ctx c)) ->
+ Vars.Empty (Vars.inter (subinvars sub) (fvars c)) ->
  ctx_fsubsts sub c = c.
 Proof.
  intros E. apply ctx_vmap_id.
@@ -335,11 +335,11 @@ Proof.
  injection (term_fsubsts_bsubst sub n u (Fun "" l)); auto.
 Qed.
 
-Lemma fsubsts_bsubst_adhoc sub x t A :
+Lemma fsubsts_bsubst_adhoc sub x t f :
  sub_closed ((x,t)::sub) = true ->
- ~Vars.In x (freevars A) ->
- form_fsubsts ((x,t)::sub) (form_bsubst 0 (FVar x) A) =
- form_bsubst 0 t (form_fsubsts sub A).
+ ~Vars.In x (fvars f) ->
+ form_fsubsts ((x,t)::sub) (form_bsubst 0 (FVar x) f) =
+ form_bsubst 0 t (form_fsubsts sub f).
 Proof.
  intros.
  rewrite fsubsts_bsubst by trivial.
@@ -354,27 +354,27 @@ Lemma Pr_fsubsts logic s :
   forall sub, sub_closed sub = true ->
   Pr logic (seq_fsubsts sub s).
 Proof.
- induction 1; simpl in *; intros; auto.
+ induction 1; cbn in *; intros; auto.
  - apply R_Ax. now apply in_map.
  - apply R_Not_e with (form_fsubsts sub A); auto.
  - apply R_And_e1 with (form_fsubsts sub B); auto.
  - apply R_And_e2 with (form_fsubsts sub A); auto.
  - apply R_Or_e with (form_fsubsts sub A) (form_fsubsts sub B); auto.
  - apply R_Imp_e with (form_fsubsts sub A); auto.
- - set (vars := Vars.union (freevars_seq (Γ⊢A)) (subvars sub)).
+ - set (vars := Vars.union (fvars (Γ⊢A)) (subvars sub)).
    set (z := fresh_var vars).
    apply R_All_i with z.
    + intros H'. apply (fvars_fsubsts_seq sub (Γ⊢A)) in H'.
      apply (fresh_var_ok vars). unfold subvars in vars. varsdec.
    + specialize (IHPr ((x,FVar z)::sub)).
      rewrite ctx_fsubsts_notIn in IHPr by varsdec.
-     rewrite <- fsubsts_bsubst_adhoc with (x:=x); auto. varsdec.
+     rewrite <- fsubsts_bsubst_adhoc with (x:=x); auto with sets.
  - rewrite fsubsts_bsubst by auto.
    apply R_All_e; auto.
  - specialize (IHPr sub).
    rewrite fsubsts_bsubst in IHPr by auto.
    apply R_Ex_i with (term_fsubsts sub t); auto.
- - set (vars := Vars.union (freevars_seq (A::Γ⊢B)) (subvars sub)).
+ - set (vars := Vars.union (fvars (A::Γ⊢B)) (subvars sub)).
    set (z := fresh_var vars).
    apply R_Ex_e with z (form_fsubsts sub A).
    + intros H'. apply (fvars_fsubsts_seq sub (A::Γ⊢B) z) in H'.
@@ -409,8 +409,7 @@ Proof.
  intros (a & Ha & Ha'). apply SU in Ha'. now exists a.
 Qed.
 
-Ltac varsdec' :=
- simpl in *; unfold freevars_seq in *; simpl in *; varsdec.
+Ltac varsdec' := cbn in *; varsdec.
 
 Lemma Pr_weakening logic s s' :
   Pr logic s ->
@@ -424,12 +423,12 @@ Proof.
  - apply R_And_e2 with A; auto.
  - apply R_Or_e with A B; auto.
  - apply R_Imp_e with A; auto.
- - set (vars := Vars.add x (freevars_seq (Γ' ⊢ A))).
+ - set (vars := Vars.add x (fvars (Γ' ⊢ A))).
    set (z := fresh_var vars).
    assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok).
    clearbody z; unfold vars in *; clear vars.
    set (Γ2 := ctx_fsubsts [(x,FVar z)] Γ').
-   assert (~Vars.In x (freevars_ctx Γ2)).
+   assert (~Vars.In x (fvars Γ2)).
    { intros IN. apply fvars_fsubsts_ctx in IN. varsdec'. }
    assert (PR : Pr l (Γ2 ⊢ ∀A)).
    { apply R_All_i with x.
@@ -451,12 +450,12 @@ Proof.
    rewrite form_fsubsts_nop in PR by varsdec'.
    trivial.
  - apply R_Ex_i with t; auto.
- - set (vars := Vars.add x (freevars_seq (A::Γ' ⊢ B))).
+ - set (vars := Vars.add x (fvars (A::Γ' ⊢ B))).
    set (z := fresh_var vars).
    assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok).
    clearbody z; unfold vars in *; clear vars.
    set (Γ2 := ctx_fsubsts [(x,FVar z)] Γ').
-   assert (~Vars.In x (freevars_ctx Γ2)).
+   assert (~Vars.In x (fvars Γ2)).
    { intros IN. apply fvars_fsubsts_ctx in IN. varsdec'. }
    assert (PR : Pr l (Γ2 ⊢ B)).
    { apply R_Ex_e with x A.

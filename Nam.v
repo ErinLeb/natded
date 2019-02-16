@@ -110,7 +110,7 @@ Compute check_term (generalize_signature peano_sign) peano_term_example.
 Fixpoint term_vars t :=
  match t with
   | Var v => Vars.singleton v
-  | Fun _ args => vars_flatmap term_vars args
+  | Fun _ args => vars_unionmap term_vars args
  end.
 
 (** Simultaneous substitution of many variables in a term. *)
@@ -220,7 +220,7 @@ Fixpoint allvars f :=
   | Not f => allvars f
   | Op _ f f' => Vars.union (allvars f) (allvars f')
   | Quant _ v f => Vars.add v (allvars f)
-  | Pred _ args => vars_flatmap term_vars args
+  | Pred _ args => vars_unionmap term_vars args
   end.
 
 Fixpoint freevars f :=
@@ -229,14 +229,14 @@ Fixpoint freevars f :=
   | Not f => freevars f
   | Op _ f f' => Vars.union (freevars f) (freevars f')
   | Quant _ v f => Vars.remove v (freevars f)
-  | Pred _ args => vars_flatmap term_vars args
+  | Pred _ args => vars_unionmap term_vars args
   end.
 
 Definition subinvars (sub : subst) :=
   List.fold_right (fun p vs => Vars.add (fst p) vs) Vars.empty sub.
 
 Definition suboutvars (sub : subst) :=
-  vars_flatmap (fun '(_,t) => term_vars t) sub.
+  vars_unionmap (fun '(_,t) => term_vars t) sub.
 
 Definition subvars (sub : subst) :=
   Vars.union (subinvars sub) (suboutvars sub).
@@ -261,16 +261,14 @@ Fixpoint formula_substs sub f :=
 
 Definition formula_subst v t f := formula_substs [(v,t)] f.
 
-Fixpoint term_eqb t1 t2 :=
+Instance term_eqb : Eqb term :=
+ fix term_eqb t1 t2 :=
   match t1, t2 with
   | Var v1, Var v2 => v1 =? v2
   | Fun f1 args1, Fun f2 args2 =>
     (f1 =? f2) &&& (list_forallb2 term_eqb args1 args2)
   | _, _ => false
   end.
-
-Instance eqb_inst_term : Eqb term := term_eqb.
-Arguments eqb_inst_term !_ !_.
 
 Fixpoint alpha_equiv_gen sub1 f1 sub2 f2 :=
   match f1, f2 with
@@ -315,16 +313,11 @@ Definition print_ctx Γ :=
 Definition check_ctx sign Γ :=
   List.forallb (check_formula sign) Γ.
 
-Definition allvars_ctx Γ := vars_flatmap allvars Γ.
+Definition allvars_ctx Γ := vars_unionmap allvars Γ.
 
-Definition freevars_ctx Γ := vars_flatmap freevars Γ.
+Definition freevars_ctx Γ := vars_unionmap freevars Γ.
 
 Definition ctx_subst v t Γ := List.map (formula_subst v t) Γ.
-
-Definition ctx_eqb Γ Γ' := list_forallb2 alpha_equiv Γ Γ'.
-
-Instance eqb_inst_ctx : Eqb context := ctx_eqb.
-Arguments eqb_inst_ctx !_ !_.
 
 (** Sequent *)
 
@@ -348,11 +341,8 @@ Definition freevars_seq '(Γ ⊢ A) :=
 Definition seq_subst v t '(Γ ⊢ A) :=
   (ctx_subst v t Γ, formula_subst v t A).
 
-Definition seq_eqb '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) :=
-  (Γ1 =? Γ2) &&& (A1 =? A2).
-
-Instance eqb_inst_seq : Eqb sequent := seq_eqb.
-Arguments eqb_inst_seq !_ !_.
+Instance seq_eqb : Eqb sequent :=
+ fun '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) => (Γ1 =? Γ2) &&& (A1 =? A2).
 
 (** Derivation *)
 

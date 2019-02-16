@@ -328,7 +328,7 @@ Fixpoint mix2nam stack f :=
   | Mix.Pred p args =>
     Nam.Pred p (List.map (mix2nam_term stack) args)
   | Mix.Quant q f =>
-    let v := fresh_var (Vars.union (to_vars stack) (Mix.freevars f)) in
+    let v := fresh_var (Vars.union (to_vars stack) (Mix.fvars f)) in
     Nam.Quant q v (mix2nam (v::stack) f)
   end.
 
@@ -359,7 +359,7 @@ Qed.
 Lemma mix_nam_mix_gen stack f :
  NoDup stack ->
  (Mix.level f <= List.length stack)%nat ->
- (forall v, In v stack -> ~Vars.In v (Mix.freevars f)) ->
+ (forall v, In v stack -> ~Vars.In v (Mix.fvars f)) ->
  nam2mix stack (mix2nam stack f) = f.
 Proof.
  revert stack.
@@ -367,22 +367,22 @@ Proof.
  - f_equal.
    injection (mix_nam_mix_term stack (Mix.Fun "" l)); auto.
  - f_equal. auto.
- - f_equal.
+ - cbn in FR. f_equal.
    + apply IHf1; auto. omega with *.
      intros v IN. apply FR in IN. varsdec.
    + apply IHf2; auto. omega with *.
      intros v IN. apply FR in IN. varsdec.
- - f_equal.
+ - cbn in FR. f_equal.
    apply IHf; auto.
    + constructor; auto.
-     set (vars := Vars.union (to_vars stack) (Mix.freevars f)).
+     set (vars := Vars.union (to_vars stack) (Mix.fvars f)).
      assert (FR' := fresh_var_ok vars).
      contradict FR'.
      unfold vars at 2. VarsF.set_iff. left. now apply to_vars_in.
    + simpl. omega with *.
    + simpl.
      intros v [<-|IN].
-     * set (vars := Vars.union (to_vars stack) (Mix.freevars f)).
+     * set (vars := Vars.union (to_vars stack) (Mix.fvars f)).
        generalize (fresh_var_ok vars). varsdec.
      * apply FR in IN. varsdec.
 Qed.

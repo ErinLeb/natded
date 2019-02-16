@@ -20,7 +20,7 @@ Arguments eqb {A} {_} !_ !_.
 Class EqbSpec A `{Eqb A} :=
  eqbspec : forall x y:A, reflect (x=y) (x =? y).
 
-Instance eqb_inst_nat : Eqb nat := { eqb := Nat.eqb }.
+Instance eqb_inst_nat : Eqb nat := Nat.eqb.
 Instance eqbspec_nat : EqbSpec nat := Nat.eqb_spec.
 
 Instance eqb_inst_ascii : Eqb ascii := AsciiOrder.ascii_eqb.

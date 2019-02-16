@@ -24,18 +24,18 @@ Proof.
      * right; now exists vs.
 Qed.
 
-Lemma vars_flatmap_alt {A} (f: A -> Vars.t) (l: list A) :
- Vars.Equal (vars_flatmap f l) (vars_unions (List.map f l)).
+Lemma vars_unionmap_alt {A} (f: A -> Vars.t) (l: list A) :
+ Vars.Equal (vars_unionmap f l) (vars_unions (List.map f l)).
 Proof.
  induction l; simpl.
  - varsdec.
  - rewrite IHl. varsdec.
 Qed.
 
-Lemma vars_flatmap_in {A} (f: A -> Vars.t) (l: list A) v :
- Vars.In v (vars_flatmap f l) <-> exists a, Vars.In v (f a) /\ In a l.
+Lemma vars_unionmap_in {A} (f: A -> Vars.t) (l: list A) v :
+ Vars.In v (vars_unionmap f l) <-> exists a, Vars.In v (f a) /\ In a l.
 Proof.
- rewrite vars_flatmap_alt.
+ rewrite vars_unionmap_alt.
  rewrite vars_unions_in.
  split.
  - intros (vs & H1 & H2).
@@ -103,6 +103,31 @@ Proof.
  - intros x. VarsF.set_iff. intuition.
  - apply Vars.elements_spec2w.
 Qed.
+
+Lemma vars_unionmap_app {A} f (l l':list A) :
+ Vars.Equal (vars_unionmap f (l++l'))
+  (Vars.union (vars_unionmap f l) (vars_unionmap f l')).
+Proof.
+ induction l; simpl; varsdec.
+Qed.
+
+Lemma vars_unionmap_rev {A} f (l:list A) :
+ Vars.Equal (vars_unionmap f (rev l)) (vars_unionmap f l).
+Proof.
+ induction l; simpl. varsdec. rewrite vars_unionmap_app.
+ simpl. varsdec.
+Qed.
+
+Lemma vars_flatmap_alt (f:string->Vars.t) vs :
+ Vars.Equal (vars_flatmap f vs)
+            (vars_unionmap f (Vars.elements vs)).
+Proof.
+ unfold vars_flatmap.
+ rewrite VarsP.fold_spec_right, <- vars_unionmap_rev.
+ change string with Vars.elt.
+ induction (rev (Vars.elements vs)); simpl; auto; varsdec.
+Qed.
+
 
 Lemma string_app_empty_r s : s ++ "" = s.
 Proof.

@@ -97,13 +97,19 @@ Fixpoint check_term (sign : gen_signature) t :=
 
 Compute check_term (generalize_signature peano_sign) peano_term_example.
 
-(** The set of Free variables occurring in a term *)
+(** Generic overloaded function for computing free variables *)
 
-Fixpoint term_fvars t :=
+Class FVars (A : Type) := fvars : A -> Vars.t.
+Arguments fvars {_} {_} !_.
+
+(** The set of free variables occurring in a term *)
+
+Instance term_fvars : FVars term :=
+ fix term_fvars t :=
  match t with
  | BVar _ => Vars.empty
  | FVar v => Vars.singleton v
- | Fun _ args => vars_flatmap term_fvars args
+ | Fun _ args => vars_unionmap term_fvars args
  end.
 
 Fixpoint term_level t :=
@@ -150,6 +156,18 @@ Definition subst := list (variable * term).
 Definition fsubsts sub x := list_assoc_dft x sub (FVar x).
 
 Definition term_fsubsts sub := term_vmap (fsubsts sub).
+
+(** Boolean equalities *)
+
+Instance term_eqb : Eqb term :=
+ fix term_eqb t1 t2 :=
+  match t1, t2 with
+  | BVar n1, BVar n2 => n1 =? n2
+  | FVar v1, FVar v2 => v1 =? v2
+  | Fun f1 args1, Fun f2 args2 =>
+    (f1 =? f2) &&& (list_forallb2 term_eqb args1 args2)
+  | _, _ => false
+  end.
 
 (** Formulas *)
 
@@ -252,13 +270,14 @@ Fixpoint check_formula (sign : gen_signature) f :=
      end
   end.
 
-Fixpoint freevars f :=
+Instance form_fvars : FVars formula :=
+ fix form_fvars f :=
   match f with
   | True | False => Vars.empty
-  | Not f => freevars f
-  | Op _ f f' => Vars.union (freevars f) (freevars f')
-  | Quant _ f => (freevars f)
-  | Pred _ args => vars_flatmap term_fvars args
+  | Not f => form_fvars f
+  | Op _ f f' => Vars.union (form_fvars f) (form_fvars f')
+  | Quant _ f => form_fvars f
+  | Pred _ args => vars_unionmap fvars args
   end.
 
 Fixpoint level f :=
@@ -306,21 +325,8 @@ Definition form_fsubst v u : formula -> formula :=
 Definition form_fsubsts sub :=
   form_vmap (fsubsts sub).
 
-(** Boolean equalities *)
-
-Fixpoint term_eqb t1 t2 :=
-  match t1, t2 with
-  | BVar n1, BVar n2 => n1 =? n2
-  | FVar v1, FVar v2 => v1 =? v2
-  | Fun f1 args1, Fun f2 args2 =>
-    (f1 =? f2) &&& (list_forallb2 term_eqb args1 args2)
-  | _, _ => false
-  end.
-
-Instance eqb_inst_term : Eqb term := term_eqb.
-Arguments eqb_inst_term !_ !_.
-
-Fixpoint form_eqb f1 f2 :=
+Instance form_eqb : Eqb formula :=
+ fix form_eqb f1 f2 :=
   match f1, f2 with
   | True, True | False, False => true
   | Pred p1 args1, Pred p2 args2 =>
@@ -335,12 +341,9 @@ Fixpoint form_eqb f1 f2 :=
   | _,_ => false
   end.
 
-Instance eqb_inst_form : Eqb formula := form_eqb.
-Arguments eqb_inst_form !_ !_.
-
 Compute form_eqb
         (∀ (Pred "A" [ #0 ] -> Pred "A" [ #0 ]))%form
-        (∀ (Pred "A" [FVar "z"] -> Pred "A" [FVar "z"])).
+        (∀ (Pred "A" [FVar "z"] -> Pred "A" [FVar "z"]))%form.
 
 
 (** Contexts *)
@@ -353,15 +356,14 @@ Definition print_ctx Γ :=
 Definition check_ctx sign Γ :=
   List.forallb (check_formula sign) Γ.
 
-Definition freevars_ctx Γ := vars_flatmap freevars Γ.
+Instance ctx_fvars : FVars context := vars_unionmap fvars.
+Arguments ctx_fvars !_.
 
 Definition ctx_vmap h := List.map (form_vmap h).
 Definition ctx_fsubst v u := List.map (form_fsubst v u).
 Definition ctx_fsubsts sub := List.map (form_fsubsts sub).
-Definition ctx_eqb Γ Γ' := list_forallb2 form_eqb Γ Γ'.
 
-Instance eqb_inst_ctx : Eqb context := ctx_eqb.
-Arguments eqb_inst_ctx !_ !_.
+(** NB: eqb given by generic eqb_inst_list *)
 
 (** Sequent *)
 
@@ -376,8 +378,8 @@ Definition print_seq '(Γ ⊢ A) :=
 Definition check_seq sign '(Γ ⊢ A) :=
   check_ctx sign Γ &&& check_formula sign A.
 
-Definition freevars_seq '(Γ ⊢ A) :=
-  Vars.union (freevars_ctx Γ) (freevars A).
+Instance : FVars sequent :=
+ fun '(Γ ⊢ A) => Vars.union (fvars Γ) (fvars A).
 
 Definition seq_vmap h '(Γ ⊢ A) :=
   (ctx_vmap h Γ ⊢ form_vmap h A).
@@ -387,11 +389,8 @@ Definition seq_fsubst v u '(Γ ⊢ A) :=
 Definition seq_fsubsts sub '(Γ ⊢ A) :=
   (ctx_fsubsts sub Γ ⊢ form_fsubsts sub A).
 
-Definition seq_eqb '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) :=
-  (Γ1 =? Γ2) &&& (A1 =? A2).
-
-Instance eqb_inst_seq : Eqb sequent := seq_eqb.
-Arguments eqb_inst_seq !_ !_.
+Instance seq_eqb : Eqb sequent :=
+ fun '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) => (Γ1 =? Γ2) &&& (A1 =? A2).
 
 (** Derivation *)
 
@@ -435,7 +434,7 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
      (s =? (Γ ⊢ B)) &&& (s2 =? (Γ ⊢ A))
   | All_i x,  (Γ⊢∀A), [Γ' ⊢ A'] =>
      (Γ =? Γ') &&& (A' =? form_bsubst 0 (FVar x) A)
-     &&& negb (Vars.mem x (freevars_seq (Γ⊢A)))
+     &&& negb (Vars.mem x (fvars (Γ⊢A)))
   | All_e t, (Γ ⊢ B), [Γ'⊢ ∀A] =>
     (Γ =? Γ') &&& (B =? form_bsubst 0 t A)
   | Ex_i t,  (Γ ⊢ ∃A), [Γ'⊢B] =>
@@ -443,7 +442,7 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
   | Ex_e x,  s, [Γ⊢∃A; A'::Γ'⊢B] =>
      (s =? (Γ ⊢ B)) &&& (Γ' =? Γ)
      &&& (A' =? form_bsubst 0 (FVar x) A)
-     &&& negb (Vars.mem x (freevars_seq (A::Γ⊢B)))
+     &&& negb (Vars.mem x (fvars (A::Γ⊢B)))
   | Absu, s, [Not A::Γ ⊢ False] =>
     match logic with
     | Classic => (s =? (Γ ⊢ A))
@@ -594,14 +593,14 @@ Inductive Pr : logic -> sequent -> Prop :=
                      Pr l (Γ ⊢ A->B)
  | R_Imp_e l Γ A B : Pr l (Γ ⊢ A->B) -> Pr l (Γ ⊢ A) ->
                    Pr l (Γ ⊢ B)
- | R_All_i x l Γ A : ~Vars.In x (freevars_seq (Γ ⊢ A)) ->
+ | R_All_i x l Γ A : ~Vars.In x (fvars (Γ ⊢ A)) ->
                    Pr l (Γ ⊢ form_bsubst 0 (FVar x) A) ->
                    Pr l (Γ ⊢ ∀A)
  | R_All_e t l Γ A : Pr l (Γ ⊢ ∀A) ->
                      Pr l (Γ ⊢ form_bsubst 0 t A)
  | R_Ex_i t l Γ A : Pr l (Γ ⊢ form_bsubst 0 t A) ->
                     Pr l (Γ ⊢ ∃A)
- | R_Ex_e x l Γ A B : ~Vars.In x (freevars_seq (A::Γ⊢B)) ->
+ | R_Ex_e x l Γ A B : ~Vars.In x (fvars (A::Γ⊢B)) ->
       Pr l (Γ ⊢ ∃A) -> Pr l ((form_bsubst 0 (FVar x) A)::Γ ⊢ B) ->
       Pr l (Γ ⊢ B)
  | R_Absu l Γ A : Pr l (Not A :: Γ ⊢ False) ->
@@ -671,12 +670,11 @@ Proof.
  - now apply R_Imp_i.
  - now apply R_Imp_e with f1.
  - apply R_All_i with v; trivial.
-   unfold freevars_seq; simpl.
-   rewrite <- Vars.mem_spec. intros EQ. now rewrite EQ in *.
+   rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
  - now apply R_All_e.
  - now apply (R_Ex_i wit).
  - apply R_Ex_e with v f; trivial.
-   rewrite <- Vars.mem_spec. simpl. intros EQ. now rewrite EQ in *.
+   rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
  - now apply R_Absu with Classic.
  Transparent Vars.union.
 Qed.

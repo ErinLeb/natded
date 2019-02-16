@@ -53,15 +53,24 @@ Definition variable := string.
 
 Module Vars := MSetRBT.Make (StringOT).
 
-Definition vars_unions (l: list Vars.t) :=
-  List.fold_right Vars.union Vars.empty l.
+Fixpoint vars_unions (l: list Vars.t) :=
+ match l with
+ | [] => Vars.empty
+ | vs::l => Vars.union vs (vars_unions l)
+ end.
+
+Definition vars_unionmap {A} (f: A -> Vars.t) :=
+ fix flatmap (l:list A) :=
+ match l with
+ | [] => Vars.empty
+ | a::l => Vars.union (f a) (flatmap l)
+ end.
 
 Definition vars_map (f:string->string) (vs : Vars.t) :=
   Vars.fold (fun v => Vars.add (f v)) vs Vars.empty.
 
-Definition vars_flatmap {A} (f: A -> Vars.t) (l: list A) :=
-  List.fold_right (fun a vs =>Vars.union vs (f a)) Vars.empty l.
-
+Definition vars_flatmap (f:string->Vars.t) (vs : Vars.t) :=
+  Vars.fold (fun v => Vars.union (f v)) vs Vars.empty.
 
 (** [fresh_var vars] : gives a new variable not in the set [vars]. *)
 
@@ -83,23 +92,19 @@ Inductive op := And | Or | Impl.
 
 Inductive quant := All | Ex.
 
-Definition op_eqb o1 o2 :=
+Instance op_eqb : Eqb op :=
+ fun o1 o2 =>
   match o1, o2 with
   | And, And | Or, Or | Impl, Impl => true
   | _, _ => false
   end.
 
-Instance eqb_inst_op : Eqb op := op_eqb.
-Arguments eqb_inst_op !_ !_.
-
-Definition quant_eqb q1 q2 :=
+Instance quant_eqb : Eqb quant :=
+ fun q1 q2 =>
   match q1, q2 with
   | All, All | Ex, Ex => true
   | _, _ => false
   end.
-
-Instance eqb_inst_quant : Eqb quant := quant_eqb.
-Arguments eqb_inst_quant !_ !_.
 
 Definition pr_op o :=
   match o with

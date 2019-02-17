@@ -149,14 +149,6 @@ Definition fsubst v u x := if v =? x then u else FVar x.
 
 Definition term_fsubst v u := term_vmap (fsubst v u).
 
-(** Same, simultaneously *)
-
-Definition subst := list (variable * term).
-
-Definition fsubsts sub x := list_assoc_dft x sub (FVar x).
-
-Definition term_fsubsts sub := term_vmap (fsubsts sub).
-
 (** Boolean equalities *)
 
 Instance term_eqb : Eqb term :=
@@ -320,11 +312,6 @@ Definition form_vmap (h:variable->term) :=
 Definition form_fsubst v u : formula -> formula :=
   form_vmap (fsubst v u).
 
-(** Same, simultaneously *)
-
-Definition form_fsubsts sub :=
-  form_vmap (fsubsts sub).
-
 Instance form_eqb : Eqb formula :=
  fix form_eqb f1 f2 :=
   match f1, f2 with
@@ -361,7 +348,6 @@ Arguments ctx_fvars !_.
 
 Definition ctx_vmap h := List.map (form_vmap h).
 Definition ctx_fsubst v u := List.map (form_fsubst v u).
-Definition ctx_fsubsts sub := List.map (form_fsubsts sub).
 
 (** NB: eqb given by generic eqb_inst_list *)
 
@@ -386,8 +372,6 @@ Definition seq_vmap h '(Γ ⊢ A) :=
 
 Definition seq_fsubst v u '(Γ ⊢ A) :=
   (ctx_fsubst v u Γ ⊢ form_fsubst v u A).
-Definition seq_fsubsts sub '(Γ ⊢ A) :=
-  (ctx_fsubsts sub Γ ⊢ form_fsubsts sub A).
 
 Instance seq_eqb : Eqb sequent :=
  fun '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) => (Γ1 =? Γ2) &&& (A1 =? A2).

@@ -10,6 +10,13 @@ Module VarsP := Properties(Vars).
 Module VarsF := VarsP.FM.
 Ltac varsdec := VarsP.Dec.fsetdec.
 
+Lemma InA_In {A} x (l:list A) : InA eq x l <-> In x l.
+Proof.
+ split.
+ rewrite InA_alt. now intros (y & <- & H).
+ apply In_InA; auto with *.
+Qed.
+
 Lemma vars_unions_in (l: list Vars.t) v :
  Vars.In v (vars_unions l) <-> exists vs, Vars.In v vs /\ In vs l.
 Proof.
@@ -64,8 +71,7 @@ Proof.
  rewrite vars_map_in_aux.
  VarsF.set_iff.
  setoid_rewrite VarsF.elements_iff.
- setoid_rewrite InA_alt.
- firstorder congruence.
+ setoid_rewrite InA_In. intuition.
 Qed.
 
 Lemma vars_map_card_aux (f : string -> string) l acc :
@@ -80,7 +86,7 @@ Proof.
  induction l as [|a l IH]; simpl; auto.
  intros acc Hf Hf' ND.
  inversion_clear ND.
- assert (~In a l). { rewrite InA_alt in *. firstorder. }
+ rewrite InA_In in H.
  rewrite IH; clear IH; auto.
  rewrite VarsP.add_cardinal_2. omega.
  apply Hf'; auto.
@@ -98,8 +104,8 @@ Proof.
  rewrite vars_map_card_aux.
  - simpl. now rewrite Vars.cardinal_spec.
  - intros x y Hx Hy. apply Hf.
-   rewrite VarsF.elements_iff, InA_alt. firstorder.
-   rewrite VarsF.elements_iff, InA_alt. firstorder.
+   now rewrite VarsF.elements_iff, InA_In.
+   now rewrite VarsF.elements_iff, InA_In.
  - intros x. VarsF.set_iff. intuition.
  - apply Vars.elements_spec2w.
 Qed.
@@ -128,6 +134,44 @@ Proof.
  induction (rev (Vars.elements vs)); simpl; auto; varsdec.
 Qed.
 
+Lemma vars_flatmap_in (f:string->Vars.t) vs v :
+  Vars.In v (vars_flatmap f vs) <->
+  exists w, Vars.In v (f w) /\ Vars.In w vs.
+Proof.
+ rewrite vars_flatmap_alt, vars_unionmap_in.
+ setoid_rewrite <- (Vars.elements_spec1 vs).
+ now setoid_rewrite InA_In.
+Qed.
+
+Instance vars_map_proper :
+ Proper (eq ==> Vars.Equal ==> Vars.Equal) vars_map.
+Proof.
+ unfold vars_map.
+ intros f f' <- s s' E.
+ apply VarsP.fold_equal; auto.
+ - split; eauto with set.
+ - now intros x x' <- y y' <-.
+ - intros x y z. varsdec.
+Qed.
+
+Instance vars_flatmap_proper :
+ Proper (eq ==> Vars.Equal ==> Vars.Equal) vars_flatmap.
+Proof.
+ unfold vars_flatmap.
+ intros f f' <- s s' E.
+ apply VarsP.fold_equal; auto.
+ - split; eauto with set.
+ - now intros x x' <- y y' <-.
+ - intros x y z. varsdec.
+Qed.
+
+Lemma vars_flatmap_union (f:string->Vars.t) vs vs' :
+ Vars.Equal (vars_flatmap f (Vars.union vs vs'))
+            (Vars.union (vars_flatmap f vs) (vars_flatmap f vs')).
+Proof.
+ intros x. VarsF.set_iff. rewrite !vars_flatmap_in.
+ setoid_rewrite Vars.union_spec. firstorder.
+Qed.
 
 Lemma string_app_empty_r s : s ++ "" = s.
 Proof.

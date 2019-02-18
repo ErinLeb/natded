@@ -80,29 +80,93 @@ Compute print_term peano_term_example.
 
 (* TODO: formula parsing *)
 
+
+(** Some generic functions, meant to be overloaded
+    with instances for terms, formulas, context, sequent, ... *)
+
+(** Check for known function/predicate symbols + correct arity *)
+Class Check (A : Type) := check : gen_signature -> A -> bool.
+Arguments check {_} {_} _ !_.
+
+(** Replace a bound variable with a term *)
+Class BSubst (A : Type) := bsubst : nat -> term -> A -> A.
+Arguments bsubst {_} {_} _ _ !_.
+
+(** Level : succ of max bounded variable *)
+Class Level (A : Type) := level : A -> nat.
+Arguments level {_} {_} !_.
+
+(** Compute the set of free variables *)
+Class FVars (A : Type) := fvars : A -> Vars.t.
+Arguments fvars {_} {_} !_.
+
+(** General replacement of free variables *)
+Class VMap (A : Type) := vmap : (variable -> term) -> A -> A.
+Arguments vmap {_} {_} _ !_.
+
+(** Some generic definitions based on the previous ones *)
+
+Definition closed {A}`{Level A} (a:A) := level a =? 0.
+
+(** Substitution of a free variable in a term :
+    in [t], free var [v] is replaced by [u]. *)
+
+Definition varsubst v u x := if v =? x then u else FVar x.
+
+Definition fsubst {A}`{VMap A} (v:variable)(u:term) :=
+ vmap (varsubst v u).
+
+(** Some structural extensions of these generic functions *)
+
+Instance check_list {A}`{Check A} : Check (list A) :=
+ fun (sign : gen_signature) => List.forallb (check sign).
+
+Instance bsubst_list {A}`{BSubst A} : BSubst (list A) :=
+ fun n t => List.map (bsubst n t).
+
+Instance level_list {A}`{Level A} : Level (list A) :=
+ fun l => list_max (List.map level l).
+
+Instance fvars_list {A}`{FVars A} : FVars (list A) :=
+ vars_unionmap fvars.
+
+Instance vmap_list {A}`{VMap A} : VMap (list A) :=
+ fun h => List.map (vmap h).
+
+Instance check_pair {A B}`{Check A}`{Check B} : Check (A*B) :=
+ fun (sign : gen_signature) '(a,b) => check sign a &&& check sign b.
+
+Instance bsubst_pair {A B}`{BSubst A}`{BSubst B} : BSubst (A*B) :=
+ fun n t '(a,b) => (bsubst n t a, bsubst n t b).
+
+Instance level_pair {A B}`{Level A}`{Level B} : Level (A*B) :=
+ fun '(a,b) => Nat.max (level a) (level b).
+
+Instance fvars_pair {A B}`{FVars A}`{FVars B} : FVars (A*B) :=
+ fun '(a,b) => Vars.union (fvars a) (fvars b).
+
+Instance vmap_pair {A B}`{VMap A}`{VMap B} : VMap (A*B) :=
+ fun h '(a,b) => (vmap h a, vmap h b).
+
+
 (** With respect to a particular signature, a term is valid
     iff it only refer to known function symbols and use them
     with the correct arity. *)
 
-Fixpoint check_term (sign : gen_signature) t :=
+Instance check_term : Check term :=
+ fun (sign : gen_signature) =>
+ fix check_term t :=
  match t with
   | FVar _ | BVar _ => true
   | Fun f args =>
      match sign.(gen_fun_symbs) f with
      | None => false
      | Some ar =>
-       (List.length args =? ar) &&& (List.forallb (check_term sign) args)
+       (List.length args =? ar) &&& (List.forallb check_term args)
      end
  end.
 
-Compute check_term (generalize_signature peano_sign) peano_term_example.
-
-(** Generic overloaded function for computing free variables *)
-
-Class FVars (A : Type) := fvars : A -> Vars.t.
-Arguments fvars {_} {_} !_.
-
-(** The set of free variables occurring in a term *)
+Compute check (generalize_signature peano_sign) peano_term_example.
 
 Instance term_fvars : FVars term :=
  fix term_fvars t :=
@@ -112,44 +176,31 @@ Instance term_fvars : FVars term :=
  | Fun _ args => vars_unionmap term_fvars args
  end.
 
-Fixpoint term_level t :=
+Instance term_level : Level term :=
+ fix term_level t :=
  match t with
  | BVar n => S n
  | FVar v => 0
  | Fun _ args => list_max (map term_level args)
  end.
 
-Definition term_closed t := term_level t =? 0.
-
-(** Substitution of a bounded variable in a term :
-    in [t], bounded var [n] is replaced by [u].
-    NB: [u] is meant to be closed, and [v] of level [S n] *)
-
-Fixpoint term_bsubst n u t :=
+Instance term_bsubst : BSubst term :=
+ fun n u =>
+ fix bsubst t :=
   match t with
   | FVar v => t
   | BVar k => if k =? n then u else t
-  | Fun f args => Fun f (List.map (term_bsubst n u) args)
+  | Fun f args => Fun f (List.map bsubst args)
   end.
 
-(** General action on the free variables of a term *)
-
-Definition term_vmap (h:variable->term) :=
-  fix vmap t :=
-    match t with
-    | BVar _ => t
-    | FVar x => h x
-    | Fun f args => Fun f (List.map vmap args)
-    end.
-
-(** Substitution of a free variable in a term :
-    in [t], free var [v] is replaced by [u]. *)
-
-Definition fsubst v u x := if v =? x then u else FVar x.
-
-Definition term_fsubst v u := term_vmap (fsubst v u).
-
-(** Boolean equalities *)
+Instance term_vmap : VMap term :=
+ fun (h:variable->term) =>
+ fix vmap t :=
+  match t with
+  | BVar _ => t
+  | FVar x => h x
+  | Fun f args => Fun f (List.map vmap args)
+  end.
 
 Instance term_eqb : Eqb term :=
  fix term_eqb t1 t2 :=
@@ -184,19 +235,6 @@ Definition Iff a b := Op And (Op Impl a b) (Op Impl b a).
 (** Notes:
     - We use {  } for putting formulas into parenthesis, instead of ( ).
 *)
-
-Definition pr_op o :=
-  match o with
-  | And => "/\"
-  | Or => "\/"
-  | Impl => "->"
-  end.
-
-Definition pr_quant q :=
-  match q with
-  | All => "∀"
-  | Ex => "∃"
-  end.
 
 Definition is_infix_pred s := list_mem s ["=";"∈"].
 
@@ -248,19 +286,41 @@ Definition test_form := (∃ (True <-> Pred "p" [#0;#0]))%form.
 
 (** Utilities about formula *)
 
-Fixpoint check_formula (sign : gen_signature) f :=
+Instance check_formula : Check formula :=
+ fun (sign : gen_signature) =>
+ fix check_formula f :=
   match f with
   | True | False => true
-  | Not f => check_formula sign f
-  | Op _ f f' => check_formula sign f &&& check_formula sign f'
-  | Quant _ f => check_formula sign f
+  | Not f => check_formula f
+  | Op _ f f' => check_formula f &&& check_formula f'
+  | Quant _ f => check_formula f
   | Pred p args =>
      match sign.(gen_pred_symbs) p with
      | None => false
      | Some ar =>
-       (List.length args =? ar) &&& (List.forallb (check_term sign) args)
+       (List.length args =? ar) &&& (List.forallb (check sign) args)
      end
   end.
+
+Instance form_level : Level formula :=
+  fix form_level f :=
+  match f with
+  | True | False => 0
+  | Not f => form_level f
+  | Op _ f f' => max (form_level f) (form_level f')
+  | Quant _ f => pred (form_level f)
+  | Pred _ args => list_max (map level args)
+  end.
+
+Instance form_bsubst : BSubst formula :=
+ fix form_bsubst n t f :=
+ match f with
+  | True | False => f
+  | Pred p args => Pred p (List.map (bsubst n t) args)
+  | Not f => Not (form_bsubst n t f)
+  | Op o f f' => Op o (form_bsubst n t f) (form_bsubst n t f')
+  | Quant q f' => Quant q (form_bsubst (S n) t f')
+ end.
 
 Instance form_fvars : FVars formula :=
  fix form_fvars f :=
@@ -272,45 +332,16 @@ Instance form_fvars : FVars formula :=
   | Pred _ args => vars_unionmap fvars args
   end.
 
-Fixpoint level f :=
-  match f with
-  | True | False => 0
-  | Not f => level f
-  | Op _ f f' => max (level f) (level f')
-  | Quant _ f => pred (level f)
-  | Pred _ args => list_max (map term_level args)
-  end.
-
-Definition closed f := level f =? 0.
-
-(** Substitution of bounded var [n] by closed term [t] in [f] *)
-
-Fixpoint form_bsubst n t f :=
- match f with
-  | True | False => f
-  | Pred p args => Pred p (List.map (term_bsubst n t) args)
-  | Not f => Not (form_bsubst n t f)
-  | Op o f f' => Op o (form_bsubst n t f) (form_bsubst n t f')
-  | Quant q f' =>
-    Quant q (form_bsubst (S n) t f')
- end.
-
-(** General action on free variables *)
-
-Definition form_vmap (h:variable->term) :=
-  fix vmap f :=
-    match f with
-    | True | False => f
-    | Pred p args => Pred p (List.map (term_vmap h) args)
-    | Not f => Not (vmap f)
-    | Op o f f' => Op o (vmap f) (vmap f')
-    | Quant q f' => Quant q (vmap f')
-    end.
-
-(** Substitution of a free variable [v] by term [u] *)
-
-Definition form_fsubst v u : formula -> formula :=
-  form_vmap (fsubst v u).
+Instance form_vmap : VMap formula :=
+ fun (h:variable->term) =>
+ fix form_vmap f :=
+   match f with
+   | True | False => f
+   | Pred p args => Pred p (List.map (vmap h) args)
+   | Not f => Not (form_vmap f)
+   | Op o f f' => Op o (form_vmap f) (form_vmap f')
+   | Quant q f' => Quant q (form_vmap f')
+   end.
 
 Instance form_eqb : Eqb formula :=
  fix form_eqb f1 f2 :=
@@ -328,7 +359,7 @@ Instance form_eqb : Eqb formula :=
   | _,_ => false
   end.
 
-Compute form_eqb
+Compute eqb
         (∀ (Pred "A" [ #0 ] -> Pred "A" [ #0 ]))%form
         (∀ (Pred "A" [FVar "z"] -> Pred "A" [FVar "z"]))%form.
 
@@ -340,16 +371,8 @@ Definition context := list formula.
 Definition print_ctx Γ :=
   String.concat "," (List.map print_formula Γ).
 
-Definition check_ctx sign Γ :=
-  List.forallb (check_formula sign) Γ.
-
-Instance ctx_fvars : FVars context := vars_unionmap fvars.
-Arguments ctx_fvars !_.
-
-Definition ctx_vmap h := List.map (form_vmap h).
-Definition ctx_fsubst v u := List.map (form_fsubst v u).
-
-(** NB: eqb given by generic eqb_inst_list *)
+(** check, bsubst, level, fvars, vmap, eqb : given by instances
+    on lists. *)
 
 (** Sequent *)
 
@@ -361,17 +384,20 @@ Infix "⊢" := Seq (at level 100).
 Definition print_seq '(Γ ⊢ A) :=
   print_ctx Γ ++ " ⊢ " ++ print_formula A.
 
-Definition check_seq sign '(Γ ⊢ A) :=
-  check_ctx sign Γ &&& check_formula sign A.
+Instance check_seq : Check sequent :=
+ fun sign '(Γ ⊢ A) => check sign Γ &&& check sign A.
 
-Instance : FVars sequent :=
+Instance bsubst_seq : BSubst sequent :=
+ fun n u '(Γ ⊢ A) => (bsubst n u Γ ⊢ bsubst n u A).
+
+Instance level_seq : Level sequent :=
+ fun '(Γ ⊢ A) => Nat.max (level Γ) (level A).
+
+Instance seq_fvars : FVars sequent :=
  fun '(Γ ⊢ A) => Vars.union (fvars Γ) (fvars A).
 
-Definition seq_vmap h '(Γ ⊢ A) :=
-  (ctx_vmap h Γ ⊢ form_vmap h A).
-
-Definition seq_fsubst v u '(Γ ⊢ A) :=
-  (ctx_fsubst v u Γ ⊢ form_fsubst v u A).
+Instance seq_vmap : VMap sequent :=
+ fun h '(Γ ⊢ A) => (vmap h Γ ⊢ vmap h A).
 
 Instance seq_eqb : Eqb sequent :=
  fun '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) => (Γ1 =? Γ2) &&& (A1 =? A2).
@@ -417,15 +443,15 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
   | Imp_e,  s, [Γ ⊢ A->B;s2] =>
      (s =? (Γ ⊢ B)) &&& (s2 =? (Γ ⊢ A))
   | All_i x,  (Γ⊢∀A), [Γ' ⊢ A'] =>
-     (Γ =? Γ') &&& (A' =? form_bsubst 0 (FVar x) A)
+     (Γ =? Γ') &&& (A' =? bsubst 0 (FVar x) A)
      &&& negb (Vars.mem x (fvars (Γ⊢A)))
   | All_e t, (Γ ⊢ B), [Γ'⊢ ∀A] =>
-    (Γ =? Γ') &&& (B =? form_bsubst 0 t A)
+    (Γ =? Γ') &&& (B =? bsubst 0 t A)
   | Ex_i t,  (Γ ⊢ ∃A), [Γ'⊢B] =>
-    (Γ =? Γ') &&& (B =? form_bsubst 0 t A)
+    (Γ =? Γ') &&& (B =? bsubst 0 t A)
   | Ex_e x,  s, [Γ⊢∃A; A'::Γ'⊢B] =>
      (s =? (Γ ⊢ B)) &&& (Γ' =? Γ)
-     &&& (A' =? form_bsubst 0 (FVar x) A)
+     &&& (A' =? bsubst 0 (FVar x) A)
      &&& negb (Vars.mem x (fvars (A::Γ⊢B)))
   | Absu, s, [Not A::Γ ⊢ False] =>
     match logic with
@@ -578,14 +604,14 @@ Inductive Pr : logic -> sequent -> Prop :=
  | R_Imp_e l Γ A B : Pr l (Γ ⊢ A->B) -> Pr l (Γ ⊢ A) ->
                    Pr l (Γ ⊢ B)
  | R_All_i x l Γ A : ~Vars.In x (fvars (Γ ⊢ A)) ->
-                   Pr l (Γ ⊢ form_bsubst 0 (FVar x) A) ->
+                   Pr l (Γ ⊢ bsubst 0 (FVar x) A) ->
                    Pr l (Γ ⊢ ∀A)
  | R_All_e t l Γ A : Pr l (Γ ⊢ ∀A) ->
-                     Pr l (Γ ⊢ form_bsubst 0 t A)
- | R_Ex_i t l Γ A : Pr l (Γ ⊢ form_bsubst 0 t A) ->
+                     Pr l (Γ ⊢ bsubst 0 t A)
+ | R_Ex_i t l Γ A : Pr l (Γ ⊢ bsubst 0 t A) ->
                     Pr l (Γ ⊢ ∃A)
  | R_Ex_e x l Γ A B : ~Vars.In x (fvars (A::Γ⊢B)) ->
-      Pr l (Γ ⊢ ∃A) -> Pr l ((form_bsubst 0 (FVar x) A)::Γ ⊢ B) ->
+      Pr l (Γ ⊢ ∃A) -> Pr l ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
       Pr l (Γ ⊢ B)
  | R_Absu l Γ A : Pr l (Not A :: Γ ⊢ False) ->
                   Pr Classic (Γ ⊢ A).
@@ -778,7 +804,7 @@ Proof.
    rewrite <- Vars.mem_spec in H.
    destruct Vars.mem; auto.
  - destruct IHPr as (d & Hd & Eq).
-   exists (Rule (All_e t) (Γ ⊢ form_bsubst 0 t A) [d]). simpl.
+   exists (Rule (All_e t) (Γ ⊢ bsubst 0 t A) [d]). simpl.
    now rewrite Eq, Hd, ?eqb_refl.
  - destruct IHPr as (d & Hd & Eq).
    exists (Rule (Ex_i t) (Γ ⊢ ∃A) [d]). simpl.

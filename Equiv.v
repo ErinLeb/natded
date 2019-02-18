@@ -334,12 +334,12 @@ Fixpoint mix2nam stack f :=
 
 Lemma mix_nam_mix_term stack t :
  NoDup stack ->
- (Mix.term_level t <= List.length stack)%nat ->
- (forall v, In v stack -> ~Vars.In v (Mix.term_fvars t)) ->
+ (Mix.level t <= List.length stack)%nat ->
+ (forall v, In v stack -> ~Vars.In v (Mix.fvars t)) ->
  nam2mix_term stack (mix2nam_term stack t) = t.
 Proof.
  intros ND.
- revert t. fix IH 1. destruct t; simpl; trivial; intros LE FR.
+ revert t. fix IH 1. destruct t; cbn; trivial; intros LE FR.
  - destruct (list_index v stack) eqn:E; auto.
    assert (IN : In v stack).
    { apply list_index_in. now rewrite E. }
@@ -367,12 +367,12 @@ Proof.
  - f_equal.
    injection (mix_nam_mix_term stack (Mix.Fun "" l)); auto.
  - f_equal. auto.
- - cbn in FR. f_equal.
+ - cbn in *. f_equal.
    + apply IHf1; auto. omega with *.
      intros v IN. apply FR in IN. varsdec.
    + apply IHf2; auto. omega with *.
      intros v IN. apply FR in IN. varsdec.
- - cbn in FR. f_equal.
+ - cbn in *. f_equal.
    apply IHf; auto.
    + constructor; auto.
      set (vars := Vars.union (to_vars stack) (Mix.fvars f)).
@@ -399,14 +399,14 @@ Proof.
 Qed.
 
 Lemma nam2mix_term_level stack t :
-  (Mix.term_level (nam2mix_term stack t) <= List.length stack)%nat.
+  (Mix.level (nam2mix_term stack t) <= List.length stack)%nat.
 Proof.
  revert t.
- fix IH 1. destruct t; simpl.
- - destruct (list_index v stack) eqn:E; simpl; auto with arith.
+ fix IH 1. destruct t; cbn.
+ - destruct (list_index v stack) eqn:E; cbn; auto with arith.
    apply list_index_lt_length in E. omega.
  - clear f. revert l.
-   fix IH' 1. destruct l as [|t l]; simpl; auto with arith.
+   fix IH' 1. destruct l as [|t l]; cbn; auto with arith.
    apply Nat.max_lub; auto.
 Qed.
 
@@ -414,10 +414,10 @@ Lemma nam2mix_level stack f :
   (Mix.level (nam2mix stack f) <= List.length stack)%nat.
 Proof.
  revert stack.
- induction f; intros stack; simpl; auto with arith.
+ induction f; intros stack; cbn; auto with arith.
  - apply (nam2mix_term_level stack (Nam.Fun "" l)).
  - apply Nat.max_lub; auto.
- - specialize (IHf (v::stack)). simpl in *. omega.
+ - specialize (IHf (v::stack)). cbn in *. omega.
 Qed.
 
 Lemma nam2mix_closed f :

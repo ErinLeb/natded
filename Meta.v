@@ -8,105 +8,98 @@ Local Open Scope lazy_bool_scope.
 Local Open Scope string_scope.
 Local Open Scope eqb_scope.
 
-Hint Extern 10 => varsdec : sets.
-
-Lemma closed_bsubst n u t :
- term_closed t = true -> term_bsubst n u t = t.
+Lemma closed_bsubst n u (t:term) :
+ closed t = true -> bsubst n u t = t.
 Proof.
- unfold term_closed.
+ unfold closed.
  case eqbspec; [ intros H _ | easy ].
  revert t H.
- fix IH 1. destruct t; simpl; try easy.
+ fix IH 1. destruct t; cbn; try easy.
  intros H. f_equal. clear f.
  revert l H.
- fix IH' 1. destruct l; simpl; try easy.
+ fix IH' 1. destruct l; cbn; try easy.
  intros H. f_equal. apply IH. omega with *. apply IH'. omega with *.
 Qed.
 
 Lemma term_vmap_ext h h' (t:term) :
  (forall v:variable, Vars.In v (fvars t) -> h v = h' v) ->
- term_vmap h t = term_vmap h' t.
+ vmap h t = vmap h' t.
 Proof.
  revert t.
  fix IH 1; destruct t; cbn; intros E; trivial.
- - auto with sets.
+ - auto with set.
  - f_equal. clear f. revert l E.
-   fix IH' 1; destruct l; cbn; intros; f_equal; auto with sets.
+   fix IH' 1; destruct l; cbn; intros; f_equal; auto with set.
 Qed.
 
 Lemma form_vmap_ext h h' (f:formula) :
  (forall v:variable, Vars.In v (fvars f) -> h v = h' v) ->
- form_vmap h f = form_vmap h' f.
+ vmap h f = vmap h' f.
 Proof.
- induction f; cbn; intro; f_equal; auto with sets.
+ induction f; cbn; intro; f_equal; auto with set.
  now injection (term_vmap_ext h h' (Fun "" l)).
 Qed.
 
 Lemma ctx_vmap_ext h h' (c:context) :
  (forall v:variable, Vars.In v (fvars c) -> h v = h' v) ->
- ctx_vmap h c = ctx_vmap h' c.
+ vmap h c = vmap h' c.
 Proof.
  induction c; cbn; intros; f_equal;
-  auto using form_vmap_ext with sets.
+  auto using form_vmap_ext with set.
 Qed.
 
 Lemma term_vmap_id h (t:term) :
  (forall v:variable, Vars.In v (fvars t) -> h v = FVar v) ->
- term_vmap h t = t.
+ vmap h t = t.
 Proof.
  revert t.
  fix IH 1; destruct t; cbn; intros E; trivial.
- - auto with sets.
+ - auto with set.
  - f_equal. clear f. revert l E.
-   fix IH' 1; destruct l; cbn; intros; f_equal; auto with sets.
+   fix IH' 1; destruct l; cbn; intros; f_equal; auto with set.
 Qed.
 
 Lemma form_vmap_id h (f:formula) :
  (forall v:variable, Vars.In v (fvars f) -> h v = FVar v) ->
- form_vmap h f = f.
+ vmap h f = f.
 Proof.
- induction f; cbn; intro; f_equal; auto with sets.
+ induction f; cbn; intro; f_equal; auto with set.
  now injection (term_vmap_id h (Fun "" l)).
 Qed.
 
 Lemma ctx_vmap_id h (c:context) :
  (forall v:variable, Vars.In v (fvars c) -> h v = FVar v) ->
- ctx_vmap h c = c.
+ vmap h c = c.
 Proof.
  induction c; cbn; intros; f_equal;
-  auto using form_vmap_id with sets.
+  auto using form_vmap_id with set.
 Qed.
 
 Lemma term_vmap_vmap h h' (t:term) :
- term_vmap h (term_vmap h' t) =
- term_vmap (fun v => term_vmap h (h' v)) t.
+ vmap h (vmap h' t) = vmap (fun v => vmap h (h' v)) t.
 Proof.
  revert t.
- fix IH 1; destruct t; simpl; trivial.
+ fix IH 1; destruct t; cbn; trivial.
  f_equal. clear f. revert l.
- fix IH' 1; destruct l; simpl; f_equal; auto.
+ fix IH' 1; destruct l; cbn; f_equal; auto.
 Qed.
 
 Lemma form_vmap_vmap h h' (f:formula) :
- form_vmap h (form_vmap h' f) =
- form_vmap (fun v => term_vmap h (h' v)) f.
+ vmap h (vmap h' f) = vmap (fun v => vmap h (h' v)) f.
 Proof.
  induction f; cbn; f_equal; auto.
  now injection (term_vmap_vmap h h' (Fun "" l)).
 Qed.
 
 Lemma ctx_vmap_vmap h h' (c:context) :
- ctx_vmap h (ctx_vmap h' c) =
- ctx_vmap (fun v => term_vmap h (h' v)) c.
+ vmap h (vmap h' c) = vmap (fun v => vmap h (h' v)) c.
 Proof.
- induction c; cbn; f_equal; auto using form_vmap_vmap with sets.
+ induction c; cbn; f_equal; auto using form_vmap_vmap with set.
 Qed.
-
-Arguments Vars.union !_ !_.
 
 Lemma term_fvars_vmap h (t:term) :
   Vars.Subset
-    (fvars (term_vmap h t))
+    (fvars (vmap h t))
     (vars_flatmap (fun v => fvars (h v)) (fvars t)).
 Proof.
  revert t.
@@ -121,7 +114,7 @@ Qed.
 
 Lemma form_fvars_vmap h (f:formula) :
   Vars.Subset
-    (fvars (form_vmap h f))
+    (fvars (vmap h f))
     (vars_flatmap (fun v => fvars (h v)) (fvars f)).
 Proof.
  induction f; cbn; try varsdec.
@@ -131,7 +124,7 @@ Qed.
 
 Lemma ctx_fvars_vmap h (c:context) :
   Vars.Subset
-    (fvars (ctx_vmap h c))
+    (fvars (vmap h c))
     (vars_flatmap (fun v => fvars (h v)) (fvars c)).
 Proof.
  induction c as [|f c IH]; cbn.
@@ -142,7 +135,7 @@ Qed.
 
 Lemma seq_fvars_vmap h (s:sequent) :
   Vars.Subset
-    (fvars (seq_vmap h s))
+    (fvars (vmap h s))
     (vars_flatmap (fun v => fvars (h v)) (fvars s)).
 Proof.
  destruct s. cbn.
@@ -150,10 +143,9 @@ Proof.
  generalize (form_fvars_vmap h f) (ctx_fvars_vmap h c). varsdec.
 Qed.
 
-Lemma term_vmap_bsubst h n u t :
- (forall v, term_closed (h v) = true) ->
- term_vmap h (term_bsubst n u t) =
-  term_bsubst n (term_vmap h u) (term_vmap h t).
+Lemma term_vmap_bsubst h n u (t:term) :
+ (forall v, closed (h v) = true) ->
+ vmap h (bsubst n u t) = bsubst n (vmap h u) (vmap h t).
 Proof.
  intros CL.
  revert t.
@@ -165,44 +157,41 @@ Proof.
    f_equal. apply IH. apply IH'.
 Qed.
 
-Lemma form_vmap_bsubst h n u f :
- (forall v, term_closed (h v) = true) ->
- form_vmap h (form_bsubst n u f) =
-  form_bsubst n (term_vmap h u) (form_vmap h f).
+Lemma form_vmap_bsubst h n u (f:formula) :
+ (forall v, closed (h v) = true) ->
+ vmap h (bsubst n u f) = bsubst n (vmap h u) (vmap h f).
 Proof.
  intros CL. revert n.
  induction f; cbn; intros n; f_equal; auto.
  injection (term_vmap_bsubst h n u (Fun "" l)); auto.
 Qed.
 
-Lemma vmap_bsubst_adhoc h x t f :
- (forall v, term_closed (h v) = true) ->
- term_closed t = true ->
+Lemma vmap_bsubst_adhoc h x t (f:formula) :
+ (forall v, closed (h v) = true) ->
+ closed t = true ->
  ~Vars.In x (fvars f) ->
- form_vmap (fun v => if v =? x then t else h v)
-   (form_bsubst 0 (FVar x) f) =
- form_bsubst 0 t (form_vmap h f).
+ vmap (fun v => if v =? x then t else h v) (bsubst 0 (FVar x) f) =
+ bsubst 0 t (vmap h f).
 Proof.
  intros.
- rewrite form_vmap_bsubst.
- - simpl. rewrite eqb_refl. f_equal.
-   apply form_vmap_ext.
-   intros v Hv. case eqbspec; auto with sets.
- - intros v. case eqbspec; auto.
+ rewrite form_vmap_bsubst by (intros v; case eqbspec; auto).
+ cbn. rewrite eqb_refl. f_equal.
+ apply form_vmap_ext.
+ intros v Hv. case eqbspec; auto with set.
 Qed.
 
-Lemma Pr_vmap logic s :
+Lemma Pr_vmap logic (s:sequent) :
   Pr logic s ->
-  forall h, (forall v, term_closed (h v) = true) ->
-  Pr logic (seq_vmap h s).
+  forall h, (forall v, closed (h v) = true) ->
+  Pr logic (vmap h s).
 Proof.
  induction 1; cbn in *; intros; auto.
  - apply R_Ax. now apply in_map.
- - apply R_Not_e with (form_vmap h A); auto.
- - apply R_And_e1 with (form_vmap h B); auto.
- - apply R_And_e2 with (form_vmap h A); auto.
- - apply R_Or_e with (form_vmap h A) (form_vmap h B); auto.
- - apply R_Imp_e with (form_vmap h A); auto.
+ - apply R_Not_e with (vmap h A); auto.
+ - apply R_And_e1 with (vmap h B); auto.
+ - apply R_And_e2 with (vmap h A); auto.
+ - apply R_Or_e with (vmap h A) (vmap h B); auto.
+ - apply R_Imp_e with (vmap h A); auto.
  - set (vars := Vars.union (fvars (Γ⊢A))
                   (vars_flatmap (fun v => fvars (h v)) (fvars (Γ⊢A)))).
    set (z := fresh_var vars).
@@ -211,42 +200,42 @@ Proof.
      apply (fresh_var_ok vars). varsdec.
    + specialize (IHPr (fun v => if v =? x then FVar z else h v)).
      rewrite <- (ctx_vmap_ext h) in IHPr by
-       (intros; case eqbspec; auto with sets).
-     rewrite <- vmap_bsubst_adhoc with (x:=x); auto with sets.
+       (intros; case eqbspec; auto with set).
+     rewrite <- vmap_bsubst_adhoc with (x:=x); auto with set.
      apply IHPr.
      intros v; case eqbspec; auto.
  - rewrite form_vmap_bsubst by auto.
    apply R_All_e; auto.
  - specialize (IHPr h).
    rewrite form_vmap_bsubst in IHPr by auto.
-   apply R_Ex_i with (term_vmap h t); auto.
+   apply R_Ex_i with (vmap h t); auto.
  - set (vars := Vars.union (fvars (A::Γ⊢B))
                  (vars_flatmap (fun v => fvars (h v)) (fvars (A::Γ⊢B)))).
    set (z := fresh_var vars).
-   apply R_Ex_e with z (form_vmap h A).
+   apply R_Ex_e with z (vmap h A).
    + intros H'. apply (seq_fvars_vmap h (A::Γ⊢B) z) in H'.
      apply (fresh_var_ok vars). varsdec.
    + now apply IHPr1.
    + specialize (IHPr2 (fun v => if v =? x then FVar z else h v)).
      rewrite <- (ctx_vmap_ext h) in IHPr2 by
-       (intros; case eqbspec; auto with sets).
+       (intros; case eqbspec; auto with set).
      rewrite <- (form_vmap_ext h _ B) in IHPr2 by
-       (intros; case eqbspec; auto with sets).
-     rewrite <- vmap_bsubst_adhoc with (x:=x); auto with sets.
+       (intros; case eqbspec; auto with set).
+     rewrite <- vmap_bsubst_adhoc with (x:=x); auto with set.
      apply IHPr2.
      intros v; case eqbspec; auto.
  - apply R_Absu with l. auto.
 Qed.
 
-Lemma Pr_fsubst logic s :
+Lemma Pr_fsubst logic (s:sequent) :
   Pr logic s ->
-  forall v t, term_closed t = true ->
-  Pr logic (seq_fsubst v t s).
+  forall v t, closed t = true ->
+  Pr logic (fsubst v t s).
 Proof.
  intros.
- change (seq_fsubst v t) with (seq_vmap (fsubst v t)).
+ change (fsubst v t) with (vmap (varsubst v t)).
  apply Pr_vmap; auto.
- intros x. unfold fsubst. case eqbspec; auto.
+ intros x. unfold varsubst. case eqbspec; auto.
 Qed.
 
 Definition ListSubset {A} (l l': list A) :=
@@ -289,7 +278,7 @@ Proof.
    assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok).
    clearbody z; unfold vars in *; clear vars.
    set (h := fun v => if v =? x then FVar z else FVar v).
-   set (Γ2 := ctx_vmap h Γ').
+   set (Γ2 := vmap h Γ').
    assert (~Vars.In x (fvars Γ2)).
    { intros IN. apply ctx_fvars_vmap in IN.
      rewrite vars_flatmap_in in IN.
@@ -302,10 +291,10 @@ Proof.
    assert (PR : Pr l (Γ2 ⊢ ∀A)).
    { apply R_All_i with x; auto. varsdec'. }
    set (h' := fun v => if v =? z then FVar x else FVar v).
-   assert (forall v, term_closed (h' v) = true).
+   assert (forall v, closed (h' v) = true).
    { intros v. unfold h'. case eqbspec; now cbn. }
    apply Pr_vmap with (h := h') in PR; auto.
-   simpl in PR. unfold Γ2 in PR.
+   cbn in PR. unfold Γ2 in PR.
    rewrite ctx_vmap_vmap, ctx_vmap_id, form_vmap_id in PR; auto.
    + intros v hv. unfold h'. case eqbspec; auto. varsdec'.
    + intros v hv. unfold h, h'.
@@ -316,7 +305,7 @@ Proof.
    assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok).
    clearbody z; unfold vars in *; clear vars.
    set (h := fun v => if v =? x then FVar z else FVar v).
-   set (Γ2 := ctx_vmap h Γ').
+   set (Γ2 := vmap h Γ').
    assert (~Vars.In x (fvars Γ2)).
    { intros IN. apply ctx_fvars_vmap in IN.
      rewrite vars_flatmap_in in IN.
@@ -329,10 +318,10 @@ Proof.
    assert (PR : Pr l (Γ2 ⊢ B)).
    { apply R_Ex_e with x A; auto. varsdec'. }
    set (h' := fun v => if v =? z then FVar x else FVar v).
-   assert (forall v, term_closed (h' v) = true).
+   assert (forall v, closed (h' v) = true).
    { intros v. unfold h'. case eqbspec; now cbn. }
    apply Pr_vmap with (h := h') in PR; auto.
-   simpl in PR. unfold Γ2 in PR.
+   cbn in PR. unfold Γ2 in PR.
    rewrite ctx_vmap_vmap, ctx_vmap_id, form_vmap_id in PR; auto.
    + intros v hv. unfold h'. case eqbspec; auto. varsdec'.
    + intros v hv. unfold h, h'.

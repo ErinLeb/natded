@@ -10,6 +10,10 @@ Module VarsP := Properties(Vars).
 Module VarsF := VarsP.FM.
 Ltac varsdec := VarsP.Dec.fsetdec.
 
+Hint Extern 10 => varsdec : set.
+
+Arguments Vars.union !_ !_.
+
 Lemma InA_In {A} x (l:list A) : InA eq x l <-> In x l.
 Proof.
  split.
@@ -312,7 +316,7 @@ Proof.
      apply IHn.
      * rewrite string_app_length. simpl. omega.
      * rewrite strict_prefixes_more; auto.
-       { intros x. red in SU. VarsF.set_iff. intuition. now subst. }
+       { intros x. red in SU. VarsF.set_iff. intuition. }
    + rewrite <- Vars.mem_spec. now destruct Vars.mem.
 Qed.
 

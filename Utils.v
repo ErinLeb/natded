@@ -20,6 +20,8 @@ Arguments eqb {A} {_} !_ !_.
 Class EqbSpec A `{Eqb A} :=
  eqbspec : forall x y:A, reflect (x=y) (x =? y).
 
+Hint Extern 10 => case eqbspec : eqb.
+
 Instance eqb_inst_nat : Eqb nat := Nat.eqb.
 Instance eqbspec_nat : EqbSpec nat := Nat.eqb_spec.
 

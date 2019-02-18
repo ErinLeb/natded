@@ -17,11 +17,6 @@ Mix:
 
   - Plongement comme formules Coq + correction
 
-
-Infra:
-  
-  - surcharge de freevars, fsubsts and co
-
 Equiv:
 
    preuves reliant Nam.valid_deriv et Mix.valid_deriv (ou Mix.Pr)
@@ -29,5 +24,3 @@ Equiv:
 Meta
 
   - cleanup proofs Meta
-
-  - preuve directe lemme de subst sur ctx_vmap ?

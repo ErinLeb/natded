@@ -151,10 +151,9 @@ Proof.
  revert t.
  fix IH 1. destruct t; cbn.
  - symmetry. apply closed_bsubst. apply CL.
- - case eqbspec; simpl; auto.
+ - auto with eqb.
  - f_equal. clear f.
-   revert l. fix IH' 1. destruct l; simpl; auto.
-   f_equal. apply IH. apply IH'.
+   revert l. fix IH' 1. destruct l; simpl; f_equal; auto.
 Qed.
 
 Lemma form_vmap_bsubst h n u (f:formula) :
@@ -170,14 +169,13 @@ Lemma vmap_bsubst_adhoc h x t (f:formula) :
  (forall v, closed (h v) = true) ->
  closed t = true ->
  ~Vars.In x (fvars f) ->
- vmap (fun v => if v =? x then t else h v) (bsubst 0 (FVar x) f) =
- bsubst 0 t (vmap h f).
+ bsubst 0 t (vmap h f) =
+  vmap (fun v => if v =? x then t else h v) (bsubst 0 (FVar x) f).
 Proof.
  intros.
- rewrite form_vmap_bsubst by (intros v; case eqbspec; auto).
+ rewrite form_vmap_bsubst by (auto with eqb).
  cbn. rewrite eqb_refl. f_equal.
- apply form_vmap_ext.
- intros v Hv. case eqbspec; auto with set.
+ apply form_vmap_ext; auto with set eqb.
 Qed.
 
 Lemma Pr_vmap logic (s:sequent) :
@@ -193,37 +191,25 @@ Proof.
  - apply R_Or_e with (vmap h A) (vmap h B); auto.
  - apply R_Imp_e with (vmap h A); auto.
  - set (vars := Vars.union (fvars (Γ⊢A))
-                  (vars_flatmap (fun v => fvars (h v)) (fvars (Γ⊢A)))).
+                           (fvars (vmap h (Γ⊢A)))).
    set (z := fresh_var vars).
    apply R_All_i with z.
-   + intros H'. apply (seq_fvars_vmap h (Γ⊢A)) in H'.
-     apply (fresh_var_ok vars). varsdec.
-   + specialize (IHPr (fun v => if v =? x then FVar z else h v)).
-     rewrite <- (ctx_vmap_ext h) in IHPr by
-       (intros; case eqbspec; auto with set).
-     rewrite <- vmap_bsubst_adhoc with (x:=x); auto with set.
-     apply IHPr.
-     intros v; case eqbspec; auto.
- - rewrite form_vmap_bsubst by auto.
-   apply R_All_e; auto.
- - specialize (IHPr h).
-   rewrite form_vmap_bsubst in IHPr by auto.
-   apply R_Ex_i with (vmap h t); auto.
+   + intro. apply (fresh_var_ok vars). varsdec.
+   + rewrite vmap_bsubst_adhoc with (x:=x) by auto with set.
+     erewrite ctx_vmap_ext; try apply IHPr; cbn;
+      intros; case eqbspec; auto with set.
+ - rewrite form_vmap_bsubst by auto. apply R_All_e; auto.
+ - apply R_Ex_i with (vmap h t).
+   rewrite <- form_vmap_bsubst by auto. apply IHPr; auto.
  - set (vars := Vars.union (fvars (A::Γ⊢B))
-                 (vars_flatmap (fun v => fvars (h v)) (fvars (A::Γ⊢B)))).
+                           (fvars (vmap h (A::Γ⊢B)))).
    set (z := fresh_var vars).
-   apply R_Ex_e with z (vmap h A).
-   + intros H'. apply (seq_fvars_vmap h (A::Γ⊢B) z) in H'.
-     apply (fresh_var_ok vars). varsdec.
-   + now apply IHPr1.
-   + specialize (IHPr2 (fun v => if v =? x then FVar z else h v)).
-     rewrite <- (ctx_vmap_ext h) in IHPr2 by
-       (intros; case eqbspec; auto with set).
-     rewrite <- (form_vmap_ext h _ B) in IHPr2 by
-       (intros; case eqbspec; auto with set).
-     rewrite <- vmap_bsubst_adhoc with (x:=x); auto with set.
-     apply IHPr2.
-     intros v; case eqbspec; auto.
+   apply R_Ex_e with z (vmap h A); clear H0 H1.
+   + intro. apply (fresh_var_ok vars). varsdec.
+   + apply IHPr1; auto.
+   + rewrite vmap_bsubst_adhoc with (x:=x) by auto with set.
+     erewrite (ctx_vmap_ext h), (form_vmap_ext h);
+      try apply IHPr2; cbn; intros; case eqbspec; auto with set.
  - apply R_Absu with l. auto.
 Qed.
 
@@ -276,55 +262,53 @@ Proof.
  - set (vars := Vars.add x (fvars (Γ' ⊢ A))).
    set (z := fresh_var vars).
    assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok).
-   clearbody z; unfold vars in *; clear vars.
+   clearbody z; unfold vars in *; clear vars. cbn in *.
    set (h := fun v => if v =? x then FVar z else FVar v).
    set (Γ2 := vmap h Γ').
    assert (~Vars.In x (fvars Γ2)).
-   { intros IN. apply ctx_fvars_vmap in IN.
+   { unfold Γ2. intros IN. apply ctx_fvars_vmap in IN.
      rewrite vars_flatmap_in in IN.
      destruct IN as (v & IN & IN'). revert IN.
      unfold h. case eqbspec; cbn; varsdec. }
    assert (ListSubset Γ Γ2).
    { rewrite <- (ctx_vmap_id h Γ).
      now apply ListSubset_map.
-     intros v Hv. unfold h. case eqbspec; auto. varsdec'. }
+     unfold h. auto with eqb set. }
    assert (PR : Pr l (Γ2 ⊢ ∀A)).
-   { apply R_All_i with x; auto. varsdec'. }
+   { apply R_All_i with x; cbn; auto with set. }
    set (h' := fun v => if v =? z then FVar x else FVar v).
    assert (forall v, closed (h' v) = true).
-   { intros v. unfold h'. case eqbspec; now cbn. }
+   { unfold h'. auto with eqb. }
    apply Pr_vmap with (h := h') in PR; auto.
    cbn in PR. unfold Γ2 in PR.
    rewrite ctx_vmap_vmap, ctx_vmap_id, form_vmap_id in PR; auto.
-   + intros v hv. unfold h'. case eqbspec; auto. varsdec'.
-   + intros v hv. unfold h, h'.
-     do 2 (case eqbspec; cbn); intros; subst; try easy. varsdec'.
+   + unfold h'. auto with eqb set.
+   + unfold h, h'. intros. do 2 (case eqbspec; cbn); auto with set.
  - apply R_Ex_i with t; auto.
  - set (vars := Vars.add x (fvars (A::Γ' ⊢ B))).
    set (z := fresh_var vars).
    assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok).
-   clearbody z; unfold vars in *; clear vars.
+   clearbody z; unfold vars in *; clear vars. cbn in *.
    set (h := fun v => if v =? x then FVar z else FVar v).
    set (Γ2 := vmap h Γ').
    assert (~Vars.In x (fvars Γ2)).
-   { intros IN. apply ctx_fvars_vmap in IN.
+   { unfold Γ2. intros IN. apply ctx_fvars_vmap in IN.
      rewrite vars_flatmap_in in IN.
      destruct IN as (v & IN & IN'). revert IN.
      unfold h. case eqbspec; cbn; varsdec. }
    assert (ListSubset Γ Γ2).
    { rewrite <- (ctx_vmap_id h Γ).
      now apply ListSubset_map.
-     intros v Hv. unfold h. case eqbspec; auto. varsdec'. }
+     unfold h. auto with eqb set. }
    assert (PR : Pr l (Γ2 ⊢ B)).
-   { apply R_Ex_e with x A; auto. varsdec'. }
+   { apply R_Ex_e with x A; cbn; auto with set. }
    set (h' := fun v => if v =? z then FVar x else FVar v).
    assert (forall v, closed (h' v) = true).
-   { intros v. unfold h'. case eqbspec; now cbn. }
+   { unfold h'. intros. case eqbspec; now cbn. }
    apply Pr_vmap with (h := h') in PR; auto.
    cbn in PR. unfold Γ2 in PR.
    rewrite ctx_vmap_vmap, ctx_vmap_id, form_vmap_id in PR; auto.
-   + intros v hv. unfold h'. case eqbspec; auto. varsdec'.
-   + intros v hv. unfold h, h'.
-     do 2 (case eqbspec; cbn); intros; subst; try easy. varsdec'.
+   + unfold h'. auto with eqb set.
+   + unfold h, h'. intros. do 2 (case eqbspec; cbn); auto with set.
  - apply R_Absu with l; auto.
 Qed.

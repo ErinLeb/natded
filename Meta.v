@@ -21,6 +21,8 @@ Proof.
  intros H. f_equal. apply IH. omega with *. apply IH'. omega with *.
 Qed.
 
+(** [vmap] basic results : extensionality, identity, composition *)
+
 Lemma term_vmap_ext h h' (t:term) :
  (forall v:variable, Vars.In v (fvars t) -> h v = h' v) ->
  vmap h t = vmap h' t.
@@ -97,6 +99,8 @@ Proof.
  induction c; cbn; f_equal; auto using form_vmap_vmap with set.
 Qed.
 
+(** Estimating free variables of a substitution *)
+
 Lemma term_fvars_vmap h (t:term) :
   Vars.Subset
     (fvars (vmap h t))
@@ -143,8 +147,13 @@ Proof.
  generalize (form_fvars_vmap h f) (ctx_fvars_vmap h c). varsdec.
 Qed.
 
+(** Alternating [vmap] and [bsubst] *)
+
+Definition closed_sub (h:variable->term) :=
+ forall v, closed (h v) = true.
+
 Lemma term_vmap_bsubst h n u (t:term) :
- (forall v, closed (h v) = true) ->
+ closed_sub h ->
  vmap h (bsubst n u t) = bsubst n (vmap h u) (vmap h t).
 Proof.
  intros CL.
@@ -157,7 +166,7 @@ Proof.
 Qed.
 
 Lemma form_vmap_bsubst h n u (f:formula) :
- (forall v, closed (h v) = true) ->
+ closed_sub h ->
  vmap h (bsubst n u f) = bsubst n (vmap h u) (vmap h f).
 Proof.
  intros CL. revert n.
@@ -165,22 +174,61 @@ Proof.
  injection (term_vmap_bsubst h n u (Fun "" l)); auto.
 Qed.
 
+Definition sub_set (x:variable)(t:term)(h:variable->term) :=
+ fun v => if v =? x then t else h v.
+
+Lemma closed_sub_set x t h :
+ closed_sub h -> closed t = true -> closed_sub (sub_set x t h).
+Proof.
+ unfold sub_set, closed_sub; auto with eqb.
+Qed.
+
+Lemma sub_set_at x t h : sub_set x t h x = t.
+Proof.
+ unfold sub_set. now rewrite eqb_refl.
+Qed.
+
+Lemma sub_set_else x t h v : v<>x -> sub_set x t h v = h v.
+Proof.
+ unfold sub_set. now case eqbspec.
+Qed.
+
+Lemma form_sub_set_ext x t h (f:formula) :
+ ~Vars.In x (fvars f) -> vmap (sub_set x t h) f = vmap h f.
+Proof.
+ intros. apply form_vmap_ext. intros.
+ rewrite sub_set_else; auto with set.
+Qed.
+
+Lemma ctx_sub_set_ext x t h (c:context) :
+ ~Vars.In x (fvars c) -> vmap (sub_set x t h) c = vmap h c.
+Proof.
+ intros. apply ctx_vmap_ext. intros.
+ rewrite sub_set_else; auto with set.
+Qed.
+
 Lemma vmap_bsubst_adhoc h x t (f:formula) :
- (forall v, closed (h v) = true) ->
+ closed_sub h ->
  closed t = true ->
  ~Vars.In x (fvars f) ->
  bsubst 0 t (vmap h f) =
-  vmap (fun v => if v =? x then t else h v) (bsubst 0 (FVar x) f).
+  vmap (sub_set x t h) (bsubst 0 (FVar x) f).
 Proof.
  intros.
- rewrite form_vmap_bsubst by (auto with eqb).
- cbn. rewrite eqb_refl. f_equal.
- apply form_vmap_ext; auto with set eqb.
+ rewrite form_vmap_bsubst by now apply closed_sub_set.
+ cbn. rewrite sub_set_at. f_equal. now rewrite form_sub_set_ext.
 Qed.
+
+(** The substitution lemma for proof derivations *)
+
+Ltac Fresh z vars :=
+  set (z := fresh_var vars);
+  assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok);
+  clearbody z.
 
 Lemma Pr_vmap logic (s:sequent) :
   Pr logic s ->
-  forall h, (forall v, closed (h v) = true) ->
+  forall h, closed_sub h ->
   Pr logic (vmap h s).
 Proof.
  induction 1; cbn in *; intros; auto.
@@ -190,26 +238,23 @@ Proof.
  - apply R_And_e2 with (vmap h A); auto.
  - apply R_Or_e with (vmap h A) (vmap h B); auto.
  - apply R_Imp_e with (vmap h A); auto.
- - set (vars := Vars.union (fvars (Γ⊢A))
-                           (fvars (vmap h (Γ⊢A)))).
-   set (z := fresh_var vars).
-   apply R_All_i with z.
-   + intro. apply (fresh_var_ok vars). varsdec.
-   + rewrite vmap_bsubst_adhoc with (x:=x) by auto with set.
-     erewrite ctx_vmap_ext; try apply IHPr; cbn;
-      intros; case eqbspec; auto with set.
+ - Fresh z (Vars.union (fvars (Γ⊢A)) (fvars (vmap h (Γ⊢A)))).
+   rewrite Vars.union_spec in *.
+   apply R_All_i with z; [tauto|].
+   rewrite (vmap_bsubst_adhoc h x) by tauto.
+   rewrite <- (ctx_sub_set_ext x (FVar z)) by tauto.
+   apply IHPr. now apply closed_sub_set.
  - rewrite form_vmap_bsubst by auto. apply R_All_e; auto.
  - apply R_Ex_i with (vmap h t).
    rewrite <- form_vmap_bsubst by auto. apply IHPr; auto.
- - set (vars := Vars.union (fvars (A::Γ⊢B))
-                           (fvars (vmap h (A::Γ⊢B)))).
-   set (z := fresh_var vars).
-   apply R_Ex_e with z (vmap h A); clear H0 H1.
-   + intro. apply (fresh_var_ok vars). varsdec.
-   + apply IHPr1; auto.
-   + rewrite vmap_bsubst_adhoc with (x:=x) by auto with set.
-     erewrite (ctx_vmap_ext h), (form_vmap_ext h);
-      try apply IHPr2; cbn; intros; case eqbspec; auto with set.
+ - Fresh z (Vars.union (fvars (A::Γ⊢B)) (fvars (vmap h (A::Γ⊢B)))).
+   rewrite Vars.union_spec in Hz.
+   rewrite !Vars.union_spec in H.
+   apply R_Ex_e with z (vmap h A); [tauto| auto | ].
+   rewrite (vmap_bsubst_adhoc h x) by tauto.
+   rewrite <- (ctx_sub_set_ext x (FVar z)) by tauto.
+   rewrite <- (form_sub_set_ext x (FVar z) h B) by tauto.
+   apply IHPr2. now apply closed_sub_set.
  - apply R_Absu with l. auto.
 Qed.
 
@@ -224,6 +269,8 @@ Proof.
  intros x. unfold varsubst. case eqbspec; auto.
 Qed.
 
+(** Weakening of contexts and sequents *)
+
 Definition ListSubset {A} (l l': list A) :=
   forall a, In a l -> In a l'.
 
@@ -236,7 +283,6 @@ Lemma ListSubset_cons {A} (l l': list A) x :
 Proof.
  intros H y [Hy|Hy]; simpl; auto.
 Qed.
-Hint Resolve ListSubset_cons.
 
 Lemma ListSubset_map {A B} (f:A->B) (l l': list A) :
   ListSubset l l' -> ListSubset (map f l) (map f l').
@@ -244,8 +290,57 @@ Proof.
  intros SU b. rewrite !in_map_iff.
  intros (a & Ha & Ha'). apply SU in Ha'. now exists a.
 Qed.
+Hint Resolve ListSubset_cons ListSubset_map.
 
-Ltac varsdec' := cbn in *; varsdec.
+(** The weakening lemma for proof derivations *)
+
+Definition sub_rename (x z : variable) :=
+ fun v => if v =? x then FVar z else FVar v.
+
+Lemma sub_rename_closed x z : closed_sub (sub_rename x z).
+Proof.
+ unfold closed_sub, sub_rename. auto with eqb.
+Qed.
+
+Lemma sub_rename_at x z : sub_rename x z x = FVar z.
+Proof.
+ unfold sub_rename. now rewrite eqb_refl.
+Qed.
+
+Lemma sub_rename_else x z v : v<>x -> sub_rename x z v = FVar v.
+Proof.
+ unfold sub_rename. now case eqbspec.
+Qed.
+
+Lemma vmap_rename_notIn x z (c:context) :
+ x<>z -> ~Vars.In x (fvars (vmap (sub_rename x z) c)).
+Proof.
+ intros NE IN. apply ctx_fvars_vmap in IN.
+ rewrite vars_flatmap_in in IN. destruct IN as (v & IN & _).
+ revert IN. unfold sub_rename. case eqbspec; cbn; varsdec.
+Qed.
+
+Lemma form_rename_id x z (f:formula) :
+ ~Vars.In x (fvars f) -> vmap (sub_rename x z) f = f.
+Proof.
+ intros. apply form_vmap_id. intros. apply sub_rename_else. varsdec.
+Qed.
+
+Lemma ctx_rename_id x z (c:context) :
+ ~Vars.In x (fvars c) -> vmap (sub_rename x z) c = c.
+Proof.
+ intros. apply ctx_vmap_id. intros. apply sub_rename_else. varsdec.
+Qed.
+
+Lemma ctx_rename_rename x z (c:context) :
+ ~Vars.In z (fvars c) ->
+ vmap (sub_rename z x) (vmap (sub_rename x z) c) = c.
+Proof.
+ intros.
+ rewrite ctx_vmap_vmap.
+ apply ctx_vmap_id.
+ unfold sub_rename. intros. case eqbspec; cbn; auto with eqb set.
+Qed.
 
 Lemma Pr_weakening logic s s' :
   Pr logic s ->
@@ -259,56 +354,34 @@ Proof.
  - apply R_And_e2 with A; auto.
  - apply R_Or_e with A B; auto.
  - apply R_Imp_e with A; auto.
- - set (vars := Vars.add x (fvars (Γ' ⊢ A))).
-   set (z := fresh_var vars).
-   assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok).
-   clearbody z; unfold vars in *; clear vars. cbn in *.
-   set (h := fun v => if v =? x then FVar z else FVar v).
-   set (Γ2 := vmap h Γ').
-   assert (~Vars.In x (fvars Γ2)).
-   { unfold Γ2. intros IN. apply ctx_fvars_vmap in IN.
-     rewrite vars_flatmap_in in IN.
-     destruct IN as (v & IN & IN'). revert IN.
-     unfold h. case eqbspec; cbn; varsdec. }
-   assert (ListSubset Γ Γ2).
-   { rewrite <- (ctx_vmap_id h Γ).
-     now apply ListSubset_map.
-     unfold h. auto with eqb set. }
-   assert (PR : Pr l (Γ2 ⊢ ∀A)).
-   { apply R_All_i with x; cbn; auto with set. }
-   set (h' := fun v => if v =? z then FVar x else FVar v).
-   assert (forall v, closed (h' v) = true).
-   { unfold h'. auto with eqb. }
-   apply Pr_vmap with (h := h') in PR; auto.
-   cbn in PR. unfold Γ2 in PR.
-   rewrite ctx_vmap_vmap, ctx_vmap_id, form_vmap_id in PR; auto.
-   + unfold h'. auto with eqb set.
-   + unfold h, h'. intros. do 2 (case eqbspec; cbn); auto with set.
+ - Fresh z (Vars.add x (fvars (Γ' ⊢ A))). cbn in *.
+   rewrite Vars.add_spec, Vars.union_spec in *.
+   set (Γ'z := vmap (sub_rename x z) Γ').
+   assert (~Vars.In x (fvars Γ'z))
+    by (apply vmap_rename_notIn; intuition).
+   assert (ListSubset Γ Γ'z).
+   { rewrite <- (ctx_rename_id x z Γ) by tauto.
+     now apply ListSubset_map. }
+   assert (PR : Pr l (Γ'z ⊢ ∀A)).
+   { apply R_All_i with x; cbn; intuition. }
+   apply Pr_vmap with (h := sub_rename z x) in PR;
+    auto using sub_rename_closed.
+   revert PR. cbn; unfold Γ'z.
+   rewrite ctx_rename_rename, form_rename_id; intuition.
  - apply R_Ex_i with t; auto.
- - set (vars := Vars.add x (fvars (A::Γ' ⊢ B))).
-   set (z := fresh_var vars).
-   assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok).
-   clearbody z; unfold vars in *; clear vars. cbn in *.
-   set (h := fun v => if v =? x then FVar z else FVar v).
-   set (Γ2 := vmap h Γ').
-   assert (~Vars.In x (fvars Γ2)).
-   { unfold Γ2. intros IN. apply ctx_fvars_vmap in IN.
-     rewrite vars_flatmap_in in IN.
-     destruct IN as (v & IN & IN'). revert IN.
-     unfold h. case eqbspec; cbn; varsdec. }
-   assert (ListSubset Γ Γ2).
-   { rewrite <- (ctx_vmap_id h Γ).
-     now apply ListSubset_map.
-     unfold h. auto with eqb set. }
-   assert (PR : Pr l (Γ2 ⊢ B)).
-   { apply R_Ex_e with x A; cbn; auto with set. }
-   set (h' := fun v => if v =? z then FVar x else FVar v).
-   assert (forall v, closed (h' v) = true).
-   { unfold h'. intros. case eqbspec; now cbn. }
-   apply Pr_vmap with (h := h') in PR; auto.
-   cbn in PR. unfold Γ2 in PR.
-   rewrite ctx_vmap_vmap, ctx_vmap_id, form_vmap_id in PR; auto.
-   + unfold h'. auto with eqb set.
-   + unfold h, h'. intros. do 2 (case eqbspec; cbn); auto with set.
+ - Fresh z (Vars.add x (fvars (A::Γ' ⊢ B))). cbn in *.
+   rewrite Vars.add_spec, ?Vars.union_spec in *.
+   set (Γ'z := vmap (sub_rename x z) Γ').
+   assert (~Vars.In x (fvars Γ'z))
+    by (apply vmap_rename_notIn; intuition).
+   assert (ListSubset Γ Γ'z).
+   { rewrite <- (ctx_rename_id x z Γ) by tauto.
+     now apply ListSubset_map. }
+   assert (PR : Pr l (Γ'z ⊢ B)).
+   { apply R_Ex_e with x A; cbn; intuition. }
+   apply Pr_vmap with (h := sub_rename z x) in PR;
+    auto using sub_rename_closed.
+   revert PR. cbn; unfold Γ'z.
+   rewrite ctx_rename_rename, form_rename_id; intuition.
  - apply R_Absu with l; auto.
 Qed.

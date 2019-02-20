@@ -94,7 +94,7 @@ Fixpoint list_index {A} `{Eqb A} (x:A) l : option nat :=
 Fixpoint list_max l :=
   match l with
   | [] => 0
-  | n::l => max n (list_max l)
+  | n::l => Nat.max n (list_max l)
   end.
 
 Ltac cons := constructor; congruence.

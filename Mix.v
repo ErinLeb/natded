@@ -307,8 +307,8 @@ Instance form_level : Level formula :=
   match f with
   | True | False => 0
   | Not f => form_level f
-  | Op _ f f' => max (form_level f) (form_level f')
-  | Quant _ f => pred (form_level f)
+  | Op _ f f' => Nat.max (form_level f) (form_level f')
+  | Quant _ f => Nat.pred (form_level f)
   | Pred _ args => list_max (map level args)
   end.
 
@@ -404,7 +404,7 @@ Instance seq_eqb : Eqb sequent :=
 
 (** Derivation *)
 
-Inductive rule_name :=
+Inductive rule_kind :=
   | Ax
   | Tr_i
   | Fa_e
@@ -417,7 +417,7 @@ Inductive rule_name :=
   | Absu.
 
 Inductive derivation :=
-  | Rule : rule_name -> sequent -> list derivation -> derivation.
+  | Rule : rule_kind -> sequent -> list derivation -> derivation.
 
 Definition dseq '(Rule _ s _) := s.
 
@@ -617,13 +617,6 @@ Inductive Pr : logic -> sequent -> Prop :=
                   Pr Classic (Γ ⊢ A).
 Hint Constructors Pr.
 
-Ltac mysubst :=
- match goal with
- | EQ: (_ =? _) = true |- _ =>
-   apply eqb_eq in EQ; rewrite EQ in *; clear EQ; mysubst
- | _ => idtac
- end.
-
 Ltac break :=
  match goal with
  | H : match _ with true => _ | false => _ end = true |- _ =>
@@ -637,56 +630,53 @@ Ltac break :=
  | _ => idtac
  end.
 
+Arguments Vars.union !_ !_.
+
+Ltac mysubst :=
+ match goal with
+ | EQ: (_ =? _) = true |- _ =>
+   apply eqb_eq in EQ; rewrite EQ in *; clear EQ; mysubst
+ | _ => idtac
+ end.
+
 Ltac mytac :=
+ cbn in *;
+ break;
  cbn -[valid_deriv] in *;
- rewrite ?andb_true_r in *;
- rewrite ?andb_true_iff in *;
- rewrite ?lazy_andb_iff in *;
- repeat match goal with
-        | H : _ /\ _ |- _ => destruct H
-        end;
- repeat match goal with
-        | IH : Forall _ _  |- _ => inversion_clear IH end;
- mysubst; simpl in *.
+ rewrite ?andb_true_r, ?andb_true_iff, ?lazy_andb_iff in *;
+ repeat match goal with H : _ /\ _ |- _ => destruct H end;
+ repeat match goal with IH : Forall _ _  |- _ => inversion_clear IH end;
+ mysubst.
+
+Lemma derivation_ind' (P: derivation -> Prop) :
+  (forall r s ds, Forall P ds -> P (Rule r s ds)) ->
+  forall d, P d.
+Proof.
+ intros Step.
+ fix IH 1. destruct d as (r,s,ds).
+ apply Step.
+ revert ds.
+ fix IH' 1. destruct ds; simpl; constructor.
+ apply IH.
+ apply IH'.
+Qed.
 
 Lemma valid_deriv_Pr lg d :
   valid_deriv lg d = true -> Pr lg (dseq d).
 Proof.
  revert d lg.
- fix IH 1.
- destruct d. cbn - [valid_deriv_step]. intros lg.
- rewrite lazy_andb_iff. intros (H,H').
- assert (IH' : Forall (fun d => Pr lg (dseq d)) l).
- { clear r s H.
-   revert l H'.
-   fix IH' 1.
-   destruct l.
-   - simpl. constructor.
-   - simpl. rewrite andb_true_iff. intros (H,H').
-     constructor.
-     + now apply IH.
-     + now apply IH'. }
- clear IH H'. simpl in *. Opaque Vars.union. break; mytac.
- - apply list_mem_in in H. now apply R_Ax.
- - now apply R_Fa_e.
- - now apply R_Not_i.
- - now apply R_Not_e with f0.
- - now apply R_And_i.
- - now apply R_And_e1 with f2.
- - now apply R_And_e2 with f1.
- - now apply R_Or_i1.
- - now apply R_Or_i2.
- - now apply R_Or_e with f0_1 f0_2.
- - now apply R_Imp_i.
- - now apply R_Imp_e with f1.
+ induction d as [r s ds IH] using derivation_ind'.
+ intros lg H. cbn -[valid_deriv_step] in *.
+ rewrite lazy_andb_iff in H. destruct H as (H,H').
+ assert (IH' : Forall (fun d => Pr lg (dseq d)) ds).
+ { rewrite Forall_forall, forallb_forall in *. auto. }
+ clear IH H'.
+ mytac; eauto 2.
+ - now apply R_Ax, list_mem_in.
  - apply R_All_i with v; trivial.
    rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
- - now apply R_All_e.
- - now apply (R_Ex_i wit).
  - apply R_Ex_e with v f; trivial.
    rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
- - now apply R_Absu with Classic.
- Transparent Vars.union.
 Qed.
 
 Lemma Provable_Pr logic s :
@@ -697,16 +687,7 @@ Qed.
 
 Lemma Pr_intuit_classic s : Pr Intuiti s -> Pr Classic s.
 Proof.
- induction 1; auto.
- - now apply R_Not_e with A.
- - now apply R_And_e1 with B.
- - now apply R_And_e2 with A.
- - now apply R_Or_e with A B.
- - now apply R_Imp_e with A.
- - now apply R_All_i with x.
- - now apply R_Ex_i with t.
- - now apply R_Ex_e with x A.
- - now apply R_Absu with Classic.
+ induction 1; eauto 2.
 Qed.
 
 Lemma Pr_intuit_any lg s : Pr Intuiti s -> Pr lg s.
@@ -753,72 +734,44 @@ Proof.
  destruct lg. trivial. apply intuit_classic.
 Qed.
 
+Ltac rewr :=
+ match goal with
+ | H: _ = _ |- _ => rewrite H; clear H; rewr
+ | _ => rewrite !eqb_refl
+ end.
+
+Ltac break_Provable :=
+ repeat match goal with
+ | H:Provable _ _ |- _ =>
+   let d := fresh "d" in destruct H as (d & ? & ?) end.
+
 Lemma Pr_Provable lg s :
   Pr lg s -> Provable lg s.
 Proof.
- induction 1.
+ induction 1; break_Provable.
  - exists (Rule Ax (Γ ⊢ A) []). simpl. split; auto.
    apply list_mem_in in H. now rewrite H.
  - now exists (Rule Tr_i (Γ ⊢ True) []).
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule Fa_e (Γ ⊢ A) [d]). simpl.
-   apply eqb_eq in Eq. now rewrite Eq, Hd.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule Not_i (Γ ⊢ ~ A) [d]). simpl.
-   apply eqb_eq in Eq. now rewrite Eq, Hd.
- - destruct IHPr1 as (d1 & Hd1 & Eq1).
-   destruct IHPr2 as (d2 & Hd2 & Eq2).
-   exists (Rule Not_e (Γ ⊢ False) [d1;d2]). simpl.
-   now rewrite Eq1, Eq2, Hd1, Hd2, !eqb_refl.
- - destruct IHPr1 as (d1 & Hd1 & Eq1).
-   destruct IHPr2 as (d2 & Hd2 & Eq2).
-   exists (Rule And_i (Γ ⊢ A /\ B) [d1;d2]). simpl.
-   now rewrite Eq1, Eq2, Hd1, Hd2, !eqb_refl.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule And_e1 (Γ ⊢ A) [d]). simpl.
-   now rewrite Eq, Hd, !eqb_refl.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule And_e2 (Γ ⊢ B) [d]). simpl.
-   now rewrite Eq, Hd, !eqb_refl.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule Or_i1 (Γ ⊢ A \/ B) [d]). simpl.
-   now rewrite Eq, Hd, !eqb_refl.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule Or_i2 (Γ ⊢ A \/ B) [d]). simpl.
-   now rewrite Eq, Hd, !eqb_refl.
- - destruct IHPr1 as (d1 & Hd1 & Eq1).
-   destruct IHPr2 as (d2 & Hd2 & Eq2).
-   destruct IHPr3 as (d3 & Hd3 & Eq3).
-   exists (Rule Or_e (Γ ⊢ C) [d1;d2;d3]). simpl.
-   now rewrite Eq1, Eq2, Eq3, Hd1, Hd2, Hd3, !eqb_refl.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule Imp_i (Γ ⊢ A -> B) [d]). simpl.
-   now rewrite Eq, Hd, !eqb_refl.
- - destruct IHPr1 as (d1 & Hd1 & Eq1).
-   destruct IHPr2 as (d2 & Hd2 & Eq2).
-   exists (Rule Imp_e (Γ ⊢ B) [d1;d2]). simpl.
-   now rewrite Eq1, Eq2, Hd1, Hd2, ?eqb_refl.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule (All_i x) (Γ ⊢ ∀A) [d]). simpl.
-   rewrite Eq, Hd, ?eqb_refl.
+ - exists (Rule Fa_e (Γ ⊢ A) [d]). simpl. now rewr.
+ - exists (Rule Not_i (Γ ⊢ ~ A) [d]). simpl. now rewr.
+ - exists (Rule Not_e (Γ ⊢ False) [d0;d]). simpl. now rewr.
+ - exists (Rule And_i (Γ ⊢ A /\ B) [d0;d]). simpl. now rewr.
+ - exists (Rule And_e1 (Γ ⊢ A) [d]). simpl. now rewr.
+ - exists (Rule And_e2 (Γ ⊢ B) [d]). simpl. now rewr.
+ - exists (Rule Or_i1 (Γ ⊢ A \/ B) [d]). simpl. now rewr.
+ - exists (Rule Or_i2 (Γ ⊢ A \/ B) [d]). simpl. now rewr.
+ - exists (Rule Or_e (Γ ⊢ C) [d1;d0;d]). simpl. now rewr.
+ - exists (Rule Imp_i (Γ ⊢ A -> B) [d]). simpl. now rewr.
+ - exists (Rule Imp_e (Γ ⊢ B) [d0;d]). simpl. now rewr.
+ - exists (Rule (All_i x) (Γ ⊢ ∀A) [d]). simpl. rewr.
+   rewrite <- Vars.mem_spec in H. destruct Vars.mem; auto.
+ - exists (Rule (All_e t) (Γ ⊢ bsubst 0 t A) [d]). simpl. now rewr.
+ - exists (Rule (Ex_i t) (Γ ⊢ ∃A) [d]). simpl. now rewr.
+ - exists (Rule (Ex_e x) (Γ ⊢ B) [d0;d]). simpl. rewr.
    rewrite <- Vars.mem_spec in H.
    destruct Vars.mem; auto.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule (All_e t) (Γ ⊢ bsubst 0 t A) [d]). simpl.
-   now rewrite Eq, Hd, ?eqb_refl.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule (Ex_i t) (Γ ⊢ ∃A) [d]). simpl.
-   now rewrite Eq, Hd, ?eqb_refl.
- - destruct IHPr1 as (d1 & Hd1 & Eq1).
-   destruct IHPr2 as (d2 & Hd2 & Eq2).
-   exists (Rule (Ex_e x) (Γ ⊢ B) [d1;d2]). simpl.
-   rewrite Eq1, Eq2, Hd1, Hd2, ?eqb_refl.
-   rewrite <- Vars.mem_spec in H.
-   destruct Vars.mem; auto.
- - destruct IHPr as (d & Hd & Eq).
-   exists (Rule Absu (Γ ⊢ A) [d]). simpl.
-   apply any_classic in Hd.
-   now rewrite Eq, Hd, ?eqb_refl.
+ - exists (Rule Absu (Γ ⊢ A) [d]). simpl.
+   apply any_classic in H0. now rewr.
 Qed.
 
 Lemma Provable_alt lg s : Provable lg s <-> Pr lg s.
@@ -842,3 +795,34 @@ Proof.
    + intros a [ ].
    + intros a [<-|H]. apply IH. apply (IH' l a H).
 Qed.
+
+Instance check_rule_kind : Check rule_kind :=
+ fun sign r =>
+ match r with
+ | All_e wit | Ex_i wit => check sign wit
+ | _ => true
+ end.
+
+Instance check_derivation : Check derivation :=
+ fun sign =>
+ fix check_derivation d :=
+   match d with
+   | Rule r s ds =>
+     check sign r &&&
+     check sign s &&&
+     List.forallb check_derivation ds
+   end.
+
+Instance level_rule_kind : Level rule_kind :=
+ fun r =>
+ match r with
+ | All_e wit | Ex_i wit => level wit
+ | _ => 0
+ end.
+
+Instance level_derivation : Level derivation :=
+ fix level_derivation d :=
+   match d with
+   | Rule r s ds =>
+     list_max (level r :: level s :: List.map level_derivation ds)
+   end.

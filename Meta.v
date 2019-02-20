@@ -8,7 +8,7 @@ Local Open Scope lazy_bool_scope.
 Local Open Scope string_scope.
 Local Open Scope eqb_scope.
 
-Lemma closed_bsubst n u (t:term) :
+Lemma closed_bsubst_id n u (t:term) :
  closed t = true -> bsubst n u t = t.
 Proof.
  unfold closed.
@@ -159,7 +159,7 @@ Proof.
  intros CL.
  revert t.
  fix IH 1. destruct t; cbn.
- - symmetry. apply closed_bsubst. apply CL.
+ - symmetry. apply closed_bsubst_id. apply CL.
  - auto with eqb.
  - f_equal. clear f.
    revert l. fix IH' 1. destruct l; simpl; f_equal; auto.
@@ -385,3 +385,149 @@ Proof.
    rewrite ctx_rename_rename, form_rename_id; intuition.
  - apply R_Absu with l; auto.
 Qed.
+
+(** Some examples of weakening *)
+
+Lemma Pr_pop logic A B Γ :
+  Pr logic (Γ ⊢ A) ->
+  Pr logic (B::Γ ⊢ A).
+Proof.
+ intros. eapply Pr_weakening; eauto. constructor.
+ intro. intuition.
+Qed.
+
+Lemma Pr_dup logic A B Γ :
+  Pr logic (A::A::Γ ⊢ B) ->
+  Pr logic (A::Γ ⊢ B).
+Proof.
+ intros. eapply Pr_weakening; eauto. constructor.
+ intro. cbn. intuition.
+Qed.
+
+Lemma Pr_swap logic A B C Γ :
+  Pr logic (A::B::Γ ⊢ C) ->
+  Pr logic (B::A::Γ ⊢ C).
+Proof.
+ intros. eapply Pr_weakening; eauto. constructor.
+ intro. cbn. intuition.
+Qed.
+
+(** Admissible rules *)
+
+Lemma R'_Ax logic Γ A :
+ Pr logic (A::Γ ⊢ A).
+Proof.
+ apply R_Ax. simpl; auto.
+Qed.
+
+Lemma R'_And_e logic Γ A B C :
+ Pr logic (A::B::Γ ⊢ C) ->
+ Pr logic ((A/\B)::Γ ⊢ C)%form.
+Proof.
+ intro.
+ apply R_Imp_e with A.
+ - apply R_Imp_e with B.
+   + apply Pr_pop.
+     apply R_Imp_i.
+     now apply R_Imp_i.
+   + apply R_And_e2 with A. apply R'_Ax.
+ - apply R_And_e1 with B. apply R'_Ax.
+Qed.
+
+Lemma R'_Or_e logic Γ A B C :
+ Pr logic (A::Γ ⊢ C) -> Pr logic (B::Γ ⊢ C) ->
+ Pr logic ((A\/B)::Γ ⊢ C)%form.
+Proof.
+ intros.
+ apply R_Or_e with A B.
+ - apply R'_Ax.
+ - now apply Pr_swap, Pr_pop.
+ - now apply Pr_swap, Pr_pop.
+Qed.
+
+Lemma R'_Imp_e logic Γ A B :
+ Pr logic (Γ ⊢ A) ->
+ Pr logic ((A->B)::Γ ⊢ B)%form.
+Proof.
+ intro.
+ apply R_Imp_e with A.
+ - apply R'_Ax.
+ - now apply Pr_pop.
+Qed.
+
+Lemma R'_Imp_e_bis logic Γ A B C :
+ Pr logic (B::Γ ⊢ C) ->
+ Pr logic (A::(A->B)::Γ ⊢ C)%form.
+Proof.
+ intro.
+ apply R_Imp_e with B.
+ - now apply Pr_pop, Pr_pop, R_Imp_i.
+ - apply Pr_swap. apply R'_Imp_e. apply R'_Ax.
+Qed.
+
+Lemma R'_All_e logic Γ A B t :
+ Pr logic (bsubst 0 t A :: Γ ⊢ B) ->
+ Pr logic ((∀A) :: Γ ⊢ B)%form.
+Proof.
+ intros.
+ apply R_Imp_e with (bsubst 0 t A).
+ - now apply Pr_pop, R_Imp_i.
+ - apply R_All_e, R'_Ax.
+Qed.
+
+Lemma R'_Ex_e logic Γ A B x :
+ ~Vars.In x (fvars (A::Γ⊢B)) ->
+ Pr logic (bsubst 0 (FVar x) A :: Γ ⊢ B) ->
+ Pr logic ((∃A) :: Γ ⊢ B)%form.
+Proof.
+ intros.
+ apply R_Ex_e with x A.
+ - cbn in *. varsdec.
+ - apply R'_Ax.
+ - now apply Pr_swap, Pr_pop.
+Qed.
+
+(** A few classical proofs *)
+
+Lemma DoubleNeg A :
+ Pr Classic ([] ⊢ ~~A -> A)%form.
+Proof.
+ apply R_Imp_i.
+ apply (R_Absu Intuiti).
+ apply R_Not_e with (~A)%form; apply R_Ax; cbn; auto.
+Qed.
+
+Lemma Excluded_Middle_core logic A :
+ Pr logic ([] ⊢ ~~(A\/~A)).
+Proof.
+ apply R_Not_i.
+ apply R_Not_e with (A\/~A)%form; [|apply R'_Ax].
+ apply R_Or_i2.
+ apply R_Not_i.
+ apply R_Not_e with (A\/~A)%form; [|apply Pr_pop, R'_Ax ].
+ apply R_Or_i1.
+ apply R'_Ax.
+Qed.
+
+Lemma Excluded_Middle A :
+ Pr Classic ([] ⊢ A\/~A).
+Proof.
+ apply R_Imp_e with (~~(A\/~A))%form.
+ - apply DoubleNeg.
+ - apply Excluded_Middle_core.
+Qed.
+
+Lemma Peirce A B :
+ Pr Classic ([] ⊢ ((A->B)->A)->A).
+Proof.
+ apply R_Imp_i.
+ apply R_Absu with Intuiti.
+ apply R_Not_e with A; [|apply R'_Ax].
+ apply Pr_swap.
+ apply R'_Imp_e.
+ apply R_Imp_i.
+ apply R_Fa_e.
+ apply R_Not_e with A; apply R_Ax; cbn; auto.
+Qed.
+
+(** TODO: prove that these classical laws imply Absurd *)

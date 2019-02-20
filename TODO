@@ -12,11 +12,6 @@ Nam:
   - Valid via predicat inductif + adéquation valid_deriv
   - Plongement comme formules Coq + correction
 
-
-Mix:
-
-  - Plongement comme formules Coq + correction
-
 Equiv:
 
    preuves reliant Nam.valid_deriv et Mix.valid_deriv (ou Mix.Pr)

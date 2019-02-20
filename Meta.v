@@ -226,18 +226,18 @@ Ltac Fresh z vars :=
   assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok);
   clearbody z.
 
+Ltac tryinst :=
+ repeat match goal with
+ | H : (forall h, closed_sub h -> _), H' : closed_sub _ |- _ =>
+   specialize (H _ H') end.
+
 Lemma Pr_vmap logic (s:sequent) :
   Pr logic s ->
   forall h, closed_sub h ->
   Pr logic (vmap h s).
 Proof.
- induction 1; cbn in *; intros; auto.
- - apply R_Ax. now apply in_map.
- - apply R_Not_e with (vmap h A); auto.
- - apply R_And_e1 with (vmap h B); auto.
- - apply R_And_e2 with (vmap h A); auto.
- - apply R_Or_e with (vmap h A) (vmap h B); auto.
- - apply R_Imp_e with (vmap h A); auto.
+ induction 1; cbn in *; intros; try (tryinst; eauto 2; fail).
+ - now apply R_Ax, in_map.
  - Fresh z (Vars.union (fvars (Γ⊢A)) (fvars (vmap h (Γ⊢A)))).
    rewrite Vars.union_spec in *.
    apply R_All_i with z; [tauto|].
@@ -255,7 +255,6 @@ Proof.
    rewrite <- (ctx_sub_set_ext x (FVar z)) by tauto.
    rewrite <- (form_sub_set_ext x (FVar z) h B) by tauto.
    apply IHPr2. now apply closed_sub_set.
- - apply R_Absu with l. auto.
 Qed.
 
 Lemma Pr_fsubst logic (s:sequent) :
@@ -342,18 +341,19 @@ Proof.
  unfold sub_rename. intros. case eqbspec; cbn; auto with eqb set.
 Qed.
 
+Ltac tryinst2 :=
+ repeat match goal with
+ | H : (forall s, SubsetSeq _ s -> _),
+   H' : ListSubset _ _ |- _ => specialize (H _ (SubSeq _ _ _ H')) end.
+
 Lemma Pr_weakening logic s s' :
   Pr logic s ->
   SubsetSeq s s' ->
   Pr logic s'.
 Proof.
  intros H. revert s'.
- induction H; inversion_clear 1; auto.
- - eapply R_Not_e with A; auto.
- - apply R_And_e1 with B; auto.
- - apply R_And_e2 with A; auto.
+ induction H; inversion_clear 1; auto; try (tryinst2; eauto 2; fail).
  - apply R_Or_e with A B; auto.
- - apply R_Imp_e with A; auto.
  - Fresh z (Vars.add x (fvars (Γ' ⊢ A))). cbn in *.
    rewrite Vars.add_spec, Vars.union_spec in *.
    set (Γ'z := vmap (sub_rename x z) Γ').
@@ -368,7 +368,6 @@ Proof.
     auto using sub_rename_closed.
    revert PR. cbn; unfold Γ'z.
    rewrite ctx_rename_rename, form_rename_id; intuition.
- - apply R_Ex_i with t; auto.
  - Fresh z (Vars.add x (fvars (A::Γ' ⊢ B))). cbn in *.
    rewrite Vars.add_spec, ?Vars.union_spec in *.
    set (Γ'z := vmap (sub_rename x z) Γ').

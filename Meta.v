@@ -266,6 +266,67 @@ Proof.
  intros x. unfold varsubst. case eqbspec; auto.
 Qed.
 
+Lemma Valid_vmap logic (d:derivation) :
+ Valid logic d ->
+ forall h, closed_sub h ->
+  exists d', Valid logic d' /\ claim d' = vmap h (claim d).
+Proof.
+ intros.
+ apply Provable_alt.
+ apply Pr_vmap; auto.
+ apply Provable_alt.
+ now exists d.
+Qed.
+
+Instance vmap_rule : VMap rule_kind :=
+ fun h r =>
+ match r with
+ | All_e wit => All_e (vmap h wit)
+ | Ex_i wit => Ex_i (vmap h wit)
+ | r => r
+ end.
+
+Instance deriv_vmap : VMap derivation :=
+ fun h =>
+ fix deriv_vmap d :=
+  let '(Rule r s ds) := d in
+  Rule (vmap h r) (vmap h s) (List.map deriv_vmap ds).
+
+Lemma claim_vmap h d s : Claim d s -> Claim (vmap h d) (vmap h s).
+Proof.
+ destruct d. simpl. intros. now f_equal.
+Qed.
+
+Ltac doClaim h :=
+ match goal with
+ | H : Claim _ _ |- _ => apply (claim_vmap h) in H; exact H
+ end.
+
+(*
+Lemma Valid_vmap_direct logic (d:derivation) :
+ Valid logic d ->
+ forall h, closed_sub h ->
+ Valid logic (vmap h d).
+Proof.
+ induction 1; intros h CL; cbn; try (econstructor; eauto; doClaim h).
+ - constructor. now apply in_map.
+ TODO: il faut sans doute personnaliser deriv_vmap dans les cas à quantificateurs
+*)
+
+
+(** TODO: definition of [vmap h d] and direct proof Valid d -> Valid (vmap h d) *)
+
+Lemma Valid_fsubst logic (d:derivation) :
+  Valid logic d ->
+  forall v t, closed t ->
+   exists d', Valid logic d' /\ claim d' = fsubst v t (claim d).
+Proof.
+ intros.
+ apply Valid_vmap; auto.
+ intros x. unfold varsubst. case eqbspec; auto.
+Qed.
+
+
 (** Weakening of contexts and sequents *)
 
 Definition ListSubset {A} (l l': list A) :=
@@ -381,6 +442,21 @@ Proof.
    revert PR. cbn; unfold Γ'z.
    rewrite ctx_rename_rename, form_rename_id; intuition.
 Qed.
+
+Lemma Valid_weakening logic d :
+  Valid logic d ->
+  forall s', SubsetSeq (claim d) s' ->
+  exists d', Valid logic d' /\ Claim d' s'.
+Proof.
+ intros.
+ apply Provable_alt.
+ apply Pr_weakening with (claim d); auto.
+ apply Provable_alt.
+ now exists d.
+Qed.
+
+(* TODO: direct proof on derivation and Valid ?
+   This would allow to know that the new proof is still closed, for instance *)
 
 (** Some examples of weakening *)
 

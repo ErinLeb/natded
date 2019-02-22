@@ -9,11 +9,9 @@ Local Open Scope string_scope.
 Local Open Scope eqb_scope.
 
 Lemma closed_bsubst_id n u (t:term) :
- closed t = true -> bsubst n u t = t.
+ closed t -> bsubst n u t = t.
 Proof.
- unfold closed.
- case eqbspec; [ intros H _ | easy ].
- revert t H.
+ unfold closed. intros H. revert t H.
  fix IH 1. destruct t; cbn; try easy.
  intros H. f_equal. clear f.
  revert l H.
@@ -150,7 +148,7 @@ Qed.
 (** Alternating [vmap] and [bsubst] *)
 
 Definition closed_sub (h:variable->term) :=
- forall v, closed (h v) = true.
+ forall v, closed (h v).
 
 Lemma term_vmap_bsubst h n u (t:term) :
  closed_sub h ->
@@ -178,7 +176,7 @@ Definition sub_set (x:variable)(t:term)(h:variable->term) :=
  fun v => if v =? x then t else h v.
 
 Lemma closed_sub_set x t h :
- closed_sub h -> closed t = true -> closed_sub (sub_set x t h).
+ closed_sub h -> closed t -> closed_sub (sub_set x t h).
 Proof.
  unfold sub_set, closed_sub; auto with eqb.
 Qed.
@@ -209,7 +207,7 @@ Qed.
 
 Lemma vmap_bsubst_adhoc h x t (f:formula) :
  closed_sub h ->
- closed t = true ->
+ closed t ->
  ~Vars.In x (fvars f) ->
  bsubst 0 t (vmap h f) =
   vmap (sub_set x t h) (bsubst 0 (FVar x) f).
@@ -240,9 +238,9 @@ Proof.
  - now apply R_Ax, in_map.
  - Fresh z (Vars.union (fvars (Γ⊢A)) (fvars (vmap h (Γ⊢A)))).
    rewrite Vars.union_spec in *.
-   apply R_All_i with z; [tauto|].
-   rewrite (vmap_bsubst_adhoc h x) by tauto.
-   rewrite <- (ctx_sub_set_ext x (FVar z)) by tauto.
+   apply R_All_i with z; auto.
+   rewrite (vmap_bsubst_adhoc h x) by auto.
+   rewrite <- (ctx_sub_set_ext x (FVar z)) by auto.
    apply IHPr. now apply closed_sub_set.
  - rewrite form_vmap_bsubst by auto. apply R_All_e; auto.
  - apply R_Ex_i with (vmap h t).
@@ -250,16 +248,16 @@ Proof.
  - Fresh z (Vars.union (fvars (A::Γ⊢B)) (fvars (vmap h (A::Γ⊢B)))).
    rewrite Vars.union_spec in Hz.
    rewrite !Vars.union_spec in H.
-   apply R_Ex_e with z (vmap h A); [tauto| auto | ].
-   rewrite (vmap_bsubst_adhoc h x) by tauto.
-   rewrite <- (ctx_sub_set_ext x (FVar z)) by tauto.
-   rewrite <- (form_sub_set_ext x (FVar z) h B) by tauto.
+   apply R_Ex_e with z (vmap h A); auto.
+   rewrite (vmap_bsubst_adhoc h x) by auto.
+   rewrite <- (ctx_sub_set_ext x (FVar z)) by auto.
+   rewrite <- (form_sub_set_ext x (FVar z) h B) by auto.
    apply IHPr2. now apply closed_sub_set.
 Qed.
 
 Lemma Pr_fsubst logic (s:sequent) :
   Pr logic s ->
-  forall v t, closed t = true ->
+  forall v t, closed t ->
   Pr logic (fsubst v t s).
 Proof.
  intros.
@@ -362,7 +360,7 @@ Proof.
    assert (ListSubset Γ Γ'z).
    { rewrite <- (ctx_rename_id x z Γ) by tauto.
      now apply ListSubset_map. }
-   assert (PR : Pr l (Γ'z ⊢ ∀A)).
+   assert (PR : Pr logic (Γ'z ⊢ ∀A)).
    { apply R_All_i with x; cbn; intuition. }
    apply Pr_vmap with (h := sub_rename z x) in PR;
     auto using sub_rename_closed.
@@ -376,13 +374,12 @@ Proof.
    assert (ListSubset Γ Γ'z).
    { rewrite <- (ctx_rename_id x z Γ) by tauto.
      now apply ListSubset_map. }
-   assert (PR : Pr l (Γ'z ⊢ B)).
+   assert (PR : Pr logic (Γ'z ⊢ B)).
    { apply R_Ex_e with x A; cbn; intuition. }
    apply Pr_vmap with (h := sub_rename z x) in PR;
     auto using sub_rename_closed.
    revert PR. cbn; unfold Γ'z.
    rewrite ctx_rename_rename, form_rename_id; intuition.
- - apply R_Absu with l; auto.
 Qed.
 
 (** Some examples of weakening *)
@@ -492,7 +489,7 @@ Lemma DoubleNeg A :
  Pr Classic ([] ⊢ ~~A -> A)%form.
 Proof.
  apply R_Imp_i.
- apply (R_Absu Intuiti).
+ apply R_Absu; trivial.
  apply R_Not_e with (~A)%form; apply R_Ax; cbn; auto.
 Qed.
 
@@ -520,7 +517,7 @@ Lemma Peirce A B :
  Pr Classic ([] ⊢ ((A->B)->A)->A).
 Proof.
  apply R_Imp_i.
- apply R_Absu with Intuiti.
+ apply R_Absu; trivial.
  apply R_Not_e with A; [|apply R'_Ax].
  apply Pr_swap.
  apply R'_Imp_e.

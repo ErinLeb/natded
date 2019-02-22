@@ -19,3 +19,10 @@ Equiv:
 Meta
 
   - cleanup proofs Meta
+  - faire les preuves de Meta directement sur Valid plutot que Pr ?
+
+General
+
+- Peut-on éviter tous ces "fix IH 1" ??
+
+- Integrer closed dans Valid et valid_deriv ??

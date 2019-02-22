@@ -106,7 +106,9 @@ Arguments vmap {_} {_} _ !_.
 
 (** Some generic definitions based on the previous ones *)
 
-Definition closed {A}`{Level A} (a:A) := level a =? 0.
+Definition closed {A}`{Level A} (a:A) := level a = 0.
+
+Hint Unfold closed.
 
 (** Substitution of a free variable in a term :
     in [t], free var [v] is replaced by [u]. *)
@@ -419,12 +421,56 @@ Inductive rule_kind :=
 Inductive derivation :=
   | Rule : rule_kind -> sequent -> list derivation -> derivation.
 
-Definition dseq '(Rule _ s _) := s.
+(** The final sequent of a derivation *)
+
+Definition claim '(Rule _ s _) := s.
+
+(** Utility functions on derivations:
+    - bounded-vars level (used by the [closed] predicate),
+    - check w.r.t. signature *)
+
+Instance level_rule_kind : Level rule_kind :=
+ fun r =>
+ match r with
+ | All_e wit | Ex_i wit => level wit
+ | _ => 0
+ end.
+
+Instance level_derivation : Level derivation :=
+ fix level_derivation d :=
+  let '(Rule r s ds) := d in
+  list_max (level r :: level s :: List.map level_derivation ds).
+
+Instance check_rule_kind : Check rule_kind :=
+ fun sign r =>
+ match r with
+ | All_e wit | Ex_i wit => check sign wit
+ | _ => true
+ end.
+
+Instance check_derivation : Check derivation :=
+ fun sign =>
+ fix check_derivation d :=
+  let '(Rule r s ds) := d in
+  check sign r &&&
+  check sign s &&&
+  List.forallb check_derivation ds.
+
+
+(** Validity of a derivation : is it using correct rules
+    of classical logic (resp. intuitionistic logic) ? *)
 
 Inductive logic := Classic | Intuiti.
 
+Instance logic_eqb : Eqb logic :=
+  fun l1 l2 =>
+    match l1, l2 with
+    | Classic, Classic | Intuiti, Intuiti => true
+    | _, _ => false
+    end.
+
 Definition valid_deriv_step logic '(Rule r s ld) :=
-  match r, s, List.map dseq ld with
+  match r, s, List.map claim ld with
   | Ax,     (Γ ⊢ A), [] => list_mem A Γ
   | Tr_i,   (_ ⊢ True), [] => true
   | Fa_e,   (Γ ⊢ _), [s] => s =? (Γ ⊢ False)
@@ -454,10 +500,7 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
      &&& (A' =? bsubst 0 (FVar x) A)
      &&& negb (Vars.mem x (fvars (A::Γ⊢B)))
   | Absu, s, [Not A::Γ ⊢ False] =>
-    match logic with
-    | Classic => (s =? (Γ ⊢ A))
-    | Intuiti => false
-    end
+    (logic =? Classic) &&& (s =? (Γ ⊢ A))
   | _,_,_ => false
   end.
 
@@ -466,21 +509,13 @@ Fixpoint valid_deriv logic d :=
    (let '(Rule _ _ ld) := d in
     List.forallb (valid_deriv logic) ld).
 
-Definition Provable logic (s : sequent) :=
-  exists d, valid_deriv logic d = true /\ dseq d = s.
+(** Some examples of derivations *)
 
 Definition deriv_example :=
   let A := Pred "A" [] in
   Rule Imp_i ([]⊢A->A) [Rule Ax ([A]⊢A) []].
 
 Compute valid_deriv Intuiti deriv_example.
-
-Lemma thm_example :
-  let A := Pred "A" [] in
-  Provable Intuiti ([]⊢A->A).
-Proof.
- now exists deriv_example.
-Qed.
 
 Definition example_gen (A:formula) :=
   Rule Imp_i ([]⊢A->A) [Rule Ax ([A]⊢A) []].
@@ -540,6 +575,8 @@ Definition captcha_bug :=
 
 Compute valid_deriv Intuiti captcha_bug.
 
+(** Correctness of earlier boolean equality tests *)
+
 Instance : EqbSpec term.
 Proof.
  red.
@@ -576,77 +613,13 @@ Proof.
  intros [] []. cbn. repeat (case eqbspec; try cons).
 Qed.
 
+Instance : EqbSpec logic.
+Proof.
+ intros [] []; cons.
+Qed.
 
-Inductive Pr : logic -> sequent -> Prop :=
- | R_Ax Γ l A : In A Γ -> Pr l (Γ ⊢ A)
- | R_Tr_i l Γ : Pr l (Γ ⊢ True)
- | R_Fa_e l Γ A : Pr l (Γ ⊢ False) ->
-                  Pr l (Γ ⊢ A)
- | R_Not_i l Γ A : Pr l (A::Γ ⊢ False) ->
-                   Pr l (Γ ⊢ ~A)
- | R_Not_e l Γ A : Pr l (Γ ⊢ A) -> Pr l (Γ ⊢ ~A) ->
-                   Pr l (Γ ⊢ False)
- | R_And_i l Γ A B : Pr l (Γ ⊢ A) -> Pr l (Γ ⊢ B) ->
-                   Pr l (Γ ⊢ A/\B)
- | R_And_e1 l Γ A B : Pr l (Γ ⊢ A/\B) ->
-                    Pr l (Γ ⊢ A)
- | R_And_e2 l Γ A B : Pr l (Γ ⊢ A/\B) ->
-                    Pr l (Γ ⊢ B)
- | R_Or_i1 l Γ A B : Pr l (Γ ⊢ A) ->
-                   Pr l (Γ ⊢ A\/B)
- | R_Or_i2 l Γ A B : Pr l (Γ ⊢ B) ->
-                   Pr l (Γ ⊢ A\/B)
- | R_Or_e l Γ A B C :
-     Pr l (Γ ⊢ A\/B) -> Pr l (A::Γ ⊢ C) -> Pr l (B::Γ ⊢ C) ->
-     Pr l (Γ ⊢ C)
- | R_Imp_i l Γ A B : Pr l (A::Γ ⊢ B) ->
-                     Pr l (Γ ⊢ A->B)
- | R_Imp_e l Γ A B : Pr l (Γ ⊢ A->B) -> Pr l (Γ ⊢ A) ->
-                   Pr l (Γ ⊢ B)
- | R_All_i x l Γ A : ~Vars.In x (fvars (Γ ⊢ A)) ->
-                   Pr l (Γ ⊢ bsubst 0 (FVar x) A) ->
-                   Pr l (Γ ⊢ ∀A)
- | R_All_e t l Γ A : Pr l (Γ ⊢ ∀A) ->
-                     Pr l (Γ ⊢ bsubst 0 t A)
- | R_Ex_i t l Γ A : Pr l (Γ ⊢ bsubst 0 t A) ->
-                    Pr l (Γ ⊢ ∃A)
- | R_Ex_e x l Γ A B : ~Vars.In x (fvars (A::Γ⊢B)) ->
-      Pr l (Γ ⊢ ∃A) -> Pr l ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
-      Pr l (Γ ⊢ B)
- | R_Absu l Γ A : Pr l (Not A :: Γ ⊢ False) ->
-                  Pr Classic (Γ ⊢ A).
-Hint Constructors Pr.
-
-Ltac break :=
- match goal with
- | H : match _ with true => _ | false => _ end = true |- _ =>
-   rewrite !lazy_andb_iff in H
- | H : match dseq ?x with _ => _ end = true |- _ =>
-   destruct x; simpl in H; try easy; break
- | H : match map _ ?x with _ => _ end = true |- _ =>
-   destruct x; simpl in H; try easy; break
- | H : match ?x with _ => _ end = true |- _ =>
-   destruct x; simpl in H; try easy; break
- | _ => idtac
- end.
-
-Arguments Vars.union !_ !_.
-
-Ltac mysubst :=
- match goal with
- | EQ: (_ =? _) = true |- _ =>
-   apply eqb_eq in EQ; rewrite EQ in *; clear EQ; mysubst
- | _ => idtac
- end.
-
-Ltac mytac :=
- cbn in *;
- break;
- cbn -[valid_deriv] in *;
- rewrite ?andb_true_r, ?andb_true_iff, ?lazy_andb_iff in *;
- repeat match goal with H : _ /\ _ |- _ => destruct H end;
- repeat match goal with IH : Forall _ _  |- _ => inversion_clear IH end;
- mysubst.
+(** Induction principle on derivations with correct
+    handling of sub-derivation lists. *)
 
 Lemma derivation_ind' (P: derivation -> Prop) :
   (forall r s ds, Forall P ds -> P (Rule r s ds)) ->
@@ -661,28 +634,201 @@ Proof.
  apply IH'.
 Qed.
 
-Lemma valid_deriv_Pr lg d :
-  valid_deriv lg d = true -> Pr lg (dseq d).
+(** A derivation "claims" a sequent ... if it ends with this sequent.
+    This is just nicer than putting [claim ... = ...] everywhere. *)
+
+Definition Claim d s := claim d = s.
+Arguments Claim _ _ /.
+Hint Extern 1 (Claim _ _) => cbn.
+
+(** An inductive counterpart to valid_deriv, easier to use in proofs *)
+
+Inductive Valid (l:logic) : derivation -> Prop :=
+ | V_Ax Γ A : In A Γ -> Valid l (Rule Ax (Γ ⊢ A) [])
+ | V_Tr_i Γ : Valid l (Rule Tr_i (Γ ⊢ True) [])
+ | V_Fa_e d Γ A :
+     Valid l d -> Claim d (Γ ⊢ False) ->
+     Valid l (Rule Fa_e (Γ ⊢ A) [d])
+ | V_Not_i d Γ A :
+     Valid l d -> Claim d (A::Γ ⊢ False) ->
+     Valid l (Rule Not_i (Γ ⊢ ~A) [d])
+ | V_Not_e d1 d2 Γ A :
+     Valid l d1 -> Valid l d2 ->
+     Claim d1 (Γ ⊢ A) -> Claim d2 (Γ ⊢ ~A) ->
+     Valid l (Rule Not_e (Γ ⊢ False) [d1;d2])
+ | V_And_i d1 d2 Γ A B :
+     Valid l d1 -> Valid l d2 ->
+     Claim d1 (Γ ⊢ A) -> Claim d2 (Γ ⊢ B) ->
+     Valid l (Rule And_i (Γ ⊢ A/\B) [d1;d2])
+ | V_And_e1 d Γ A B :
+     Valid l d -> Claim d (Γ ⊢ A/\B) ->
+     Valid l (Rule And_e1 (Γ ⊢ A) [d])
+ | V_And_e2 d Γ A B :
+     Valid l d -> Claim d (Γ ⊢ A/\B) ->
+     Valid l (Rule And_e2 (Γ ⊢ B) [d])
+ | V_Or_i1 d Γ A B :
+     Valid l d -> Claim d (Γ ⊢ A) ->
+     Valid l (Rule Or_i1 (Γ ⊢ A\/B) [d])
+ | V_Or_i2 d Γ A B :
+     Valid l d -> Claim d (Γ ⊢ B) ->
+     Valid l (Rule Or_i2 (Γ ⊢ A\/B) [d])
+ | V_Or_e d1 d2 d3 Γ A B C :
+     Valid l d1 -> Valid l d2 -> Valid l d3 ->
+     Claim d1 (Γ ⊢ A\/B) -> Claim d2 (A::Γ ⊢ C) -> Claim d3 (B::Γ ⊢ C) ->
+     Valid l (Rule Or_e (Γ ⊢ C) [d1;d2;d3])
+ | V_Imp_i d Γ A B :
+     Valid l d -> Claim d (A::Γ ⊢ B) ->
+     Valid l (Rule Imp_i (Γ ⊢ A->B) [d])
+ | V_Imp_e d1 d2 Γ A B :
+     Valid l d1 -> Valid l d2 ->
+     Claim d1 (Γ ⊢ A->B) -> Claim d2 (Γ ⊢ A) ->
+     Valid l (Rule Imp_e (Γ ⊢ B) [d1;d2])
+ | V_All_i x d Γ A :
+     ~Vars.In x (fvars (Γ ⊢ A)) ->
+     Valid l d -> Claim d (Γ ⊢ bsubst 0 (FVar x) A) ->
+     Valid l (Rule (All_i x) (Γ ⊢ ∀A) [d])
+ | V_All_e t d Γ A :
+     Valid l d -> Claim d (Γ ⊢ ∀A) ->
+     Valid l (Rule (All_e t) (Γ ⊢ bsubst 0 t A) [d])
+ | V_Ex_i t d Γ A :
+     Valid l d -> Claim d (Γ ⊢ bsubst 0 t A) ->
+     Valid l (Rule (Ex_i t) (Γ ⊢ ∃A) [d])
+ | V_Ex_e x d1 d2 Γ A B :
+     ~Vars.In x (fvars (A::Γ⊢B)) ->
+     Valid l d1 -> Valid l d2 ->
+     Claim d1 (Γ ⊢ ∃A) -> Claim d2 ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
+     Valid l (Rule (Ex_e x) (Γ ⊢ B) [d1;d2])
+ | V_Absu d Γ A :
+     l=Classic ->
+     Valid l d -> Claim d (Not A :: Γ ⊢ False) ->
+     Valid l (Rule Absu (Γ ⊢ A) [d]).
+
+Hint Constructors Valid.
+
+(** Let's prove now that [valid_deriv] is equivalent to [Valid] *)
+
+Ltac break :=
+ match goal with
+ | H : match _ with true => _ | false => _ end = true |- _ =>
+   rewrite !lazy_andb_iff in H
+ | H : match claim ?x with _ => _ end = true |- _ =>
+   destruct x; simpl in H; try easy; break
+ | H : match map _ ?x with _ => _ end = true |- _ =>
+   destruct x; simpl in H; try easy; break
+ | H : match ?x with _ => _ end = true |- _ =>
+   destruct x; simpl in H; try easy; break
+ | _ => idtac
+ end.
+
+Arguments Vars.union !_ !_.
+
+Ltac mytac :=
+ cbn in *;
+ break;
+ rewrite ?andb_true_r, ?andb_true_iff, ?lazy_andb_iff in *;
+ repeat match goal with H : _ /\ _ |- _ => destruct H end;
+ repeat match goal with IH : Forall _ _  |- _ => inversion_clear IH end;
+ rewrite ?@eqb_eq in * by auto with typeclass_instances.
+
+Ltac rewr :=
+ unfold Claim in *;
+ match goal with
+ | H: _ = _ |- _ => rewrite H in *; clear H; rewr
+ | _ => rewrite ?eqb_refl
+ end.
+
+Lemma Valid_equiv l d : valid_deriv l d = true <-> Valid l d.
 Proof.
- revert d lg.
- induction d as [r s ds IH] using derivation_ind'.
- intros lg H. cbn -[valid_deriv_step] in *.
- rewrite lazy_andb_iff in H. destruct H as (H,H').
- assert (IH' : Forall (fun d => Pr lg (dseq d)) ds).
- { rewrite Forall_forall, forallb_forall in *. auto. }
- clear IH H'.
- mytac; eauto 2.
- - now apply R_Ax, list_mem_in.
- - apply R_All_i with v; trivial.
-   rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
- - apply R_Ex_e with v f; trivial.
-   rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
+ split.
+ - induction d as [r s ds IH] using derivation_ind'.
+   cbn - [valid_deriv_step]. rewrite lazy_andb_iff. intros (H,H').
+   assert (IH' : Forall (fun d => Valid l d) ds).
+   { rewrite Forall_forall, forallb_forall in *. auto. }
+   clear IH H'.
+   mytac; subst; eauto.
+   + now apply V_Ax, list_mem_in.
+   + apply V_All_i; auto.
+     rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
+   + apply V_Ex_e with f; auto.
+     rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
+ - induction 1; cbn; rewr; auto.
+   + apply list_mem_in in H. now rewrite H.
+   + rewrite <- Vars.mem_spec in H. destruct Vars.mem; auto.
+   + rewrite <- Vars.mem_spec in H. destruct Vars.mem; auto.
 Qed.
 
-Lemma Provable_Pr logic s :
-  Provable logic s -> Pr logic s.
+(** A notion of provability, directly on a sequent *)
+
+Definition Provable logic (s : sequent) :=
+  exists d, Valid logic d /\ Claim d s.
+
+Lemma thm_example :
+  let A := Pred "A" [] in
+  Provable Intuiti ([]⊢A->A).
 Proof.
- intros (d & Hd & <-). now apply valid_deriv_Pr.
+ exists deriv_example. now rewrite <- Valid_equiv.
+Qed.
+
+
+(** A provability notion directly on sequents, without derivations.
+    Pros: lighter
+    Cons: no easy way to say later that the whole proof is closed *)
+
+Inductive Pr (l:logic) : sequent -> Prop :=
+ | R_Ax Γ A : In A Γ -> Pr l (Γ ⊢ A)
+ | R_Tr_i Γ : Pr l (Γ ⊢ True)
+ | R_Fa_e Γ A : Pr l (Γ ⊢ False) ->
+                  Pr l (Γ ⊢ A)
+ | R_Not_i Γ A : Pr l (A::Γ ⊢ False) ->
+                   Pr l (Γ ⊢ ~A)
+ | R_Not_e Γ A : Pr l (Γ ⊢ A) -> Pr l (Γ ⊢ ~A) ->
+                   Pr l (Γ ⊢ False)
+ | R_And_i Γ A B : Pr l (Γ ⊢ A) -> Pr l (Γ ⊢ B) ->
+                   Pr l (Γ ⊢ A/\B)
+ | R_And_e1 Γ A B : Pr l (Γ ⊢ A/\B) ->
+                    Pr l (Γ ⊢ A)
+ | R_And_e2 Γ A B : Pr l (Γ ⊢ A/\B) ->
+                    Pr l (Γ ⊢ B)
+ | R_Or_i1 Γ A B : Pr l (Γ ⊢ A) ->
+                   Pr l (Γ ⊢ A\/B)
+ | R_Or_i2 Γ A B : Pr l (Γ ⊢ B) ->
+                   Pr l (Γ ⊢ A\/B)
+ | R_Or_e Γ A B C :
+     Pr l (Γ ⊢ A\/B) -> Pr l (A::Γ ⊢ C) -> Pr l (B::Γ ⊢ C) ->
+     Pr l (Γ ⊢ C)
+ | R_Imp_i Γ A B : Pr l (A::Γ ⊢ B) ->
+                     Pr l (Γ ⊢ A->B)
+ | R_Imp_e Γ A B : Pr l (Γ ⊢ A->B) -> Pr l (Γ ⊢ A) ->
+                   Pr l (Γ ⊢ B)
+ | R_All_i x Γ A : ~Vars.In x (fvars (Γ ⊢ A)) ->
+                   Pr l (Γ ⊢ bsubst 0 (FVar x) A) ->
+                   Pr l (Γ ⊢ ∀A)
+ | R_All_e t Γ A : Pr l (Γ ⊢ ∀A) ->
+                     Pr l (Γ ⊢ bsubst 0 t A)
+ | R_Ex_i t Γ A : Pr l (Γ ⊢ bsubst 0 t A) ->
+                    Pr l (Γ ⊢ ∃A)
+ | R_Ex_e x Γ A B : ~Vars.In x (fvars (A::Γ⊢B)) ->
+      Pr l (Γ ⊢ ∃A) -> Pr l ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
+      Pr l (Γ ⊢ B)
+ | R_Absu Γ A : l=Classic -> Pr l (Not A :: Γ ⊢ False) ->
+                  Pr l (Γ ⊢ A).
+Hint Constructors Pr.
+
+Lemma Valid_Pr lg d :
+  Valid lg d -> Pr lg (claim d).
+Proof.
+ induction 1; cbn in *; rewr; eauto 2.
+Qed.
+
+Lemma Provable_alt lg s :
+  Pr lg s <-> Provable lg s.
+Proof.
+ split.
+ - induction 1;
+   repeat match goal with H:Provable _ _ |- _ =>
+          let d := fresh "d" in destruct H as (d & ? & ?) end;
+   eexists (Rule _ _ _); split; try reflexivity; eauto 2.
+ - intros (d & Hd & <-). now apply Valid_Pr.
 Qed.
 
 Lemma Pr_intuit_classic s : Pr Intuiti s -> Pr Classic s.
@@ -700,129 +846,12 @@ Proof.
  destruct lg. trivial. apply Pr_intuit_classic.
 Qed.
 
-Lemma intuit_classic_step d :
-  valid_deriv_step Intuiti d = true ->
-  valid_deriv_step Classic d = true.
+Lemma intuit_classic d : Valid Intuiti d -> Valid Classic d.
 Proof.
- intros.
- destruct d; simpl in *.
- break.
+ induction 1; eauto.
 Qed.
 
-Lemma intuit_classic d :
-  valid_deriv Intuiti d = true ->
-  valid_deriv Classic d = true.
-Proof.
- revert d.
- fix IH 1.
- destruct d. cbn - [valid_deriv_step].
- rewrite !lazy_andb_iff. intros (H,H').
- split. now apply intuit_classic_step.
- clear r s H.
- revert l H'.
- fix IH' 1.
- destruct l.
- - trivial.
- - simpl. rewrite !andb_true_iff. intros (H,H').
-   split. now apply IH. now apply IH'.
-Qed.
-
-Lemma any_classic d lg :
-  valid_deriv lg d = true ->
-  valid_deriv Classic d = true.
+Lemma any_classic d lg : Valid lg d -> Valid Classic d.
 Proof.
  destruct lg. trivial. apply intuit_classic.
 Qed.
-
-Ltac rewr :=
- match goal with
- | H: _ = _ |- _ => rewrite H; clear H; rewr
- | _ => rewrite !eqb_refl
- end.
-
-Ltac break_Provable :=
- repeat match goal with
- | H:Provable _ _ |- _ =>
-   let d := fresh "d" in destruct H as (d & ? & ?) end.
-
-Lemma Pr_Provable lg s :
-  Pr lg s -> Provable lg s.
-Proof.
- induction 1; break_Provable.
- - exists (Rule Ax (Γ ⊢ A) []). simpl. split; auto.
-   apply list_mem_in in H. now rewrite H.
- - now exists (Rule Tr_i (Γ ⊢ True) []).
- - exists (Rule Fa_e (Γ ⊢ A) [d]). simpl. now rewr.
- - exists (Rule Not_i (Γ ⊢ ~ A) [d]). simpl. now rewr.
- - exists (Rule Not_e (Γ ⊢ False) [d0;d]). simpl. now rewr.
- - exists (Rule And_i (Γ ⊢ A /\ B) [d0;d]). simpl. now rewr.
- - exists (Rule And_e1 (Γ ⊢ A) [d]). simpl. now rewr.
- - exists (Rule And_e2 (Γ ⊢ B) [d]). simpl. now rewr.
- - exists (Rule Or_i1 (Γ ⊢ A \/ B) [d]). simpl. now rewr.
- - exists (Rule Or_i2 (Γ ⊢ A \/ B) [d]). simpl. now rewr.
- - exists (Rule Or_e (Γ ⊢ C) [d1;d0;d]). simpl. now rewr.
- - exists (Rule Imp_i (Γ ⊢ A -> B) [d]). simpl. now rewr.
- - exists (Rule Imp_e (Γ ⊢ B) [d0;d]). simpl. now rewr.
- - exists (Rule (All_i x) (Γ ⊢ ∀A) [d]). simpl. rewr.
-   rewrite <- Vars.mem_spec in H. destruct Vars.mem; auto.
- - exists (Rule (All_e t) (Γ ⊢ bsubst 0 t A) [d]). simpl. now rewr.
- - exists (Rule (Ex_i t) (Γ ⊢ ∃A) [d]). simpl. now rewr.
- - exists (Rule (Ex_e x) (Γ ⊢ B) [d0;d]). simpl. rewr.
-   rewrite <- Vars.mem_spec in H.
-   destruct Vars.mem; auto.
- - exists (Rule Absu (Γ ⊢ A) [d]). simpl.
-   apply any_classic in H0. now rewr.
-Qed.
-
-Lemma Provable_alt lg s : Provable lg s <-> Pr lg s.
-Proof.
- split. apply Provable_Pr. apply Pr_Provable.
-Qed.
-
-Lemma term_ind' (P: term -> Prop) :
-  (forall v, P (FVar v)) ->
-  (forall n, P (BVar n)) ->
-  (forall f args, (forall a, In a args -> P a) -> P (Fun f args)) ->
-  forall t, P t.
-Proof.
- intros Hv Hn Hl.
- fix IH 1. destruct t.
- - apply Hv.
- - apply Hn.
- - apply Hl.
-   revert l.
-   fix IH' 1. destruct l; simpl.
-   + intros a [ ].
-   + intros a [<-|H]. apply IH. apply (IH' l a H).
-Qed.
-
-Instance check_rule_kind : Check rule_kind :=
- fun sign r =>
- match r with
- | All_e wit | Ex_i wit => check sign wit
- | _ => true
- end.
-
-Instance check_derivation : Check derivation :=
- fun sign =>
- fix check_derivation d :=
-   match d with
-   | Rule r s ds =>
-     check sign r &&&
-     check sign s &&&
-     List.forallb check_derivation ds
-   end.
-
-Instance level_rule_kind : Level rule_kind :=
- fun r =>
- match r with
- | All_e wit | Ex_i wit => level wit
- | _ => 0
- end.
-
-Instance level_derivation : Level derivation :=
- fix level_derivation d :=
-   match d with
-   | Rule r s ds =>
-     list_max (level r :: level s :: List.map level_derivation ds)
-   end.

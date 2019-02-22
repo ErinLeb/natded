@@ -388,11 +388,10 @@ Proof.
 Qed.
 
 Lemma mix_nam_mix f :
-  Mix.closed f = true ->
+  Mix.closed f ->
   nam2mix [] (mix2nam [] f) = f.
 Proof.
- unfold Mix.closed.
- case eqbspec; [ intros E _ | easy ].
+ unfold Mix.closed. intros E.
  apply mix_nam_mix_gen; auto.
  constructor.
  simpl. rewrite E. auto.
@@ -421,11 +420,10 @@ Proof.
 Qed.
 
 Lemma nam2mix_closed f :
-  Mix.closed (nam2mix [] f) = true.
+  Mix.closed (nam2mix [] f).
 Proof.
  unfold Mix.closed.
- case eqbspec; auto.
- generalize (nam2mix_level [] f). simpl. intros. omega.
+ generalize (nam2mix_level [] f). simpl. auto with *.
 Qed.
 
 

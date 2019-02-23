@@ -15,6 +15,9 @@ Definition function_symbol := string.
 Definition predicate_symbol := string.
 Definition arity := nat.
 
+Bind Scope string_scope with function_symbol.
+Bind Scope string_scope with predicate_symbol.
+
 Record gen_signature :=
   { gen_fun_symbs : function_symbol -> option arity;
     gen_pred_symbs : predicate_symbol -> option arity }.
@@ -50,6 +53,8 @@ Definition zf_sign :=
     letters or digits or "_". *)
 
 Definition variable := string.
+
+Bind Scope string_scope with variable.
 
 Module Vars := MSetRBT.Make (StringOT).
 

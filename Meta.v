@@ -5,7 +5,6 @@ Require Import RelationClasses Arith Omega Defs Proofs Mix.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
-Local Open Scope string_scope.
 Local Open Scope eqb_scope.
 
 Lemma closed_bsubst_id n u (t:term) :
@@ -46,6 +45,15 @@ Lemma ctx_vmap_ext h h' (c:context) :
 Proof.
  induction c; cbn; intros; f_equal;
   auto using form_vmap_ext with set.
+Qed.
+
+Lemma seq_vmap_ext h h' (s:sequent) :
+ (forall v:variable, Vars.In v (fvars s) -> h v = h' v) ->
+ vmap h s = vmap h' s.
+Proof.
+ destruct s; intros. cbn in *. f_equal.
+ apply ctx_vmap_ext; auto with set.
+ apply form_vmap_ext; auto with set.
 Qed.
 
 Lemma term_vmap_id h (t:term) :
@@ -236,7 +244,7 @@ Lemma Pr_vmap logic (s:sequent) :
 Proof.
  induction 1; cbn in *; intros; try (tryinst; eauto 2; fail).
  - now apply R_Ax, in_map.
- - Fresh z (Vars.union (fvars (Γ⊢A)) (fvars (vmap h (Γ⊢A)))).
+ - Fresh z (fvars (vmap h (Γ⊢A))).
    rewrite Vars.union_spec in *.
    apply R_All_i with z; auto.
    rewrite (vmap_bsubst_adhoc h x) by auto.
@@ -245,8 +253,7 @@ Proof.
  - rewrite form_vmap_bsubst by auto. apply R_All_e; auto.
  - apply R_Ex_i with (vmap h t).
    rewrite <- form_vmap_bsubst by auto. apply IHPr; auto.
- - Fresh z (Vars.union (fvars (A::Γ⊢B)) (fvars (vmap h (A::Γ⊢B)))).
-   rewrite Vars.union_spec in Hz.
+ - Fresh z (fvars (vmap h (A::Γ⊢B))).
    rewrite !Vars.union_spec in H.
    apply R_Ex_e with z (vmap h A); auto.
    rewrite (vmap_bsubst_adhoc h x) by auto.
@@ -278,44 +285,6 @@ Proof.
  now exists d.
 Qed.
 
-Instance vmap_rule : VMap rule_kind :=
- fun h r =>
- match r with
- | All_e wit => All_e (vmap h wit)
- | Ex_i wit => Ex_i (vmap h wit)
- | r => r
- end.
-
-Instance deriv_vmap : VMap derivation :=
- fun h =>
- fix deriv_vmap d :=
-  let '(Rule r s ds) := d in
-  Rule (vmap h r) (vmap h s) (List.map deriv_vmap ds).
-
-Lemma claim_vmap h d s : Claim d s -> Claim (vmap h d) (vmap h s).
-Proof.
- destruct d. simpl. intros. now f_equal.
-Qed.
-
-Ltac doClaim h :=
- match goal with
- | H : Claim _ _ |- _ => apply (claim_vmap h) in H; exact H
- end.
-
-(*
-Lemma Valid_vmap_direct logic (d:derivation) :
- Valid logic d ->
- forall h, closed_sub h ->
- Valid logic (vmap h d).
-Proof.
- induction 1; intros h CL; cbn; try (econstructor; eauto; doClaim h).
- - constructor. now apply in_map.
- TODO: il faut sans doute personnaliser deriv_vmap dans les cas à quantificateurs
-*)
-
-
-(** TODO: definition of [vmap h d] and direct proof Valid d -> Valid (vmap h d) *)
-
 Lemma Valid_fsubst logic (d:derivation) :
   Valid logic d ->
   forall v t, closed t ->
@@ -326,6 +295,190 @@ Proof.
  intros x. unfold varsubst. case eqbspec; auto.
 Qed.
 
+(** We could even be more specific about the derivation of
+    the substituted sequent : it is roughly the substituted
+    derivation, apart for rules [R_All_i] and [R_Ex_e] were
+    we shift to some fresh variable. *)
+
+Instance vmap_rule : VMap rule_kind :=
+ fun h r =>
+ match r with
+ | All_e wit => All_e (vmap h wit)
+ | Ex_i wit => Ex_i (vmap h wit)
+ | r => r
+ end.
+
+Definition getA ds :=
+ match ds with
+ | (Rule _ (_⊢A) _) :: _ => A
+ | _ => True
+ end.
+
+Instance deriv_vmap : VMap derivation :=
+ fix deriv_vmap h d :=
+  let '(Rule r s ds) := d in
+  match r with
+  | All_i x =>
+    let z := fresh_var (fvars (vmap h s)) in
+    let h' := sub_set x (FVar z) h in
+    Rule (All_i z) (vmap h s) (List.map (deriv_vmap h') ds)
+  | Ex_e x =>
+    let z := fresh_var (Vars.union (fvars (vmap h (getA ds)))
+                                   (fvars (vmap h s))) in
+    let h' := sub_set x (FVar z) h in
+    Rule (Ex_e z) (vmap h s) (List.map (deriv_vmap h') ds)
+  | _ =>
+    Rule (vmap h r) (vmap h s) (List.map (deriv_vmap h) ds)
+  end.
+
+Lemma claim_vmap h d s : Claim d s -> Claim (vmap h d) (vmap h s).
+Proof.
+ destruct d as ([ ],s',ds); simpl; intros <-; auto.
+Qed.
+
+Ltac doClaim h :=
+ match goal with
+ | H : Claim _ _ |- _ => apply (claim_vmap h) in H; exact H
+ end.
+
+Lemma Valid_vmap_direct logic (d:derivation) :
+ Valid logic d ->
+ forall h, closed_sub h ->
+ Valid logic (vmap h d).
+Proof.
+ induction 1; intros h CL; cbn; try (econstructor; eauto; doClaim h).
+ - constructor. now apply in_map.
+ - set (vars:=Vars.union _ _).
+   assert (Hz := fresh_var_ok vars).
+   set (z:=fresh_var vars) in *.
+   set (h':=sub_set x (FVar z) h).
+   constructor.
+   + cbn. varsdec.
+   + apply IHValid, closed_sub_set; auto.
+   + cbn in H.
+     rewrite <- (ctx_sub_set_ext x (FVar z)) by varsdec.
+     rewrite (vmap_bsubst_adhoc h x) by (auto; varsdec).
+     doClaim h'.
+ - rewrite form_vmap_bsubst by auto. constructor; auto.
+   doClaim h.
+ - constructor; auto.
+   rewrite <- form_vmap_bsubst by auto. doClaim h.
+ - fold (getA [d1;d2]).
+   assert (E : getA [d1;d2] = (∃A)%form).
+   { destruct d1. cbn in H2. now subst s. }
+   rewrite E.
+   set (vars:=Vars.union _ _).
+   assert (Hz := fresh_var_ok vars).
+   set (z:=fresh_var vars) in *.
+   set (h':=sub_set x (FVar z) h).
+   apply V_Ex_e with (vmap h A).
+   + cbn. varsdec.
+   + apply IHValid1, closed_sub_set; auto.
+   + apply IHValid2, closed_sub_set; auto.
+   + cbn in H.
+     rewrite <- (ctx_sub_set_ext x (FVar z)) by varsdec.
+     rewrite <- (form_sub_set_ext x (FVar z) h A) by varsdec.
+     doClaim h'.
+   + cbn in H.
+     rewrite <- (ctx_sub_set_ext x (FVar z)) by varsdec.
+     rewrite <- (form_sub_set_ext x (FVar z) h B) by varsdec.
+     rewrite (vmap_bsubst_adhoc h x) by (auto; varsdec).
+     doClaim h'.
+Qed.
+
+(** Same in the case of a simple [fsubst] substitution. *)
+
+Lemma Valid_fsubst_direct logic (d:derivation) v t :
+  closed t ->
+  Valid logic d ->
+  Valid logic (fsubst v t d) /\
+  Claim (fsubst v t d) (fsubst v t (claim d)).
+Proof.
+ intros.
+ split. apply Valid_vmap_direct; auto.
+ intros x. unfold varsubst. case eqbspec; auto.
+ now apply claim_vmap.
+Qed.
+
+(** Thanks to this more precise result, we could say that
+    a closed derivation stays closed after a closed substitution. *)
+
+Lemma level_term_vmap h (t:term) :
+ closed_sub h -> level (vmap h t) <= level t.
+Proof.
+ intros Hh. revert t.
+ fix IH 1. destruct t; cbn; trivial.
+ - now rewrite (Hh v).
+ - revert l. fix IH' 1. destruct l; cbn; trivial.
+   specialize (IH t).
+   specialize (IH' l). omega with *.
+Qed.
+
+Lemma level_form_vmap h (f:formula) :
+ closed_sub h -> level (vmap h f) <= level f.
+Proof.
+ intros Hh.
+ induction f; cbn; auto with *.
+ - apply (level_term_vmap h (Fun "" l) Hh).
+ - omega with *.
+Qed.
+
+Lemma closed_term_vmap h (t:term) :
+ closed_sub h -> closed t -> closed (vmap h t).
+Proof.
+ unfold closed. intros Hh Ht.
+ generalize (level_term_vmap h t Hh). omega.
+Qed.
+
+Lemma closed_form_vmap h (f:formula) :
+ closed_sub h -> closed f -> closed (vmap h f).
+Proof.
+ unfold closed. intros Hh Hf.
+ generalize (level_form_vmap h f Hh). omega.
+Qed.
+
+Lemma closed_ctx_vmap h (c:context) :
+ closed_sub h -> closed c -> closed (vmap h c).
+Proof.
+ unfold closed. intros Hh.
+ induction c as [|f c IH]; cbn; auto.
+ rewrite !max_0. intuition. now apply closed_form_vmap.
+Qed.
+
+Lemma closed_seq_vmap h (s:sequent) :
+ closed_sub h -> closed s -> closed (vmap h s).
+Proof.
+ destruct s as (c,f). intros Hh. unfold closed. cbn.
+ rewrite !max_0. intuition.
+ now apply closed_ctx_vmap.
+ now apply closed_form_vmap.
+Qed.
+
+Lemma closed_deriv_vmap (d:derivation) :
+ closed d -> forall h, closed_sub h -> closed (vmap h d).
+Proof.
+ unfold closed.
+ induction d as [r s ds IH] using derivation_ind'.
+ intros H. cbn in H. rewrite !max_0 in H. destruct H as (Hr & Hs & Hds).
+ assert (IH' : forall h, closed_sub h -> list_max (map level (vmap h ds)) = 0).
+ { intros h Hh. apply list_max_0. intros n.
+   unfold vmap, vmap_list. rewrite map_map.
+   rewrite in_map_iff. intros (d & Hd & Hd').
+   rewrite Forall_forall in IH.
+   rewrite IH in Hd; auto.
+   rewrite list_max_0 in Hds. apply Hds. now apply in_map. }
+ clear IH Hds.
+ intros h Hh; destruct r; cbn; repeat (apply max_0; split);
+ try apply IH'; auto; try apply closed_seq_vmap; auto;
+ try apply closed_sub_set; try apply closed_term_vmap; auto.
+Qed.
+
+Lemma closed_deriv_fsubst (d:derivation) v t :
+ closed d -> closed t -> closed (fsubst v t d).
+Proof.
+ intros. apply closed_deriv_vmap; auto.
+ intros x. unfold varsubst. case eqbspec; auto.
+Qed.
 
 (** Weakening of contexts and sequents *)
 
@@ -455,6 +608,12 @@ Proof.
  now exists d.
 Qed.
 
+(*
+Lemma Valid_weakening_direct logic d :
+  Valid logic d ->
+  forall s', SubsetSeq (claim d) s' ->
+  exists d', Valid logic d' /\ Claim d' s'.
+*)
 (* TODO: direct proof on derivation and Valid ?
    This would allow to know that the new proof is still closed, for instance *)
 
@@ -602,4 +761,43 @@ Proof.
  apply R_Not_e with A; apply R_Ax; cbn; auto.
 Qed.
 
-(** TODO: prove that these classical laws imply Absurd *)
+(** Conversely, with these classical laws, we could
+    simulate the "Reductio ad absurdum" rule.
+    We do this in any logic (which amounts to say intuititionistic) *)
+
+Lemma DoubleNeg_to_Absurdum l Γ A :
+ Pr l (Γ ⊢ ~~A->A) ->
+ Pr l ((~A) :: Γ ⊢ False)%form -> Pr l (Γ ⊢ A).
+Proof.
+ intros DNEG HYP.
+ apply R_Imp_e with (~ ~ A)%form.
+ - apply DNEG.
+ - apply R_Not_i, HYP.
+Qed.
+
+Lemma ExcludedMiddle_to_Absurdum l Γ A :
+ Pr l (Γ ⊢ A \/ ~A)%form ->
+ Pr l ((~A) :: Γ ⊢ False)%form -> Pr l (Γ ⊢ A).
+Proof.
+ intros EM HYP.
+ apply R_Or_e with A (~ A)%form.
+ - apply EM.
+ - apply R'_Ax.
+ - apply R_Fa_e. apply HYP.
+Qed.
+
+Lemma Pierce_to_Absurdum l Γ A :
+ (forall B, Pr l (Γ ⊢ ((A->B)->A)->A)) ->
+ Pr l ((~A) :: Γ ⊢ False)%form -> Pr l (Γ ⊢ A).
+Proof.
+ intros PEI HYP.
+ apply R_Imp_e with ((A->False)->A)%form.
+ - apply PEI.
+ - apply R_Imp_i.
+   apply R_Fa_e.
+   apply R_Imp_e with (~A)%form.
+   apply Pr_pop.
+   apply R_Imp_i; assumption.
+   apply R_Not_i.
+   apply R_Imp_e with A; apply R_Ax; simpl; auto.
+Qed.

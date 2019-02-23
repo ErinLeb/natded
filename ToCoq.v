@@ -103,16 +103,6 @@ Definition interp_seq genv lenv '(Γ⊢C) :=
   interp_ctx genv lenv Γ ->
   interp_form genv lenv C.
 
-Lemma max_0 n m : Nat.max n m = 0 <-> n=0 /\ m=0.
-Proof.
- omega with *.
-Qed.
-
-Lemma list_max_0 l : list_max l = 0 <-> forall n, In n l -> n = 0.
-Proof.
- induction l; simpl; rewrite ?max_0 in *; intuition.
-Qed.
-
 Lemma interp_term_ext genv genv' lenv t :
  (forall v, Vars.In v (fvars t) -> genv v = genv' v) ->
  interp_term genv lenv t = interp_term genv' lenv t.

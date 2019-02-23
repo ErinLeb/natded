@@ -199,3 +199,14 @@ Proof.
  - destruct list_index; simpl in *; intros NE [= <-].
    specialize (IHl n0 eq_refl). auto with arith.
 Qed.
+
+Lemma max_0 n m : Nat.max n m = 0 <-> n=0 /\ m=0.
+Proof.
+ destruct (Nat.max_spec n m) as [(LT,->)|(LE,->)];
+  intuition; subst; inversion LT || now inversion LE.
+Qed.
+
+Lemma list_max_0 l : list_max l = 0 <-> forall n, In n l -> n = 0.
+Proof.
+ induction l; simpl; rewrite ?max_0 in *; intuition; now subst.
+Qed.

@@ -55,6 +55,14 @@ Proof.
  - intros (a & H1 & H2). exists (f a); split; auto using in_map.
 Qed.
 
+Lemma vars_unionmap_in' {A} (f: A -> Vars.t) (l: list A) a v :
+ Vars.In v (f a) -> In a l -> Vars.In v (vars_unionmap f l).
+Proof.
+ intros. apply vars_unionmap_in. now exists a.
+Qed.
+
+Hint Resolve vars_unionmap_in' : set.
+
 Lemma vars_map_in_aux (f : string -> string) l y acc :
  Vars.In y
   (List.fold_left (fun vs a => Vars.add (f a) vs) l acc) <->
@@ -145,6 +153,14 @@ Proof.
  rewrite vars_flatmap_alt, vars_unionmap_in.
  setoid_rewrite <- (Vars.elements_spec1 vs).
  now setoid_rewrite InA_In.
+Qed.
+
+Instance vars_flatmap_subset :
+ Proper (eq ==> Vars.Subset ==> Vars.Subset) vars_flatmap.
+Proof.
+ intros f f' <- s s' E v.
+ rewrite !vars_flatmap_in.
+ intros (w & Hw & Hw'). exists w; auto.
 Qed.
 
 Instance vars_map_proper :

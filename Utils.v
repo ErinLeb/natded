@@ -1,4 +1,4 @@
-Require Import Bool Arith Ascii String AsciiOrder StringOrder List.
+Require Import Bool Arith Omega Ascii String AsciiOrder StringOrder List.
 Import ListNotations.
 Open Scope lazy_bool_scope.
 
@@ -200,13 +200,71 @@ Proof.
    specialize (IHl n0 eq_refl). auto with arith.
 Qed.
 
-Lemma max_0 n m : Nat.max n m = 0 <-> n=0 /\ m=0.
+Lemma max_le n m p : Nat.max n m <= p <-> n <= p /\ m <= p.
 Proof.
- destruct (Nat.max_spec n m) as [(LT,->)|(LE,->)];
-  intuition; subst; inversion LT || now inversion LE.
+ omega with *.
 Qed.
 
-Lemma list_max_0 l : list_max l = 0 <-> forall n, In n l -> n = 0.
+Lemma max_0 n m : Nat.max n m = 0 <-> n=0 /\ m=0.
 Proof.
- induction l; simpl; rewrite ?max_0 in *; intuition; now subst.
+ omega with *.
+Qed.
+
+Lemma max_mono a a' b b' :
+ a <= a' -> b <= b' -> Nat.max a b <= Nat.max a' b'.
+Proof.
+ omega with *.
+Qed.
+
+Lemma list_max_le l p :
+ list_max l <= p <-> (forall n, In n l -> n <= p).
+Proof.
+ induction l; simpl; rewrite ?max_le in *; intuition.
+Qed.
+
+Lemma list_max_0 l :
+ list_max l = 0 <-> forall n, In n l -> n = 0.
+Proof.
+ induction l; simpl; rewrite ?max_0 in *; intuition.
+Qed.
+
+Lemma list_max_map_le {A} (f:A->nat) l p :
+ list_max (map f l) <= p <-> (forall a : A, In a l -> f a <= p).
+Proof.
+ rewrite list_max_le. split.
+ - intros H a Ha. now apply H, in_map.
+ - intros H n. rewrite in_map_iff. intros (a & <- & Ha). auto.
+Qed.
+
+Lemma list_max_map_0 {A} (f:A->nat) l :
+ list_max (map f l) = 0 <-> (forall a : A, In a l -> f a = 0).
+Proof.
+ rewrite list_max_0. split.
+ - intros H a Ha. now apply H, in_map.
+ - intros H n. rewrite in_map_iff. intros (a & <- & Ha). auto.
+Qed.
+
+Lemma list_max_map_incr {A} (f g : A->nat) l :
+ (forall a, In a l -> f a <= g a) ->
+ list_max (map f l) <= list_max (map g l).
+Proof.
+ intros H.
+ induction l; cbn in *; auto.
+ apply max_mono; auto.
+Qed.
+
+Lemma map_ext_iff {A B} (f g : A -> B) l :
+  (forall a : A, In a l -> f a = g a) <-> map f l = map g l.
+Proof.
+ induction l; cbn.
+ - intuition.
+ - split.
+   + intros H. f_equal; auto. apply IHl; auto.
+   + intros [= H H'] b [->|Hb]; rewrite <-?IHl in H'; auto.
+Qed.
+
+Lemma map_id_iff {A} (f : A -> A) l :
+  (forall a : A, In a l -> f a = a) <-> map f l = l.
+Proof.
+ rewrite <- (map_id l) at 2. apply map_ext_iff.
 Qed.

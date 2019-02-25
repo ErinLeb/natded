@@ -2,7 +2,6 @@ Require Import Defs Mix Proofs Meta Omega Setoid Morphisms.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
-Local Open Scope string_scope.
 Local Open Scope eqb_scope.
 
 Set Implicit Arguments.
@@ -107,13 +106,10 @@ Lemma interp_term_ext genv genv' lenv t :
  (forall v, Vars.In v (fvars t) -> genv v = genv' v) ->
  interp_term genv lenv t = interp_term genv' lenv t.
 Proof.
- revert t.
- fix IH 1. destruct t; cbn; auto.
- - intros. apply H. varsdec.
- - intros. case (Mo.(funs) f) as [(n,fn)|]; cbn; auto. clear f.
-   f_equal. clear n fn. revert l H.
-   fix IH' 1. destruct l; cbn; auto.
-   intros E. f_equal; auto with set.
+ induction t as [ | |f l IH] using term_ind'; cbn;
+  intros H; auto with set.
+ case (Mo.(funs) f) as [(n,fn)|]; cbn; auto. f_equal.
+ apply map_ext_in. eauto with set.
 Qed.
 
 Lemma interp_form_ext genv genv' lenv f :
@@ -123,8 +119,8 @@ Proof.
  revert lenv.
  induction f; cbn; auto; intros; f_equal; auto with set.
  - case (Mo.(preds) p) as [(n,fn)|]; cbn; [|reflexivity]; clear p.
-   f_equiv. clear n fn. revert l H. induction l; cbn; auto.
-   intros E. f_equal; auto using interp_term_ext with set.
+   f_equiv. clear n fn. apply map_ext_in.
+   eauto using interp_term_ext with set.
  - rewrite IHf; intuition.
  - destruct o; cbn; rewrite IHf1, IHf2; intuition.
  - destruct q.
@@ -150,19 +146,15 @@ Proof.
 Qed.
 
 Lemma interp_term_more_lenv genv lenv lenv' t :
- (level t <= List.length lenv)%nat ->
+ level t <= List.length lenv ->
  interp_term genv (lenv++lenv') t = interp_term genv lenv t.
 Proof.
- revert t.
- fix IH 1. destruct t; cbn in *; intros H.
+ induction t as [ | |f l IH] using term_ind'; cbn; intros H.
  - reflexivity.
  - rewrite app_nth1; trivial.
- - case (Mo.(funs) f) as [(k,fk)|]; cbn in *; auto.
-   f_equal.
-   clear k fk f.
-   revert l H.
-   fix IH' 1. destruct l; cbn; auto.
-   intros H. f_equal. apply IH. omega with *. apply IH'. omega with *.
+ - case (Mo.(funs) f) as [(k,fk)|]; cbn in *; auto. f_equal.
+   apply map_ext_in.
+   rewrite list_max_map_le in H. auto.
 Qed.
 
 Lemma interp_term_closed genv lenv t :
@@ -174,30 +166,28 @@ Proof.
 Qed.
 
 Lemma interp_term_bsubst genv lenv u m n t :
- (level t <= S n)%nat ->
+ level t <= S n ->
  List.length lenv = n ->
  closed u ->
  interp_term genv [] u = m ->
  interp_term genv (lenv++[m]) t =
   interp_term genv lenv (bsubst n u t).
 Proof.
- revert t.
- fix IH 1. destruct t; cbn; auto; intros LE Hn CL Hu.
+ induction t as [ | |f l IH] using term_ind'; cbn;
+  intros LE Hn CL Hu.
+ - trivial.
  - case eqbspec; intros.
    + rewrite app_nth2; try omega.
      replace (n0 - length lenv) with 0 by omega. cbn.
      now rewrite interp_term_closed.
    + apply app_nth1. omega.
- - case (Mo.(funs) f) as [(k,fk)|]; cbn; auto. f_equal. clear f k fk.
-   revert l LE.
-   fix IH' 1. destruct l; cbn; auto.
-   intros LE. f_equal.
-   apply IH; auto. omega with *.
-   apply IH'; auto. omega with *.
+ - case (Mo.(funs) f) as [(k,fk)|]; cbn; auto. f_equal.
+   rewrite list_max_map_le in LE.
+   rewrite map_map. apply map_ext_in; auto.
 Qed.
 
 Lemma interp_form_bsubst genv lenv u m n f :
- (level f <= S n)%nat ->
+ level f <= S n ->
  List.length lenv = n ->
  closed u ->
  interp_term genv [] u = m ->
@@ -207,12 +197,9 @@ Proof.
  induction f; cbn; auto; intros; f_equal; auto with set.
  - case (Mo.(preds) p) as [(k,fk)|]; cbn; [|reflexivity]; clear p.
    f_equiv.
-   clear k fk.
-   revert l H.
-   induction l; cbn; auto.
-   intros H. f_equal.
-   apply interp_term_bsubst; auto. omega with *.
-   apply IHl; auto. omega with *.
+   rewrite list_max_map_le in H.
+   rewrite map_map. apply map_ext_in.
+   auto using interp_term_bsubst.
  - rewrite (IHf n); intuition.
  - destruct o; cbn; rewrite (IHf1 n), (IHf2 n); intuition; omega with *.
  - destruct q.
@@ -227,7 +214,7 @@ Proof.
 Qed.
 
 Lemma interp_form_bsubst0 genv u m f :
- (level f <= 1)%nat ->
+ level f <= 1 ->
  closed u ->
  interp_term genv [] u = m ->
  interp_form genv [m] f <-> interp_form genv [] (bsubst 0 u f).
@@ -238,7 +225,7 @@ Qed.
 Ltac prove_ext := intros ? ?; cbn; case eqbspec; auto; varsdec.
 
 Lemma interp_form_bsubst_adhoc genv m x f :
- (level f <= 1)%nat ->
+ level f <= 1 ->
  ~Vars.In x (fvars f) ->
  interp_form genv [m] f <->
  interp_form (fun v => if v =? x then m else genv v) []

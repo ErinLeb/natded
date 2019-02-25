@@ -10,12 +10,10 @@ Local Open Scope eqb_scope.
 Lemma closed_bsubst_id n u (t:term) :
  closed t -> bsubst n u t = t.
 Proof.
- unfold closed. intros H. revert t H.
- fix IH 1. destruct t; cbn; try easy.
- intros H. f_equal. clear f.
- revert l H.
- fix IH' 1. destruct l; cbn; try easy.
- intros H. f_equal. apply IH. omega with *. apply IH'. omega with *.
+ unfold closed.
+ induction t as [ | |f l IH] using term_ind'; cbn; try easy.
+ rewrite list_max_map_0.
+ intros H. f_equal. apply map_id_iff. intuition.
 Qed.
 
 (** [vmap] basic results : extensionality, identity, composition *)
@@ -24,11 +22,8 @@ Lemma term_vmap_ext h h' (t:term) :
  (forall v:variable, Vars.In v (fvars t) -> h v = h' v) ->
  vmap h t = vmap h' t.
 Proof.
- revert t.
- fix IH 1; destruct t; cbn; intros E; trivial.
- - auto with set.
- - f_equal. clear f. revert l E.
-   fix IH' 1; destruct l; cbn; intros; f_equal; auto with set.
+ induction t as [ | |f l IH] using term_ind'; cbn; auto with set.
+ intros H. f_equal. apply map_ext_in; eauto with set.
 Qed.
 
 Lemma form_vmap_ext h h' (f:formula) :
@@ -60,11 +55,8 @@ Lemma term_vmap_id h (t:term) :
  (forall v:variable, Vars.In v (fvars t) -> h v = FVar v) ->
  vmap h t = t.
 Proof.
- revert t.
- fix IH 1; destruct t; cbn; intros E; trivial.
- - auto with set.
- - f_equal. clear f. revert l E.
-   fix IH' 1; destruct l; cbn; intros; f_equal; auto with set.
+ induction t as [ | |f l IH] using term_ind'; cbn; auto with set.
+ intros H. f_equal. apply map_id_iff; eauto with set.
 Qed.
 
 Lemma form_vmap_id h (f:formula) :
@@ -86,10 +78,8 @@ Qed.
 Lemma term_vmap_vmap h h' (t:term) :
  vmap h (vmap h' t) = vmap (fun v => vmap h (h' v)) t.
 Proof.
- revert t.
- fix IH 1; destruct t; cbn; trivial.
- f_equal. clear f. revert l.
- fix IH' 1; destruct l; cbn; f_equal; auto.
+ induction t as [ | |f l IH] using term_ind'; cbn; trivial.
+ f_equal. rewrite map_map. apply map_ext_in; auto.
 Qed.
 
 Lemma form_vmap_vmap h h' (f:formula) :
@@ -112,14 +102,13 @@ Lemma term_fvars_vmap h (t:term) :
     (fvars (vmap h t))
     (vars_flatmap (fun v => fvars (h v)) (fvars t)).
 Proof.
- revert t.
- fix IH 1. destruct t; cbn.
+ induction t as [ | |f l IH] using term_ind'; cbn.
  - varsdec.
  - varsdec.
- - clear f. revert l. fix IH' 1. destruct l; cbn.
-   + varsdec.
-   + specialize (IH t). specialize (IH' l).
-     rewrite vars_flatmap_union. varsdec.
+ - intros v. rewrite vars_unionmap_in. intros (a & Ha & Ha').
+   rewrite in_map_iff in Ha'. destruct Ha' as (t & <- & Ht).
+   generalize (IH t Ht v Ha). apply vars_flatmap_subset; auto.
+   intro. eauto with set.
 Qed.
 
 Lemma form_fvars_vmap h (f:formula) :
@@ -163,12 +152,10 @@ Lemma term_vmap_bsubst h n u (t:term) :
  vmap h (bsubst n u t) = bsubst n (vmap h u) (vmap h t).
 Proof.
  intros CL.
- revert t.
- fix IH 1. destruct t; cbn.
+ induction t as [ | | f l IH] using term_ind'; cbn.
  - symmetry. apply closed_bsubst_id. apply CL.
  - auto with eqb.
- - f_equal. clear f.
-   revert l. fix IH' 1. destruct l; simpl; f_equal; auto.
+ - f_equal. rewrite !map_map. now apply map_ext_in.
 Qed.
 
 Lemma form_vmap_bsubst h n u (f:formula) :
@@ -406,12 +393,11 @@ Qed.
 Lemma level_term_vmap h (t:term) :
  closed_sub h -> level (vmap h t) <= level t.
 Proof.
- intros Hh. revert t.
- fix IH 1. destruct t; cbn; trivial.
+ intros Hh.
+ induction t as [ | |f l IH] using term_ind'; cbn.
  - now rewrite (Hh v).
- - revert l. fix IH' 1. destruct l; cbn; trivial.
-   specialize (IH t).
-   specialize (IH' l). omega with *.
+ - trivial.
+ - rewrite map_map. now apply list_max_map_incr.
 Qed.
 
 Lemma level_form_vmap h (f:formula) :

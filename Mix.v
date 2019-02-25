@@ -618,6 +618,25 @@ Proof.
  intros [] []; cons.
 Qed.
 
+(** Better induction principle on terms *)
+
+Lemma term_ind' (P: term -> Prop) :
+  (forall v, P (FVar v)) ->
+  (forall n, P (BVar n)) ->
+  (forall f args, (forall a, In a args -> P a) -> P (Fun f args)) ->
+  forall t, P t.
+Proof.
+ intros Hv Hn Hl.
+ fix IH 1. destruct t.
+ - apply Hv.
+ - apply Hn.
+ - apply Hl.
+   revert l.
+   fix IH' 1. destruct l.
+   + intros a [ ].
+   + intros a [<-|Ha]. apply IH. apply (IH' l a Ha).
+Qed.
+
 (** Induction principle on derivations with correct
     handling of sub-derivation lists. *)
 

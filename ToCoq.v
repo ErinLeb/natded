@@ -278,7 +278,7 @@ Ltac substClaim :=
  repeat match goal with
  | H : Claim _ _ |- _ => red in H; rewrite H in * end.
 
-Lemma correctness (logic:Mix.logic)(d:derivation) :
+Lemma correctness (logic:Defs.logic)(d:derivation) :
  CoqRequirements logic ->
  Valid logic d ->
  closed d ->

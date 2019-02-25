@@ -133,3 +133,19 @@ Instance : EqbSpec quant.
 Proof.
  intros [ ] [ ]; now constructor.
 Qed.
+
+(** Which logic are we using : classical or intuitionistic ? *)
+
+Inductive logic := Classic | Intuiti.
+
+Instance logic_eqb : Eqb logic :=
+  fun l1 l2 =>
+    match l1, l2 with
+    | Classic, Classic | Intuiti, Intuiti => true
+    | _, _ => false
+    end.
+
+Instance : EqbSpec logic.
+Proof.
+ intros [ ] [ ]; now constructor.
+Qed.

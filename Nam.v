@@ -346,7 +346,7 @@ Instance seq_eqb : Eqb sequent :=
 
 (** Derivation *)
 
-Inductive rule_name :=
+Inductive rule_kind :=
   | Ax
   | Tr_i
   | Fa_e
@@ -359,14 +359,12 @@ Inductive rule_name :=
   | Absu.
 
 Inductive derivation :=
-  | Rule : rule_name -> sequent -> list derivation -> derivation.
+  | Rule : rule_kind -> sequent -> list derivation -> derivation.
 
-Definition dseq '(Rule _ s _) := s.
-
-Inductive logic := Classic | Intuiti.
+Definition claim '(Rule _ s _) := s.
 
 Definition valid_deriv_step logic '(Rule r s ld) :=
-  match r, s, List.map dseq ld with
+  match r, s, List.map claim ld with
   | Ax,     (Γ ⊢ A), [] => List.existsb (alpha_equiv A) Γ
   | Tr_i,   (_ ⊢ True), [] => true
   | Fa_e,   (Γ ⊢ _), [s] => s =? (Γ ⊢ False)
@@ -394,10 +392,7 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
      (s =? (Γ ⊢ B)) &&& (s1 =? (Γ ⊢ ∃x, A)) &&&
      negb (Vars.mem x (freevars_seq s))
   | Absu, s, [Not A::Γ ⊢ False] =>
-    match logic with
-    | Classic => (s =? (Γ ⊢ A))
-    | Intuiti => false
-    end
+    (logic =? Classic) &&& (s =? (Γ ⊢ A))
   | _,_,_ => false
   end.
 

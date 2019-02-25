@@ -460,15 +460,6 @@ Instance check_derivation : Check derivation :=
 (** Validity of a derivation : is it using correct rules
     of classical logic (resp. intuitionistic logic) ? *)
 
-Inductive logic := Classic | Intuiti.
-
-Instance logic_eqb : Eqb logic :=
-  fun l1 l2 =>
-    match l1, l2 with
-    | Classic, Classic | Intuiti, Intuiti => true
-    | _, _ => false
-    end.
-
 Definition valid_deriv_step logic '(Rule r s ld) :=
   match r, s, List.map claim ld with
   | Ax,     (Γ ⊢ A), [] => list_mem A Γ
@@ -611,11 +602,6 @@ Qed.
 Instance : EqbSpec sequent.
 Proof.
  intros [] []. cbn. repeat (case eqbspec; try cons).
-Qed.
-
-Instance : EqbSpec logic.
-Proof.
- intros [] []; cons.
 Qed.
 
 (** Better induction principle on terms *)

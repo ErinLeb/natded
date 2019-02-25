@@ -608,14 +608,101 @@ Proof.
  now exists d.
 Qed.
 
-(*
+Fixpoint subset_deriv (c:context)(d:derivation) : derivation :=
+  match d with
+  | Rule Not_i (_⊢~A) [d1] =>
+    Rule Not_i (c⊢~A) [subset_deriv (A::c) d1]
+  | Rule Or_e (_⊢f) [(Rule _ (_⊢A\/B) _ as d1);d2;d3] =>
+    Rule Or_e (c⊢f)
+     [subset_deriv c d1; subset_deriv (A::c) d2; subset_deriv (B::c) d3]
+  | Rule Imp_i (_⊢A->B) [d1] =>
+    Rule Imp_i (c⊢A->B) [subset_deriv (A::c) d1]
+  | Rule (All_i x) (_⊢f) [d1] =>
+    let z := fresh_var (Vars.add x (fvars (c⊢f))) in
+    let h' := sub_rename x z in
+    let cz := vmap h' c in
+    let d' := Rule (All_i x) (cz⊢f) [subset_deriv cz d1] in
+    vmap (sub_rename z x) d'
+  | Rule (Ex_e x) (_⊢f) [(Rule _ (_ ⊢ ∃A) _ as d1);d2] =>
+    let z := fresh_var (Vars.add x (fvars (A::c⊢f))) in
+    let h' := sub_rename x z in
+    let cz := vmap h' c in
+    let ds' :=
+     [subset_deriv cz d1; subset_deriv ((bsubst 0 (FVar x) A)::cz) d2] in
+    let d' := Rule (Ex_e x) (cz⊢f) ds' in
+    vmap (sub_rename z x) d'
+  | Rule Absu (_⊢f) [d1] =>
+    Rule Absu (c⊢f) [subset_deriv ((~f)::c) d1]%form
+  | Rule r (_⊢f) ds =>
+    Rule r (c⊢f) (List.map (subset_deriv c) ds)
+  end.
+
+Ltac break :=
+ match goal with
+ | |- context [match ?x with _ => _ end] => destruct x; break
+ | _ => idtac
+ end.
+
+Lemma claim_subset c c' d f :
+ Claim d (c⊢f) -> Claim (subset_deriv c' d) (c'⊢f).
+Proof.
+ destruct d as (r,(c0,f0),ds). intros [= -> ->].
+ destruct r; cbn -[fresh_var vmap]; break; auto.
+ - set (vars := Vars.add v _).
+   assert (Hz := fresh_var_ok vars).
+   set (z := fresh_var vars) in *.
+   cbn -[fresh_var]. f_equal.
+   + apply ctx_rename_rename. varsdec.
+   + apply form_rename_id. varsdec.
+ - set (vars := Vars.add v _).
+   assert (Hz := fresh_var_ok vars).
+   set (z := fresh_var vars) in *.
+   cbn -[fresh_var]. f_equal.
+   + apply ctx_rename_rename. varsdec.
+   + apply form_rename_id. varsdec.
+Qed.
+
 Lemma Valid_weakening_direct logic d :
   Valid logic d ->
-  forall s', SubsetSeq (claim d) s' ->
-  exists d', Valid logic d' /\ Claim d' s'.
-*)
-(* TODO: direct proof on derivation and Valid ?
-   This would allow to know that the new proof is still closed, for instance *)
+  forall f c c',
+    Claim d (c⊢f) -> ListSubset c c' ->
+    Valid logic (subset_deriv c' d).
+Proof.
+ induction 1; intros f c c' [= <- <-] SU; cbn -[fresh_var vmap];
+ try (econstructor; eauto using claim_subset; fail).
+ - destruct d1. cbn in H2; subst s.
+   econstructor; eauto using claim_subset.
+ - set (vars := Vars.add x _).
+   assert (Hz := fresh_var_ok vars).
+   set (z := fresh_var vars) in *.
+   set (h := sub_rename x z).
+   apply Valid_vmap_direct; auto using sub_rename_closed.
+   cbn in H.
+   constructor; eauto using claim_subset.
+   + unfold h. cbn - [z vmap sub_rename].
+     generalize (vmap_rename_notIn x z c'). varsdec.
+   + eapply IHValid; eauto.
+     rewrite <- (ctx_rename_id x z Γ) by varsdec.
+     now apply ListSubset_map.
+ - destruct d1. cbn in H2; subst s.
+   set (vars := Vars.add x _).
+   assert (Hz := fresh_var_ok vars).
+   set (z := fresh_var vars) in *.
+   set (h := sub_rename x z).
+   apply Valid_vmap_direct; auto using sub_rename_closed.
+   cbn in H.
+   econstructor; eauto using claim_subset.
+   + unfold h. cbn - [z vmap sub_rename].
+     generalize (vmap_rename_notIn x z c'). varsdec.
+   + eapply IHValid1; eauto.
+     rewrite <- (ctx_rename_id x z Γ) by varsdec.
+     now apply ListSubset_map.
+   + eapply IHValid2; eauto.
+     apply ListSubset_cons.
+     rewrite <- (ctx_rename_id x z Γ) by varsdec.
+     now apply ListSubset_map.
+Qed.
+
 
 (** Some examples of weakening *)
 
@@ -641,6 +728,37 @@ Lemma Pr_swap logic A B C Γ :
 Proof.
  intros. eapply Pr_weakening; eauto. constructor.
  intro. cbn. intuition.
+Qed.
+
+Lemma Valid_pop logic A B Γ d :
+ Valid logic d -> Claim d (Γ ⊢ A) ->
+ let d' := subset_deriv (B::Γ) d in
+ Valid logic d' /\ Claim d' (B::Γ ⊢ A).
+Proof.
+ intros. split. eapply Valid_weakening_direct; eauto.
+ intro. cbn. intuition.
+ eapply claim_subset; eauto.
+Qed.
+
+Lemma Valid_dup logic A B Γ d :
+ Valid logic d -> Claim d (A::Γ ⊢ B) ->
+ let d' := subset_deriv (A::A::Γ) d in
+ Valid logic d' /\ Claim d' (A::A::Γ ⊢ B).
+Proof.
+ intros. split. eapply Valid_weakening_direct; eauto.
+ intro. cbn. intuition.
+ eapply claim_subset; eauto.
+Qed.
+
+
+Lemma Valid_swap logic A B C Γ d :
+ Valid logic d -> Claim d (A::B::Γ ⊢ C) ->
+ let d' := subset_deriv (B::A::Γ) d in
+ Valid logic d' /\ Claim d' (B::A::Γ ⊢ C).
+Proof.
+ intros. split. eapply Valid_weakening_direct; eauto.
+ intro. cbn. intuition.
+ eapply claim_subset; eauto.
 Qed.
 
 (** Admissible rules *)
@@ -800,4 +918,36 @@ Proof.
    apply R_Imp_i; assumption.
    apply R_Not_i.
    apply R_Imp_e with A; apply R_Ax; simpl; auto.
+Qed.
+
+(** One example of classic law through its derivation *)
+
+Definition Excluded_Middle_core_deriv A :=
+ Rule Not_i ([] ⊢ ~~(A\/~A))
+  [Rule Not_e ([~(A\/~A)] ⊢ False)
+    [Rule Or_i2 ([~(A\/~A)] ⊢ A\/~A)
+      [Rule Not_i ([~(A\/~A)] ⊢ ~A)
+        [Rule Not_e ([A;~(A\/~A)] ⊢ False)
+          [Rule Or_i1 ([A;~(A\/~A)] ⊢ A\/~A)
+            [Rule Ax ([A;~(A\/~A)] ⊢ A) []];
+           Rule Ax ([A;~(A\/~A)] ⊢ ~(A\/~A)) []]]];
+     Rule Ax ([~(A\/~A)] ⊢ ~(A\/~A)) []]]%form.
+
+Lemma Excluded_Middle_core_valid logic A :
+ Valid logic (Excluded_Middle_core_deriv A).
+Proof.
+ unfold Excluded_Middle_core_deriv.
+ repeat (econstructor; eauto; unfold In; intuition).
+Qed.
+
+Definition Excluded_Middle_deriv A :=
+ Rule Absu ([] ⊢ A\/~A)
+  (let '(Rule _ _ ds) := Excluded_Middle_core_deriv A in ds).
+
+Lemma Excluded_Middle_valid A :
+ Valid Classic (Excluded_Middle_deriv A).
+Proof.
+ unfold Excluded_Middle_deriv.
+ unfold Excluded_Middle_core_deriv.
+ repeat (econstructor; eauto; unfold In; intuition).
 Qed.

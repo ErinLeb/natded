@@ -241,25 +241,25 @@ Definition suboutvars (sub : subst) :=
 Definition subvars (sub : subst) :=
   Vars.union (subinvars sub) (suboutvars sub).
 
-Fixpoint formula_substs sub f :=
+Fixpoint form_substs sub f :=
  match f with
   | True | False => f
   | Pred p args => Pred p (List.map (term_substs sub) args)
-  | Not f => Not (formula_substs sub f)
-  | Op o f f' => Op o (formula_substs sub f) (formula_substs sub f')
+  | Not f => Not (form_substs sub f)
+  | Op o f f' => Op o (form_substs sub f) (form_substs sub f')
   | Quant q v f' =>
     let sub := List.filter (fun '(x,_) => x =? v) sub in
     let out_vars := suboutvars sub in
     if negb (Vars.mem v out_vars) then
-      Quant q v (formula_substs sub f')
+      Quant q v (form_substs sub f')
     else
       (* variable capture : we change v into a fresh variable first *)
       let z := fresh_var (vars_unions [allvars f; out_vars; subinvars sub])
       in
-      Quant q z (formula_substs ((v,Var z)::sub) f')
+      Quant q z (form_substs ((v,Var z)::sub) f')
  end.
 
-Definition formula_subst v t f := formula_substs [(v,t)] f.
+Definition form_subst v t f := form_substs [(v,t)] f.
 
 Instance term_eqb : Eqb term :=
  fix term_eqb t1 t2 :=
@@ -317,7 +317,7 @@ Definition allvars_ctx Γ := vars_unionmap allvars Γ.
 
 Definition freevars_ctx Γ := vars_unionmap freevars Γ.
 
-Definition ctx_subst v t Γ := List.map (formula_subst v t) Γ.
+Definition ctx_subst v t Γ := List.map (form_subst v t) Γ.
 
 (** Sequent *)
 
@@ -339,7 +339,7 @@ Definition freevars_seq '(Γ ⊢ A) :=
   Vars.union (freevars_ctx Γ) (freevars A).
 
 Definition seq_subst v t '(Γ ⊢ A) :=
-  (ctx_subst v t Γ, formula_subst v t A).
+  (ctx_subst v t Γ, form_subst v t A).
 
 Instance seq_eqb : Eqb sequent :=
  fun '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) => (Γ1 =? Γ2) &&& (A1 =? A2).
@@ -385,9 +385,9 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
   | All_i x,  s, [Γ ⊢ A] =>
      (s =? (Γ ⊢ ∀x,A)) &&& negb (Vars.mem x (freevars_ctx Γ))
   | All_e t, (Γ ⊢ B), [Γ'⊢ ∀x,A] =>
-    (Γ =? Γ') &&& (B =? formula_subst x t A)
+    (Γ =? Γ') &&& (B =? form_subst x t A)
   | Ex_i t,  (Γ ⊢ ∃x,A), [Γ'⊢B] =>
-    (Γ =? Γ') &&& (B =? formula_subst x t A)
+    (Γ =? Γ') &&& (B =? form_subst x t A)
   | Ex_e x,  s, [s1; A::Γ ⊢ B] =>
      (s =? (Γ ⊢ B)) &&& (s1 =? (Γ ⊢ ∃x, A)) &&&
      negb (Vars.mem x (freevars_seq s))

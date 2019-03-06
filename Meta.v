@@ -446,7 +446,7 @@ Proof.
  unfold closed.
  induction d as [r s ds IH] using derivation_ind'.
  intros H. cbn in H. rewrite !max_0 in H. destruct H as (Hr & Hs & Hds).
- assert (IH' : forall h, closed_sub h -> list_max (map level (vmap h ds)) = 0).
+ assert (IH' : forall h, closed_sub h -> list_max (map level (map (vmap h) ds)) = 0).
  { intros h Hh. apply list_max_0. intros n.
    unfold vmap, vmap_list. rewrite map_map.
    rewrite in_map_iff. intros (d & Hd & Hd').

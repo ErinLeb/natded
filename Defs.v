@@ -79,7 +79,7 @@ Definition vars_flatmap (f:string->Vars.t) (vs : Vars.t) :=
 
 (** [fresh_var vars] : gives a new variable not in the set [vars]. *)
 
-Fixpoint fresh_var_loop (vars:Vars.t) (id:string) n :=
+Fixpoint fresh_var_loop (vars:Vars.t) (id:string) n : variable :=
   match n with
   | O => id
   | S n => if negb (Vars.mem id vars) then id

@@ -8,6 +8,7 @@ Utils.v
 Defs.v
 Nam.v
 Alpha.v
+AlphaAlt.v
 Mix.v
 Proofs.v
 Equiv.v

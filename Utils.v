@@ -171,6 +171,16 @@ Proof.
    + destruct list_index; simpl. intuition easy. intuition.
 Qed.
 
+Lemma list_index_notin {A}`{EqbSpec A} (l : list A) x :
+  list_index x l = None <-> ~In x l.
+Proof.
+ induction l as [|a l IH]; simpl.
+ - easy.
+ - case eqbspec.
+   + intros <-. intuition discriminate.
+   + destruct list_index; simpl. intuition easy. intuition.
+Qed.
+
 Lemma list_index_nth {A}`{EqbSpec A} (l : list A) n d :
  NoDup l ->
  n < List.length l ->

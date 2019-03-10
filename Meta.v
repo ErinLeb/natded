@@ -7,13 +7,32 @@ Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
+(** [bsubst] above the level does nothing *)
+
+Lemma term_level_bsubst_id n u (t:term) :
+ level t <= n -> bsubst n u t = t.
+Proof.
+ induction t as [ | |f l IH] using term_ind'; cbn; try easy.
+ - case eqbspec; auto. intros ->. omega.
+ - intros LE.
+   rewrite list_max_map_le in LE. f_equal. apply map_id_iff. intuition.
+Qed.
+
+Lemma form_level_bsubst_id n u (f:formula) :
+ level f <= n -> bsubst n u f = f.
+Proof.
+ revert n.
+ induction f; cbn; intros n LE; f_equal; auto.
+ - injection (term_level_bsubst_id n u (Fun "" l)); cbn; auto.
+ - apply IHf1. omega with *.
+ - apply IHf2. omega with *.
+ - apply IHf. omega with *.
+Qed.
+
 Lemma closed_bsubst_id n u (t:term) :
  closed t -> bsubst n u t = t.
 Proof.
- unfold closed.
- induction t as [ | |f l IH] using term_ind'; cbn; try easy.
- rewrite list_max_map_0.
- intros H. f_equal. apply map_id_iff. intuition.
+ unfold closed. intros. apply term_level_bsubst_id. auto with *.
 Qed.
 
 (** [vmap] basic results : extensionality, identity, composition *)

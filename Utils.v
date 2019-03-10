@@ -210,6 +210,49 @@ Proof.
    specialize (IHl n0 eq_refl). auto with arith.
 Qed.
 
+Lemma list_index_app_l {A}`{EqbSpec A} x (l l' : list A) :
+ In x l ->
+ list_index x (l++l') = list_index x l.
+Proof.
+ induction l; simpl; try easy.
+ case eqbspec; auto.
+ intros NE Hl. rewrite IHl; auto. intuition. congruence.
+Qed.
+
+Lemma list_index_app_l' {A}`{EqbSpec A} x (l l' : list A) :
+ ~In x l' ->
+ list_index x (l++l') = list_index x l.
+Proof.
+ induction l; simpl.
+ - apply list_index_notin.
+ - case eqbspec; auto.
+   intros NE Hl. now rewrite IHl.
+Qed.
+
+Lemma list_index_app_r {A}`{EqbSpec A} x (l l' : list A) :
+ ~In x l ->
+ list_index x (l++l') =
+  option_map (Nat.add (length l)) (list_index x l').
+Proof.
+ induction l; simpl.
+ - now destruct (list_index x l').
+ - case eqbspec.
+   + intros ->. intuition.
+   + intros NE Hl. rewrite IHl by intuition. now destruct (list_index x l').
+Qed.
+
+Lemma list_assoc_index_none {A B}`{EqbSpec A} x (l:list (A*B)) :
+  list_assoc x l = None <-> list_index x (map fst l) = None.
+Proof.
+ induction l as [|(a,b) l IH]; simpl; auto.
+ intuition.
+ case eqbspec; try easy.
+ intros NE. rewrite IH.
+ destruct list_index; simpl; intuition congruence.
+Qed.
+
+(** Max and lists *)
+
 Lemma max_le n m p : Nat.max n m <= p <-> n <= p /\ m <= p.
 Proof.
  omega with *.
@@ -262,6 +305,8 @@ Proof.
  induction l; cbn in *; auto.
  apply max_mono; auto.
 Qed.
+
+(** Map *)
 
 Lemma map_ext_iff {A B} (f g : A -> B) l :
   (forall a : A, In a l -> f a = g a) <-> map f l = map g l.

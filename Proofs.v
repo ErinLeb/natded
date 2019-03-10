@@ -19,6 +19,12 @@ Proof.
  rewrite <- Vars.mem_spec. now case Vars.mem.
 Qed.
 
+Lemma vars_of_list_in l x : Vars.In x (vars_of_list l) <-> In x l.
+Proof.
+ induction l as [|y l IH]; simpl. varsdec.
+ VarsF.set_iff. intuition.
+Qed.
+
 Lemma InA_In {A} x (l:list A) : InA eq x l <-> In x l.
 Proof.
  split.

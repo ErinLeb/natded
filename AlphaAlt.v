@@ -10,22 +10,6 @@ Local Open Scope eqb_scope.
 
 Arguments Vars.union _ _ : simpl nomatch.
 
-Lemma term_substs_notin h t :
- Vars.Empty (Vars.inter (term_vars t) (subinvars h)) ->
- term_substs h t = t.
-Proof.
- induction t as [v |f l IH] using term_ind'; intros EM; cbn in *.
- - rewrite list_assoc_dft_alt.
-   assert (NI : ~In v (map fst h)).
-   { rewrite <- Nam2MixProof.subinvars_in. varsdec. }
-   rewrite <- list_assoc_notin in NI. now rewrite NI.
- - f_equal. clear f.
-   apply map_id_iff.
-   intros a Ha. apply IH; auto. intros v. VarsF.set_iff. intros (Hv,Hv').
-   apply (EM v). VarsF.set_iff. split; auto.
-   rewrite vars_unionmap_in. now exists a.
-Qed.
-
 Lemma subinvars_filter v h :
   Vars.Equal (subinvars (filter (fun '(x, _) => negb (x =? v)) h))
              (Vars.remove v (subinvars h)).
@@ -37,32 +21,7 @@ Proof.
    + intros NE. rewrite IH. varsdec.
 Qed.
 
-Lemma nam2mix_term_subst stk x u t:
- ~In x stk ->
- nam2mix_term stk (term_subst x u t) =
- Mix.fsubst x (nam2mix_term stk u) (nam2mix_term stk t).
-Proof.
- induction t as [v|f l IH] using term_ind'; intros NI; cbn.
- - case eqbspec.
-   + intros ->.
-     rewrite <-list_index_notin in NI. rewrite NI.
-     cbn. unfold Mix.varsubst. now rewrite eqb_refl.
-   + intros NE.
-     cbn.
-     destruct (list_index v stk); cbn; auto.
-     unfold Mix.varsubst. case eqbspec; congruence.
- - f_equal; clear f.
-   rewrite !map_map.
-   apply map_ext_in. intros t Ht. apply IH; auto.
-Qed.
-
-Definition vars_of_list := fold_right Vars.add Vars.empty.
-
-Lemma vars_of_list_in l x : Vars.In x (vars_of_list l) <-> In x l.
-Proof.
- induction l as [|y l IH]; simpl. varsdec.
- VarsF.set_iff. intuition.
-Qed.
+(** [nam2mix] and free variables *)
 
 Lemma nam2mix_tvars stk t :
   Vars.Equal (Mix.fvars (nam2mix_term stk t))
@@ -92,6 +51,8 @@ Proof.
  - rewrite IHf. simpl. varsdec.
 Qed.
 
+(** [nam2mix] and modifying the stack *)
+
 Lemma nam2mix_term_indep stk t :
  (forall v, In v stk -> ~Vars.In v (term_vars t)) ->
  nam2mix_term stk t = nam2mix_term [] t.
@@ -107,6 +68,69 @@ Proof.
    apply IH'. intros v Hv. specialize (Hl v Hv). varsdec.
 Qed.
 
+Lemma nam2mix_term_shadowstack stk x t :
+ In x stk ->
+ nam2mix_term (stk++[x]) t = nam2mix_term stk t.
+Proof.
+ induction t as [v|f l IH] using term_ind'; cbn in *.
+ - intros IN.
+   case (eqbspec v x).
+   + intros ->.
+     now rewrite list_index_app_l.
+   + intros NE. rewrite list_index_app_l'; auto. simpl; intuition.
+ - intros IN.
+   f_equal. apply map_ext_iff; auto.
+Qed.
+
+Lemma nam2mix_shadowstack stk x f :
+ In x stk ->
+ nam2mix (stk++[x]) f = nam2mix stk f.
+Proof.
+ revert stk.
+ induction f; cbn in *; intros stk IN; f_equal; auto.
+ - now injection (nam2mix_term_shadowstack stk x (Fun "" l)).
+ - apply (IHf (v::stk)). now right.
+Qed.
+
+(** [term_substs] may do nothing *)
+
+Lemma term_substs_notin h t :
+ Vars.Empty (Vars.inter (term_vars t) (subinvars h)) ->
+ term_substs h t = t.
+Proof.
+ induction t as [v |f l IH] using term_ind'; intros EM; cbn in *.
+ - rewrite list_assoc_dft_alt.
+   assert (NI : ~In v (map fst h)).
+   { rewrite <- Nam2MixProof.subinvars_in. varsdec. }
+   rewrite <- list_assoc_notin in NI. now rewrite NI.
+ - f_equal. clear f.
+   apply map_id_iff.
+   intros a Ha. apply IH; auto. intros v. VarsF.set_iff. intros (Hv,Hv').
+   apply (EM v). VarsF.set_iff. split; auto.
+   rewrite vars_unionmap_in. now exists a.
+Qed.
+
+(* Unused for the moment *)
+Lemma nam2mix_term_subst stk x u t:
+ ~In x stk ->
+ nam2mix_term stk (term_subst x u t) =
+ Mix.fsubst x (nam2mix_term stk u) (nam2mix_term stk t).
+Proof.
+ induction t as [v|f l IH] using term_ind'; intros NI; cbn.
+ - case eqbspec.
+   + intros ->.
+     rewrite <-list_index_notin in NI. rewrite NI.
+     cbn. unfold Mix.varsubst. now rewrite eqb_refl.
+   + intros NE.
+     cbn.
+     destruct (list_index v stk); cbn; auto.
+     unfold Mix.varsubst. case eqbspec; congruence.
+ - f_equal; clear f.
+   rewrite !map_map.
+   apply map_ext_in. intros t Ht. apply IH; auto.
+Qed.
+
+(* Unused for the moment *)
 Lemma nam2mix_subst stk x u f :
  ~In x stk ->
  (forall v, In v stk -> ~Vars.In v (term_vars u)) ->
@@ -173,6 +197,7 @@ Proof.
 Admitted.
 *)
 
+(* Unused for the moment *)
 Lemma nam2mix0_subst x u f :
  IsSimple x u f ->
  nam2mix [] (partialsubst x u f) =
@@ -181,37 +206,7 @@ Proof.
  apply nam2mix_subst; auto.
 Qed.
 
-Lemma list_index_app_r {A}`{EqbSpec A} x (l l' : list A) :
- ~In x l ->
- list_index x (l++l') = option_map (Nat.add (length l)) (list_index x l').
-Proof.
- induction l; simpl.
- - now destruct (list_index x l').
- - case eqbspec.
-   + intros ->. intuition.
-   + intros NE Hl. rewrite IHl by intuition. now destruct (list_index x l').
-Qed.
-
-Lemma list_index_app_l {A}`{EqbSpec A} x (l l' : list A) :
- ~In x l' ->
- list_index x (l++l') = list_index x l.
-Proof.
- induction l; simpl.
- - apply list_index_notin.
- - case eqbspec; auto.
-   intros NE Hl. now rewrite IHl.
-Qed.
-
-Lemma list_index_app_l' {A}`{EqbSpec A} x (l l' : list A) :
- In x l ->
- list_index x (l++l') = list_index x l.
-Proof.
- induction l; simpl; try easy.
- case eqbspec; auto.
- intros NE Hl. rewrite IHl; auto. intuition. congruence.
-Qed.
-
-Lemma termsubst_bsubst stk x z t :
+Lemma term_subst_bsubst stk x z t :
  ~In x stk ->
  ~In z stk ->
  ~Vars.In z (term_vars t) ->
@@ -226,7 +221,7 @@ Proof.
      rewrite list_index_app_r; auto. cbn. rewrite eqb_refl. cbn.
      rewrite Nat.add_0_r. now rewrite eqb_refl.
    + intros NE. cbn.
-     rewrite list_index_app_l by (simpl; intuition).
+     rewrite list_index_app_l' by (simpl; intuition).
      destruct (list_index v stk) eqn:E; cbn; auto.
      apply list_index_lt_length in E.
      change Vars.elt with variable in *.
@@ -235,50 +230,6 @@ Proof.
    rewrite !map_map.
    apply map_ext_in. intros t Ht. apply IH; auto.
    contradict Z2. rewrite vars_unionmap_in. now exists t.
-Qed.
-
-Lemma nam2mix_term_hidden stk x t :
- In x stk ->
- nam2mix_term (stk++[x]) t = nam2mix_term stk t.
-Proof.
- induction t as [v|f l IH] using term_ind'; cbn in *.
- - intros IN.
-   case (eqbspec v x).
-   + intros ->.
-     now rewrite list_index_app_l'.
-   + intros NE. rewrite list_index_app_l; auto. simpl; intuition.
- - intros IN.
-   f_equal. apply map_ext_iff; auto.
-Qed.
-
-Lemma nam2mix_hidden stk x f :
- In x stk ->
- nam2mix (stk++[x]) f = nam2mix stk f.
-Proof.
- revert stk.
- induction f; cbn in *; intros stk IN; f_equal; auto.
- - now injection (nam2mix_term_hidden stk x (Fun "" l)).
- - apply (IHf (v::stk)). now right.
-Qed.
-
-Lemma term_level_bsubst_id n u (t:Mix.term) :
- Mix.level t <= n -> Mix.bsubst n u t = t.
-Proof.
- induction t as [ | |f l IH] using Mix.term_ind'; cbn; try easy.
- - case eqbspec; auto. intros ->. omega.
- - intros LE.
-   rewrite list_max_map_le in LE. f_equal. apply map_id_iff. intuition.
-Qed.
-
-Lemma fsubst_level_bsubst_id n u (f:Mix.formula) :
- Mix.level f <= n -> Mix.bsubst n u f = f.
-Proof.
- revert n.
- induction f; cbn; intros n LE; f_equal; auto.
- - injection (term_level_bsubst_id n u (Mix.Fun "" l)); cbn; auto.
- - apply IHf1. omega with *.
- - apply IHf2. omega with *.
- - apply IHf. omega with *.
 Qed.
 
 Lemma partialsubst_bsubst stk x z f :
@@ -290,16 +241,16 @@ Lemma partialsubst_bsubst stk x z f :
 Proof.
  revert stk.
  induction f; cbn; intros stk X Z1 Z2; f_equal; auto.
- - injection (termsubst_bsubst stk x z (Fun "" l)); auto.
+ - injection (term_subst_bsubst stk x z (Fun "" l)); auto.
  - apply IHf1; auto. varsdec.
  - apply IHf2; auto. varsdec.
  - fold (v =? z)%string. change (v =? z)%string with (v =? z).
    case eqbspec; cbn.
    + intros <-.
      change (x::stk++[x]) with ((x::stk)++[x]).
-     rewrite nam2mix_hidden by (simpl; auto).
+     rewrite nam2mix_shadowstack by (simpl; auto).
      symmetry.
-     apply fsubst_level_bsubst_id.
+     apply form_level_bsubst_id.
      now rewrite nam2mix_level.
    + intros NE.
      case eqbspec; cbn; [varsdec|].
@@ -352,25 +303,20 @@ Proof.
  - intros [= <- E]. f_equal. eapply IHf; eauto.
 Qed.
 
-Lemma Crux z v v' f f' :
+Lemma nam2mix_rename_iff z v v' f f' :
   ~ Vars.In z (Vars.union (allvars f) (allvars f')) ->
-  nam2mix [v] f = nam2mix [v'] f' <->
   nam2mix [] (partialsubst v (Var z) f) =
-  nam2mix [] (partialsubst v' (Var z) f').
+  nam2mix [] (partialsubst v' (Var z) f')
+  <->
+  nam2mix [v] f = nam2mix [v'] f'.
 Proof.
  intros Hz.
  rewrite 2 partialsubst_bsubst0 by varsdec.
  split.
- - now intros ->.
  - intros H. apply bsubst_fresh_inj in H; auto.
    rewrite !nam2mix_fvars. cbn. rewrite !freevars_allvars. varsdec.
+ - now intros ->.
 Qed.
-
-(*
-Lemma nam2mix_term_map l l' :
- map (nam2mix_term []) l = map (nam2mix_term []) l' -> l = l'.
-Proof.
-*)
 
 Lemma nam2mix_term_inj t t' : nam2mix_term [] t = nam2mix_term [] t' -> t = t'.
 Proof.
@@ -384,7 +330,7 @@ Lemma nam2mix_AlphaEq f f' :
 Proof.
  split.
  - induction 1; cbn; f_equal; auto.
-   apply (Crux z); auto.
+   apply (nam2mix_rename_iff z); auto.
  - set (h := S (Nat.max (form_height f) (form_height f'))).
    assert (LT : form_height f < h) by (unfold h; auto with *).
    assert (LT' : form_height f' < h) by (unfold h; auto with *).
@@ -400,7 +346,7 @@ Proof.
      destruct (get_fresh_var (Vars.union (allvars f) (allvars f'))) as (z,Hz).
      apply AEqQu with z; auto.
      apply IH; try rewrite partialsubst_height; auto.
-     apply Crux; auto.
+     apply nam2mix_rename_iff; auto.
 Qed.
 
 Lemma AlphaEq_alt f f' : Nam.AlphaEq f f' <-> Alpha.AlphaEq f f'.
@@ -414,6 +360,8 @@ Proof.
  apply AlphaEq_alt.
 Qed.
 
+
+(** SUBST *)
 
 Definition foldsubst (h:subst) :=
   fold_left (fun a '(x,u) => form_subst x u a) h.

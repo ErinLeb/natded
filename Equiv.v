@@ -139,16 +139,6 @@ Proof.
    destruct (list_index v'); simpl in *; congruence.
 Qed.
 
-Lemma list_assoc_index_none (sub:Nam.subst) v :
-  list_assoc v sub = None <-> list_index v (map fst sub) = None.
-Proof.
- induction sub as [|(x,t) sub IH]; simpl; auto.
- intuition.
- case eqbspec; try easy.
- intros NE. rewrite IH.
- destruct list_index; simpl; intuition congruence.
-Qed.
-
 Lemma nam2mix_term_ok sub sub' t t' :
  Inv (Vars.union (Nam.term_vars t) (Nam.term_vars t')) sub sub' ->
  Nam.term_substs sub t = Nam.term_substs sub' t' ->
@@ -305,18 +295,6 @@ Fixpoint mix2nam_term stack t :=
     Nam.Fun f (List.map (mix2nam_term stack) args)
   end.
 
-Fixpoint to_vars l :=
- match l with
- | [] => Vars.empty
- | v::l => Vars.add v (to_vars l)
- end.
-
-Lemma to_vars_in x l : List.In x l <-> Vars.In x (to_vars l).
-Proof.
- induction l. simpl. varsdec.
- simpl. VarsF.set_iff. intuition.
-Qed.
-
 Fixpoint mix2nam stack f :=
   match f with
   | Mix.True => Nam.True
@@ -327,7 +305,7 @@ Fixpoint mix2nam stack f :=
   | Mix.Pred p args =>
     Nam.Pred p (List.map (mix2nam_term stack) args)
   | Mix.Quant q f =>
-    let v := fresh_var (Vars.union (to_vars stack) (Mix.fvars f)) in
+    let v := fresh_var (Vars.union (vars_of_list stack) (Mix.fvars f)) in
     Nam.Quant q v (mix2nam (v::stack) f)
   end.
 
@@ -374,14 +352,15 @@ Proof.
  - cbn in *. f_equal.
    apply IHf; auto.
    + constructor; auto.
-     set (vars := Vars.union (to_vars stack) (Mix.fvars f)).
+     set (vars := Vars.union (vars_of_list stack) (Mix.fvars f)).
      assert (FR' := fresh_var_ok vars).
      contradict FR'.
-     unfold vars at 2. VarsF.set_iff. left. now apply to_vars_in.
+     unfold vars at 2. VarsF.set_iff. left.
+     now apply vars_of_list_in.
    + simpl. omega with *.
    + simpl.
      intros v [<-|IN].
-     * set (vars := Vars.union (to_vars stack) (Mix.fvars f)).
+     * set (vars := Vars.union (vars_of_list stack) (Mix.fvars f)).
        generalize (fresh_var_ok vars). varsdec.
      * apply FR in IN. varsdec.
 Qed.

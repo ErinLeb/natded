@@ -58,6 +58,8 @@ Bind Scope string_scope with variable.
 
 Module Vars := MSetRBT.Make (StringOT).
 
+Definition vars_of_list := fold_right Vars.add Vars.empty.
+
 Fixpoint vars_unions (l: list Vars.t) :=
  match l with
  | [] => Vars.empty

@@ -58,6 +58,14 @@ Bind Scope string_scope with variable.
 
 Module Vars := MSetRBT.Make (StringOT).
 
+(* Prevent incomplete reductions *)
+Arguments Vars.singleton !_.
+Arguments Vars.add !_ !_.
+Arguments Vars.remove !_ !_.
+Arguments Vars.union !_ !_.
+Arguments Vars.inter !_ !_.
+Arguments Vars.diff !_ !_.
+
 Definition vars_of_list := fold_right Vars.add Vars.empty.
 
 Fixpoint vars_unions (l: list Vars.t) :=

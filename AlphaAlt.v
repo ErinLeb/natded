@@ -8,8 +8,6 @@ Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
-Arguments Vars.union _ _ : simpl nomatch.
-
 Lemma subinvars_filter v h :
   Vars.Equal (subinvars (filter (fun '(x, _) => negb (x =? v)) h))
              (Vars.remove v (subinvars h)).
@@ -131,7 +129,7 @@ Proof.
 Qed.
 
 (* Unused for the moment *)
-Lemma nam2mix_subst stk x u f :
+Lemma nam2mix_partialsubst stk x u f :
  ~In x stk ->
  (forall v, In v stk -> ~Vars.In v (term_vars u)) ->
  IsSimple x u f ->
@@ -198,12 +196,12 @@ Admitted.
 *)
 
 (* Unused for the moment *)
-Lemma nam2mix0_subst x u f :
+Lemma nam2mix0_partialsubst x u f :
  IsSimple x u f ->
  nam2mix [] (partialsubst x u f) =
   Mix.fsubst x (nam2mix_term [] u) (nam2mix [] f).
 Proof.
- apply nam2mix_subst; auto.
+ apply nam2mix_partialsubst; auto.
 Qed.
 
 Lemma term_subst_bsubst stk x z t :
@@ -242,8 +240,8 @@ Proof.
  revert stk.
  induction f; cbn; intros stk X Z1 Z2; f_equal; auto.
  - injection (term_subst_bsubst stk x z (Fun "" l)); auto.
- - apply IHf1; auto. varsdec.
- - apply IHf2; auto. varsdec.
+ - apply IHf1; auto. varsdec0.
+ - apply IHf2; auto. varsdec0.
  - fold (v =? z)%string. change (v =? z)%string with (v =? z).
    case eqbspec; cbn.
    + intros <-.
@@ -253,8 +251,7 @@ Proof.
      apply form_level_bsubst_id.
      now rewrite nam2mix_level.
    + intros NE.
-     case eqbspec; cbn; [varsdec|].
-     intros NE'.
+     rewrite vars_mem_false by varsdec0.
      apply IHf; simpl; intuition.
 Qed.
 
@@ -264,43 +261,6 @@ Lemma partialsubst_bsubst0 x z f :
   Mix.bsubst 0 (Mix.FVar z) (nam2mix [x] f).
 Proof.
  apply partialsubst_bsubst; auto.
-Qed.
-
-Lemma term_bsubst_fresh_inj n z (t t':Mix.term):
- ~ Vars.In z (Vars.union (Mix.fvars t) (Mix.fvars t')) ->
- Mix.bsubst n (Mix.FVar z) t = Mix.bsubst n (Mix.FVar z) t' ->
- t = t'.
-Proof.
- revert t t'.
- fix IH 1; destruct t, t'; cbn; intros NI; try discriminate.
- - intro E. exact E.
- - clear IH. case eqbspec; auto. intros -> [= ->]. varsdec.
- - clear IH. case eqbspec; auto. intros -> [= ->]. varsdec.
- - clear IH. do 2 case eqbspec; intros; subst; easy.
- - clear IH. case eqbspec; easy.
- - clear IH. case eqbspec; easy.
- - intros [= <- E]; f_equal.
-   revert l l0 NI E.
-   fix IH' 1; destruct l, l0; cbn; trivial; try discriminate.
-   intros NI. intros [= E E']. f_equal. apply IH; auto. varsdec.
-   apply IH'; auto. varsdec.
-Qed.
-
-
-Lemma bsubst_fresh_inj n z (f f':Mix.formula):
- ~ Vars.In z (Vars.union (Mix.fvars f) (Mix.fvars f')) ->
- Mix.bsubst n (Mix.FVar z) f = Mix.bsubst n (Mix.FVar z) f' ->
- f = f'.
-Proof.
- revert f' n.
- induction f; destruct f'; cbn; intros n NI; try easy.
- - intros[= <- E]. f_equal.
-   injection (term_bsubst_fresh_inj n z (Mix.Fun "" l) (Mix.Fun "" l0));
-    cbn; auto. now f_equal.
- - intros [= E]. f_equal; eauto.
- - intros [= <- E1 E2]. f_equal. eapply IHf1; eauto. varsdec.
-   eapply IHf2; eauto. varsdec.
- - intros [= <- E]. f_equal. eapply IHf; eauto.
 Qed.
 
 Lemma nam2mix_rename_iff z v v' f f' :
@@ -362,6 +322,26 @@ Qed.
 
 
 (** SUBST *)
+
+Lemma nam2mix_Subst x u f f' :
+ Subst x u f f' ->
+ nam2mix [] f' = Mix.fsubst x (nam2mix_term [] u) (nam2mix [] f).
+Proof.
+ intros (f0 & EQ & SI).
+ apply nam2mix_AlphaEq in EQ. rewrite EQ.
+ apply SimpleSubst_carac in SI. destruct SI as (<- & IS).
+ apply nam2mix0_partialsubst; auto.
+Qed.
+
+Lemma nam2mix_subst x u f :
+ nam2mix [] (form_subst x u f) =
+  Mix.fsubst x (nam2mix_term [] u) (nam2mix [] f).
+Proof.
+ apply nam2mix_Subst.
+ apply Subst_subst.
+Qed.
+
+
 
 Definition foldsubst (h:subst) :=
   fold_left (fun a '(x,u) => form_subst x u a) h.

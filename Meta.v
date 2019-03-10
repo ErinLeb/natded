@@ -35,6 +35,44 @@ Proof.
  unfold closed. intros. apply term_level_bsubst_id. auto with *.
 Qed.
 
+(** [bsubst] to a fesh variable is injective *)
+
+Lemma term_bsubst_fresh_inj n z (t t':term):
+ ~ Vars.In z (Vars.union (fvars t) (fvars t')) ->
+ bsubst n (FVar z) t = bsubst n (FVar z) t' ->
+ t = t'.
+Proof.
+ revert t t'.
+ fix IH 1; destruct t, t'; cbn; intros NI; try discriminate.
+ - intro E. exact E.
+ - clear IH. case eqbspec; auto. intros -> [= ->]. varsdec.
+ - clear IH. case eqbspec; auto. intros -> [= ->]. varsdec.
+ - clear IH. do 2 case eqbspec; intros; subst; easy.
+ - clear IH. case eqbspec; easy.
+ - clear IH. case eqbspec; easy.
+ - intros [= <- E]; f_equal.
+   revert l l0 NI E.
+   fix IH' 1; destruct l, l0; cbn; trivial; try discriminate.
+   intros NI. intros [= E E']. f_equal. apply IH; auto. varsdec.
+   apply IH'; auto. varsdec.
+Qed.
+
+Lemma bsubst_fresh_inj n z (f f':formula):
+ ~ Vars.In z (Vars.union (fvars f) (fvars f')) ->
+ Mix.bsubst n (Mix.FVar z) f = Mix.bsubst n (Mix.FVar z) f' ->
+ f = f'.
+Proof.
+ revert f' n.
+ induction f; destruct f'; cbn; intros n NI; try easy.
+ - intros[= <- E]. f_equal.
+   injection (term_bsubst_fresh_inj n z (Mix.Fun "" l) (Mix.Fun "" l0));
+    cbn; auto. now f_equal.
+ - intros [= E]. f_equal; eauto.
+ - intros [= <- E1 E2]. f_equal. eapply IHf1; eauto. varsdec.
+   eapply IHf2; eauto. varsdec.
+ - intros [= <- E]. f_equal. eapply IHf; eauto.
+Qed.
+
 (** [vmap] basic results : extensionality, identity, composition *)
 
 Lemma term_vmap_ext h h' (t:term) :
@@ -122,7 +160,7 @@ Lemma term_fvars_vmap h (t:term) :
     (vars_flatmap (fun v => fvars (h v)) (fvars t)).
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn.
- - varsdec.
+ - unfold Vars.singleton. cbn. varsdec.
  - varsdec.
  - intros v. rewrite vars_unionmap_in. intros (a & Ha & Ha').
    rewrite in_map_iff in Ha'. destruct Ha' as (t & <- & Ht).
@@ -135,9 +173,9 @@ Lemma form_fvars_vmap h (f:formula) :
     (fvars (vmap h f))
     (vars_flatmap (fun v => fvars (h v)) (fvars f)).
 Proof.
- induction f; cbn; try varsdec.
+ induction f; simpl; try varsdec.
  - apply (term_fvars_vmap h (Fun "" l)).
- - rewrite vars_flatmap_union. varsdec.
+ - cbn. rewrite vars_flatmap_union. varsdec.
 Qed.
 
 Lemma ctx_fvars_vmap h (c:context) :

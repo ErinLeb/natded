@@ -725,8 +725,6 @@ Ltac break :=
  | _ => idtac
  end.
 
-Arguments Vars.union !_ !_.
-
 Ltac mytac :=
  cbn in *;
  break;
@@ -756,7 +754,7 @@ Proof.
      rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
    + apply V_Ex_e with f; auto.
      rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
- - induction 1; cbn; rewr; auto.
+ - induction 1; simpl; rewr; auto.
    + apply list_mem_in in H. now rewrite H.
    + rewrite <- Vars.mem_spec in H. destruct Vars.mem; auto.
    + rewrite <- Vars.mem_spec in H. destruct Vars.mem; auto.

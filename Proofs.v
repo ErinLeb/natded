@@ -12,8 +12,6 @@ Ltac varsdec := VarsP.Dec.fsetdec.
 
 Hint Extern 10 => varsdec : set.
 
-Arguments Vars.union !_ !_.
-
 Lemma vars_mem_false x vs : ~Vars.In x vs -> Vars.mem x vs = false.
 Proof.
  rewrite <- Vars.mem_spec. now case Vars.mem.

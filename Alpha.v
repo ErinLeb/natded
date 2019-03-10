@@ -7,8 +7,6 @@ Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
-Arguments Vars.union _ _ : simpl nomatch.
-
 Local Coercion Var : variable >-> term.
 
 (** Alternative definition of substitution,
@@ -441,10 +439,8 @@ Proof.
     varsdec.
  - case eqbspec; cbn. varsdec.
    intros. destruct IS as [->|(NI,IS)]; [easy|].
-   assert (IN' : Vars.In x (freevars f)) by varsdec.
    rewrite vars_mem_false by trivial.
-   rewrite (IHf IS IN').
-   varsdec.
+   rewrite (IHf IS); varsdec.
 Qed.
 
 
@@ -556,6 +552,13 @@ Lemma get_fresh_var vars : exists z, ~Vars.In z vars.
 Proof.
  exists (fresh_var vars). apply fresh_var_ok.
 Qed.
+
+(** A weaker but faster version of varsdec *)
+
+Ltac varsdec0 :=
+  repeat (rewrite ?Vars.add_spec, ?Vars.union_spec,
+                  ?Vars.remove_spec, ?Vars.singleton_spec in *);
+  intuition auto.
 
 Ltac simpl_fresh vars H :=
  unfold vars in H; cbn in H;
@@ -677,27 +680,24 @@ Proof.
    assert (E : map (term_subst x z') l =
                 map (term_subst x' z') l0).
    { injection (term_subst_rename x x' z z' (Fun "" l) (Fun "" l0)).
-     auto. varsdec. varsdec. cbn; f_equal; auto. }
+     auto. varsdec0. varsdec0. cbn; f_equal; auto. }
    now rewrite E.
  - inversion 1; eauto.
- - inversion 1; subst; constructor; eapply IH; eauto; varsdec.
- - repeat match goal with |- context [(?a ?= ?b)%string] =>
-    fold (a =? b)%string; destruct (string_eqb_spec a b);
-     [exfalso; varsdec|]
-   end.
+ - inversion 1; subst; constructor; eapply IH; eauto; varsdec0.
+ - rewrite !vars_mem_false by varsdec0.
    repeat (case eqbspec; cbn).
    + trivial.
    + intros NE <-. inversion_clear 1.
      assert (~Vars.In x' (freevars f')).
      { eapply AEq_rename_aux; eauto. }
      rewrite !(partialsubst_notin x') in * by trivial.
-     apply AEqQu with z0; auto with set.
+     apply AEqQu with z0; auto.
    + intros <- NE. inversion_clear 1.
      assert (~Vars.In x (freevars f)).
      { apply AEq_sym in H1.
-       eapply AEq_rename_aux; eauto. varsdec. varsdec. }
+       eapply AEq_rename_aux; eauto; varsdec0. }
      rewrite !(partialsubst_notin x) in * by trivial.
-     apply AEqQu with z0; auto with set.
+     apply AEqQu with z0; auto.
    + intros NE NE'. inversion_clear 1.
 
      (* Let's pick a suitably fresh variable z1 *)
@@ -713,14 +713,13 @@ Proof.
 
      (* Let's use z1 instead of z0 in the main hyp *)
 
-     apply IH with (z':=z1) in H1; [ | auto | auto | varsdec].
+     apply IH with (z':=z1) in H1; [ | auto | auto | varsdec0].
      clear H0 z0.
 
      (* Let's use z1 in the conclusion. *)
 
      apply AEqQu with z1; auto.
-     rewrite !allvars_partialsubst. cbn. varsdec.
-
+     rewrite !allvars_partialsubst; cbn; varsdec0.
      revert H1.
 
      (* We now need to swap the substitutions to
@@ -728,12 +727,12 @@ Proof.
 
      rewrite !(partialsubst_partialsubst x),
              !(partialsubst_partialsubst x'); auto;
-     repeat (rewrite term_subst_notin by (cbn; varsdec));
-     cbn;
-     rewrite ?Vars.singleton_spec; auto with set.
+     rewrite ?term_subst_notin; cbn;
+     rewrite ?Vars.singleton_spec; auto;
+     try apply notin_IsSimple; try (varsdec0;fail).
 
      apply IH; auto;
-     rewrite !allvars_partialsubst; cbn; varsdec.
+     rewrite !allvars_partialsubst; cbn; varsdec0.
 Qed.
 
 Lemma AEq_trans f1 f2 f3 :

@@ -354,3 +354,17 @@ Proof.
  rewrite strict_prefixes_more.
  unfold strict_prefixes. simpl. varsdec.
 Qed.
+
+Instance : Proper (Vars.Equal ==> eq ==> eq ==> eq) fresh_var_loop.
+Proof.
+ intros vs vs' EQ id id' <- n n' <-.
+ revert vs vs' EQ id.
+ induction n; cbn; intros vs vs' EQ id; auto.
+ rewrite <- EQ. destruct Vars.mem; cbn; auto.
+Qed.
+
+Instance : Proper (Vars.Equal ==> eq) fresh_var.
+Proof.
+ intros vs vs' EQ.
+ unfold fresh_var. now rewrite <-EQ.
+Qed.

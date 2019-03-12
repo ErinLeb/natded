@@ -199,6 +199,37 @@ Proof.
  generalize (form_fvars_vmap h f) (ctx_fvars_vmap h c). varsdec.
 Qed.
 
+(** [fsubst] commutes *)
+
+Lemma term_fsubst_fsubst x y (u v t:term) :
+ x<>y -> ~Vars.In x (fvars v) ->
+ fsubst y v (fsubst x u t) =
+ fsubst x (fsubst y v u) (fsubst y v t).
+Proof.
+ induction t as [ | |f l IH] using term_ind'; cbn;
+  intros NE NI; auto.
+ - do 2 (unfold varsubst; case eqbspec; cbn); intros; subst.
+   + easy.
+   + unfold varsubst. now rewrite eqb_refl.
+   + unfold fsubst. symmetry. apply term_vmap_id.
+     intros z Hz. unfold varsubst.
+     case eqbspec; auto. varsdec.
+   + unfold varsubst. now case eqbspec.
+ - f_equal. rewrite !map_map.
+   apply map_ext_iff. intros a Ha.
+   apply IH; auto.
+Qed.
+
+Lemma form_fsubst_fsubst x y (u v:term)(f:formula) :
+ x<>y -> ~Vars.In x (fvars v) ->
+ fsubst y v (fsubst x u f) =
+ fsubst x (fsubst y v u) (fsubst y v f).
+Proof.
+ induction f; cbn; intros NE NI; f_equal; auto.
+ injection (term_fsubst_fsubst x y u v (Fun "" l)); auto.
+Qed.
+
+
 (** Alternating [vmap] and [bsubst] *)
 
 Definition closed_sub (h:variable->term) :=

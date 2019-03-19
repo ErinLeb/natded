@@ -70,6 +70,9 @@ Fixpoint list_assoc_dft {A B}`{Eqb A} x (l:list (A*B)) (d:B) :=
  | (y,z)::l => if x =? y then z else list_assoc_dft x l d
  end.
 
+Definition list_unassoc {A B}`{Eqb A} x : list (A*B) -> list (A*B) :=
+ filter (fun '(y,_) => negb (y =? x)).
+
 Fixpoint list_mem {A}`{Eqb A} x (l:list A) :=
   match l with
   | [] => false

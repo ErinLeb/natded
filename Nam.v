@@ -248,7 +248,7 @@ Fixpoint form_substs sub f :=
   | Not f => Not (form_substs sub f)
   | Op o f f' => Op o (form_substs sub f) (form_substs sub f')
   | Quant q v f' =>
-    let sub := List.filter (fun '(x,_) => negb (x =? v)) sub in
+    let sub := list_unassoc v sub in
     let out_vars := suboutvars sub in
     if negb (Vars.mem v out_vars) then
       Quant q v (form_substs sub f')

@@ -106,13 +106,6 @@ Proof.
    exists (S k). simpl in *. now rewrite Hk, Hk'.
 Qed.
 
-Lemma subinvars_in sub v :
-  Vars.In v (Nam.subinvars sub) <-> In v (map fst sub).
-Proof.
- induction sub as [|(x,t) sub IH]; simpl. varsdec.
- VarsF.set_iff. intuition.
-Qed.
-
 Lemma list_index_assoc vars v v' sub sub' n :
 Inv vars sub sub' ->
 list_index v (map fst sub) = Some n ->

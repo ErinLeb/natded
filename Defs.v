@@ -66,7 +66,8 @@ Arguments Vars.union !_ !_.
 Arguments Vars.inter !_ !_.
 Arguments Vars.diff !_ !_.
 
-Definition vars_of_list := fold_right Vars.add Vars.empty.
+Definition vars_of_list : list variable -> Vars.t :=
+ fold_right Vars.add Vars.empty.
 
 Fixpoint vars_unions (l: list Vars.t) :=
  match l with

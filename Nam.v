@@ -34,6 +34,16 @@ Definition Cst (f:function_symbol) := Fun f [].
 Definition peano_term_example :=
   Fun "+" [Fun "S" [Cst "O"]; Var "x"].
 
+
+(** Simultaneous substitution of many variables by terms.
+    The bindings of this substitution will be handled in parallel,
+    not sequentially. In particular, the variables introduced
+    by a binding aren't modified by other bindings.
+    If the substitution contains several bindings of the same
+    variable, the leftmost binding wins (cf. [list_assoc]). *)
+
+Definition substitution := list (variable * term).
+
 (** In the case of Peano, numbers are coded as iterated successors of zero *)
 
 Fixpoint nat2term n :=
@@ -49,18 +59,20 @@ Fixpoint term2nat t :=
   | _ => None
   end.
 
+Definition print_tuple {A} (pr: A -> string) (l : list A) :=
+ "(" ++ String.concat "," (List.map pr l) ++ ")".
+
+Definition is_binop s := list_mem s ["+";"*"].
+
+Module Term.
+
 (** Term printing
 
     NB: + and * are printed in infix position, S(S(...O())) is printed as
     the corresponding number.
 *)
 
-Definition print_tuple {A} (pr: A -> string) (l : list A) :=
- "(" ++ String.concat "," (List.map pr l) ++ ")".
-
-Definition is_binop s := list_mem s ["+";"*"].
-
-Fixpoint print_term t :=
+Fixpoint print t :=
   match term2nat t with
   | Some n => DecimalString.NilZero.string_of_uint (Nat.to_uint n)
   | None =>
@@ -70,14 +82,14 @@ Fixpoint print_term t :=
        if is_binop f then
          match args with
          | [t1;t2] =>
-           "(" ++ print_term t1 ++ ")" ++ f ++ "(" ++ print_term t2 ++ ")"
-         | _ => f ++ print_tuple print_term args
+           "(" ++ print t1 ++ ")" ++ f ++ "(" ++ print t2 ++ ")"
+         | _ => f ++ print_tuple print args
          end
-       else f ++ print_tuple print_term args
+       else f ++ print_tuple print args
      end
   end.
 
-Compute print_term peano_term_example.
+Compute Term.print peano_term_example.
 
 (** Term parsing *)
 
@@ -92,41 +104,67 @@ Compute print_term peano_term_example.
     iff it only refer to known function symbols and use them
     with the correct arity. *)
 
-Fixpoint check_term (sign : gen_signature) t :=
+Fixpoint check (sign : gen_signature) t :=
  match t with
   | Var _ => true
   | Fun f args =>
      match sign.(gen_fun_symbs) f with
      | None => false
      | Some ar =>
-       (List.length args =? ar) &&& (List.forallb (check_term sign) args)
+       (List.length args =? ar) &&& (List.forallb (check sign) args)
      end
  end.
 
-Compute check_term (generalize_signature peano_sign) peano_term_example.
+Compute Term.check (generalize_signature peano_sign) peano_term_example.
 
 (** The set of variables occurring in a term *)
 
-Fixpoint term_vars t :=
+Fixpoint vars t :=
  match t with
   | Var v => Vars.singleton v
-  | Fun _ args => vars_unionmap term_vars args
+  | Fun _ args => vars_unionmap vars args
  end.
 
-(** Simultaneous substitution of many variables in a term. *)
+(** Simultaneous substitution (see type [substs] above) *)
 
-Definition subst := list (variable * term).
-
-Fixpoint term_substs (sub:subst) t :=
+Fixpoint substs (sub:substitution) t :=
   match t with
   | Var v => list_assoc_dft v sub t
-  | Fun f args => Fun f (List.map (term_substs sub) args)
+  | Fun f args => Fun f (List.map (substs sub) args)
   end.
 
 (** Substitution of a variable in a term :
     in [t], [v] is replaced by [u] *)
 
-Definition term_subst v u t := term_substs [(v,u)] t.
+Definition subst v u t := substs [(v,u)] t.
+
+(** Boolean equality over terms *)
+
+Instance eqb : Eqb term :=
+ fix term_eqb t1 t2 :=
+  match t1, t2 with
+  | Var v1, Var v2 => v1 =? v2
+  | Fun f1 args1, Fun f2 args2 =>
+    (f1 =? f2) &&& (list_forallb2 term_eqb args1 args2)
+  | _, _ => false
+  end.
+
+End Term.
+
+Module Subst.
+
+Definition t := substitution.
+
+Definition invars (sub : substitution) :=
+  List.fold_right (fun p vs => Vars.add (fst p) vs) Vars.empty sub.
+
+Definition outvars (sub : substitution) :=
+  vars_unionmap (fun '(_,t) => Term.vars t) sub.
+
+Definition vars (sub : substitution) :=
+  Vars.union (invars sub) (outvars sub).
+
+End Subst.
 
 (** Formulas *)
 
@@ -142,38 +180,6 @@ Inductive formula :=
     [a<->b] is a shortcut for [a->b /\ b->a] *)
 
 Definition Iff a b := Op And (Op Impl a b) (Op Impl b a).
-
-(** Formula printing *)
-
-(** Notes:
-    - We use {  } for putting formulas into parenthesis, instead of ( ).
-*)
-
-Definition is_infix_pred s := list_mem s ["=";"∈"].
-
-(* TODO affichage court du <-> *)
-
-Fixpoint print_formula f :=
-  match f with
-  | True => "True"
-  | False => "False"
-  | Pred p args =>
-    if is_infix_pred p then
-      match args with
-      | [t1;t2] =>
-        "(" ++ print_term t1 ++ ")" ++ p ++ "(" ++ print_term t2 ++ ")"
-      |  _ => p ++ print_tuple print_term args
-      end
-    else p ++ print_tuple print_term args
-  | Not f => "~{" ++ print_formula f ++ "}"
-  | Op o f f' =>
-    "{" ++ print_formula f ++ "}" ++ pr_op o ++ "{" ++ print_formula f' ++ "}"
-  | Quant q v f => pr_quant q ++ v ++ ",{" ++ print_formula f ++ "}"
-  end.
-
-Compute print_formula (Quant Ex "x" True).
-
-Compute print_formula (Iff True False).
 
 (* TODO: Formula parsing *)
 
@@ -197,20 +203,53 @@ Notation "∃ x , A" := (Quant Ex x A)
 
 Definition test_form := (∃ "x", True <-> Pred "p" [Var "x";#3])%form.
 
+(** Formula printing *)
+
+(** Notes:
+    - We use {  } for putting formulas into parenthesis, instead of ( ).
+*)
+
+Definition is_infix_pred s := list_mem s ["=";"∈"].
+
+Module Form.
+
+(* TODO affichage court du <-> *)
+
+Fixpoint print f :=
+  match f with
+  | True => "True"
+  | False => "False"
+  | Pred p args =>
+    if is_infix_pred p then
+      match args with
+      | [t1;t2] =>
+        "(" ++ Term.print t1 ++ ")" ++ p ++ "(" ++ Term.print t2 ++ ")"
+      |  _ => p ++ print_tuple Term.print args
+      end
+    else p ++ print_tuple Term.print args
+  | Not f => "~{" ++ print f ++ "}"
+  | Op o f f' =>
+    "{" ++ print f ++ "}" ++ pr_op o ++ "{" ++ print f' ++ "}"
+  | Quant q v f => pr_quant q ++ v ++ ",{" ++ print f ++ "}"
+  end.
+
+Compute Form.print (Quant Ex "x" True).
+
+Compute Form.print (Iff True False).
 
 (** Utilities about formula *)
 
-Fixpoint check_formula (sign : gen_signature) f :=
+Fixpoint check (sign : gen_signature) f :=
   match f with
   | True | False => true
-  | Not f => check_formula sign f
-  | Op _ f f' => check_formula sign f &&& check_formula sign f'
-  | Quant _ v f => check_formula sign f
+  | Not f => check sign f
+  | Op _ f f' => check sign f &&& check sign f'
+  | Quant _ v f => check sign f
   | Pred p args =>
      match sign.(gen_pred_symbs) p with
      | None => false
      | Some ar =>
-       (List.length args =? ar) &&& (List.forallb (check_term sign) args)
+       (List.length args =? ar) &&& (List.forallb (Term.check sign) args)
      end
   end.
 
@@ -220,7 +259,7 @@ Fixpoint allvars f :=
   | Not f => allvars f
   | Op _ f f' => Vars.union (allvars f) (allvars f')
   | Quant _ v f => Vars.add v (allvars f)
-  | Pred _ args => vars_unionmap term_vars args
+  | Pred _ args => vars_unionmap Term.vars args
   end.
 
 Fixpoint freevars f :=
@@ -229,95 +268,181 @@ Fixpoint freevars f :=
   | Not f => freevars f
   | Op _ f f' => Vars.union (freevars f) (freevars f')
   | Quant _ v f => Vars.remove v (freevars f)
-  | Pred _ args => vars_unionmap term_vars args
+  | Pred _ args => vars_unionmap Term.vars args
   end.
 
-Definition subinvars (sub : subst) :=
-  List.fold_right (fun p vs => Vars.add (fst p) vs) Vars.empty sub.
+(** Simultaneous substitution of many variables in a term.
+    Capture of bounded variables is correctly handled. *)
 
-Definition suboutvars (sub : subst) :=
-  vars_unionmap (fun '(_,t) => term_vars t) sub.
-
-Definition subvars (sub : subst) :=
-  Vars.union (subinvars sub) (suboutvars sub).
-
-Fixpoint form_substs sub f :=
+Fixpoint substs (sub : substitution) f :=
  match f with
   | True | False => f
-  | Pred p args => Pred p (List.map (term_substs sub) args)
-  | Not f => Not (form_substs sub f)
-  | Op o f f' => Op o (form_substs sub f) (form_substs sub f')
+  | Pred p args => Pred p (List.map (Term.substs sub) args)
+  | Not f => Not (substs sub f)
+  | Op o f f' => Op o (substs sub f) (substs sub f')
   | Quant q v f' =>
     let sub := list_unassoc v sub in
-    let out_vars := suboutvars sub in
+    let out_vars := Subst.outvars sub in
     if negb (Vars.mem v out_vars) then
-      Quant q v (form_substs sub f')
+      Quant q v (substs sub f')
     else
       (* variable capture : we change v into a fresh variable first *)
-      let z := fresh_var (vars_unions [allvars f; out_vars; subinvars sub])
+      let z := fresh_var (vars_unions [allvars f; out_vars; Subst.invars sub])
       in
-      Quant q z (form_substs ((v,Var z)::sub) f')
+      Quant q z (substs ((v,Var z)::sub) f')
  end.
 
-Definition form_subst v t f := form_substs [(v,t)] f.
+(** Substitution of a variable in a term :
+    in [t], [v] is replaced by [u] *)
 
-Instance term_eqb : Eqb term :=
- fix term_eqb t1 t2 :=
-  match t1, t2 with
-  | Var v1, Var v2 => v1 =? v2
-  | Fun f1 args1, Fun f2 args2 =>
-    (f1 =? f2) &&& (list_forallb2 term_eqb args1 args2)
-  | _, _ => false
-  end.
+Definition subst v t f := substs [(v,t)] f.
 
-Fixpoint alpha_equiv_gen sub1 f1 sub2 f2 :=
+(** Alpha equivalence *)
+
+Fixpoint αeq_gen sub1 f1 sub2 f2 :=
   match f1, f2 with
   | True, True | False, False => true
   | Pred p1 args1, Pred p2 args2 =>
      (p1 =? p2) &&&
-      (List.map (term_substs sub1) args1 =?
-       List.map (term_substs sub2) args2)
-  | Not f1, Not f2 => alpha_equiv_gen sub1 f1 sub2 f2
+      (List.map (Term.substs sub1) args1 =?
+       List.map (Term.substs sub2) args2)
+  | Not f1, Not f2 => αeq_gen sub1 f1 sub2 f2
   | Op o1 f1 f1', Op o2 f2 f2' =>
     (o1 =? o2) &&&
-    alpha_equiv_gen sub1 f1 sub2 f2 &&&
-    alpha_equiv_gen sub1 f1' sub2 f2'
+    αeq_gen sub1 f1 sub2 f2 &&&
+    αeq_gen sub1 f1' sub2 f2'
   | Quant q1 v1 f1', Quant q2 v2 f2' =>
     (q1 =? q2) &&&
     (let z := fresh_var
                 (vars_unions
-                   [allvars f1; subvars sub1; allvars f2; subvars sub2]) in
-     alpha_equiv_gen ((v1,Var z)::sub1) f1' ((v2,Var z)::sub2) f2')
+                   [allvars f1; Subst.vars sub1; allvars f2; Subst.vars sub2])
+     in
+     αeq_gen ((v1,Var z)::sub1) f1' ((v2,Var z)::sub2) f2')
   | _,_ => false
   end.
 
-Definition alpha_equiv f1 f2 := alpha_equiv_gen [] f1 [] f2.
+Definition αeq f1 f2 := αeq_gen [] f1 [] f2.
 
-Definition AlphaEq f f' := alpha_equiv f f' = true.
+(** A propositional version *)
 
-Instance eqb_inst_form : Eqb formula := alpha_equiv.
+Definition AlphaEq f f' := αeq f f' = true.
+
+(** This alpha equivalence can be see as a boolean equality,
+    with syntax [=?]. But it will not be a [EqbSpec]. *)
+
+Instance eqb_inst_form : Eqb formula := αeq.
 Arguments eqb_inst_form !_ !_.
 
-Compute alpha_equiv
+Compute αeq
         (∀ "x", Pred "A" [Var "x"] -> Pred "A" [Var "x"])
         (∀ "z", Pred "A" [Var "z"] -> Pred "A" [Var "z"]).
+
+(** Alternative definition of substitution,
+    closer to the initial document,
+    but needs induction over height, due to nested recursive calls *)
+
+Fixpoint height f :=
+  match f with
+  | True | False | Pred _ _ => 0
+  | Not f => S (height f)
+  | Op _ f1 f2 => S (Nat.max (height f1) (height f2))
+  | Quant _ _ f => S (height f)
+  end.
+
+Module Alt.
+
+Fixpoint hsubst h x t f :=
+ match h with
+ | 0 => True
+ | S h =>
+   match f with
+   | True | False => f
+   | Pred p args => Pred p (List.map (Term.subst x t) args)
+   | Not f => Not (hsubst h x t f)
+   | Op o f f' => Op o (hsubst h x t f) (hsubst h x t f')
+   | Quant q v f' =>
+     if x =? v then f
+     else
+       let out_vars := Term.vars t in
+       if negb (Vars.mem v out_vars) then
+         Quant q v (hsubst h x t f')
+       else
+         (* variable capture : we change v into a fresh variable first *)
+         let z := fresh_var (vars_unions [allvars f; out_vars; Vars.singleton x])
+         in
+         Quant q z (hsubst h x t (hsubst h v (Var z) f'))
+   end
+ end.
+
+Definition subst x t f := hsubst (S (height f)) x t f.
+
+(** Same for alpha_equivalence *)
+
+Fixpoint hαeq h f1 f2 :=
+  match h with
+  | 0 => false
+  | S h =>
+    match f1, f2 with
+    | True, True | False, False => true
+    | Pred p1 args1, Pred p2 args2 =>
+      (p1 =? p2) &&& (args1 =? args2)
+    | Not f1, Not f2 => hαeq h f1 f2
+    | Op o1 f1 f1', Op o2 f2 f2' =>
+      (o1 =? o2) &&& hαeq h f1 f2 &&& hαeq h f1' f2'
+    | Quant q1 v1 f1', Quant q2 v2 f2' =>
+      (q1 =? q2) &&&
+      (let z := fresh_var (Vars.union (allvars f1) (allvars f2)) in
+       hαeq h (subst v1 (Var z) f1') (subst v2 (Var z) f2'))
+    | _,_ => false
+    end
+  end.
+
+Definition αeq f1 f2 :=
+ hαeq (S (Nat.max (height f1) (height f2))) f1 f2.
+
+Definition AlphaEq f1 f2 := αeq f1 f2 = true.
+
+End Alt.
+
+(** Finally, a partial substitution, which does *not* handle
+    correctly variable capture (and just return [f] in this case).
+    This simpler definition is actually enough to define alpha
+    equivalence (and reason on it). *)
+
+Fixpoint partialsubst x t f :=
+  match f with
+  | True | False => f
+  | Pred p args => Pred p (List.map (Term.subst x t) args)
+  | Not f => Not (partialsubst x t f)
+  | Op o f f' => Op o (partialsubst x t f) (partialsubst x t f')
+  | Quant q v f' =>
+    Quant q v
+     (if (x=?v) || Vars.mem v (Term.vars t) then f'
+      else partialsubst x t f')
+  end.
+
+End Form.
 
 
 (** Contexts *)
 
 Definition context := list formula.
 
-Definition print_ctx Γ :=
-  String.concat "," (List.map print_formula Γ).
+Module Ctx.
 
-Definition check_ctx sign Γ :=
-  List.forallb (check_formula sign) Γ.
+Definition print Γ :=
+  String.concat "," (List.map Form.print Γ).
 
-Definition allvars_ctx Γ := vars_unionmap allvars Γ.
+Definition check sign Γ :=
+  List.forallb (Form.check sign) Γ.
 
-Definition freevars_ctx Γ := vars_unionmap freevars Γ.
+Definition allvars Γ := vars_unionmap Form.allvars Γ.
 
-Definition ctx_subst v t Γ := List.map (form_subst v t) Γ.
+Definition freevars Γ := vars_unionmap Form.freevars Γ.
+
+Definition subst v t Γ := List.map (Form.subst v t) Γ.
+
+End Ctx.
 
 (** Sequent *)
 
@@ -326,23 +451,27 @@ Inductive sequent :=
 
 Infix "⊢" := Seq (at level 100).
 
-Definition print_seq '(Γ ⊢ A) :=
-  print_ctx Γ ++ " ⊢ " ++ print_formula A.
+Module Seq.
 
-Definition check_seq sign '(Γ ⊢ A) :=
-  check_ctx sign Γ &&& check_formula sign A.
+Definition print '(Γ ⊢ A) :=
+  Ctx.print Γ ++ " ⊢ " ++ Form.print A.
 
-Definition allvars_seq '(Γ ⊢ A) :=
-  Vars.union (allvars_ctx Γ) (allvars A).
+Definition check sign '(Γ ⊢ A) :=
+  Ctx.check sign Γ &&& Form.check sign A.
 
-Definition freevars_seq '(Γ ⊢ A) :=
-  Vars.union (freevars_ctx Γ) (freevars A).
+Definition allvars '(Γ ⊢ A) :=
+  Vars.union (Ctx.allvars Γ) (Form.allvars A).
 
-Definition seq_subst v t '(Γ ⊢ A) :=
-  (ctx_subst v t Γ, form_subst v t A).
+Definition freevars '(Γ ⊢ A) :=
+  Vars.union (Ctx.freevars Γ) (Form.freevars A).
 
-Instance seq_eqb : Eqb sequent :=
+Definition subst v t '(Γ ⊢ A) :=
+  (Ctx.subst v t Γ, Form.subst v t A).
+
+Instance eqb : Eqb sequent :=
  fun '(Γ1 ⊢ A1) '(Γ2 ⊢ A2) => (Γ1 =? Γ2) &&& (A1 =? A2).
+
+End Seq.
 
 (** Derivation *)
 
@@ -365,7 +494,7 @@ Definition claim '(Rule _ s _) := s.
 
 Definition valid_deriv_step logic '(Rule r s ld) :=
   match r, s, List.map claim ld with
-  | Ax,     (Γ ⊢ A), [] => List.existsb (alpha_equiv A) Γ
+  | Ax,     (Γ ⊢ A), [] => List.existsb (Form.αeq A) Γ
   | Tr_i,   (_ ⊢ True), [] => true
   | Fa_e,   (Γ ⊢ _), [s] => s =? (Γ ⊢ False)
   | Not_i,  (Γ ⊢ Not A), [s] => s =? (A::Γ ⊢ False)
@@ -383,14 +512,14 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
   | Imp_e,  s, [Γ ⊢ A->B;s2] =>
      (s =? (Γ ⊢ B)) &&& (s2 =? (Γ ⊢ A))
   | All_i x,  s, [Γ ⊢ A] =>
-     (s =? (Γ ⊢ ∀x,A)) &&& negb (Vars.mem x (freevars_ctx Γ))
+     (s =? (Γ ⊢ ∀x,A)) &&& negb (Vars.mem x (Ctx.freevars Γ))
   | All_e t, (Γ ⊢ B), [Γ'⊢ ∀x,A] =>
-    (Γ =? Γ') &&& (B =? form_subst x t A)
+    (Γ =? Γ') &&& (B =? Form.subst x t A)
   | Ex_i t,  (Γ ⊢ ∃x,A), [Γ'⊢B] =>
-    (Γ =? Γ') &&& (B =? form_subst x t A)
+    (Γ =? Γ') &&& (B =? Form.subst x t A)
   | Ex_e x,  s, [s1; A::Γ ⊢ B] =>
      (s =? (Γ ⊢ B)) &&& (s1 =? (Γ ⊢ ∃x, A)) &&&
-     negb (Vars.mem x (freevars_seq s))
+     negb (Vars.mem x (Seq.freevars s))
   | Absu, s, [Not A::Γ ⊢ False] =>
     (logic =? Classic) &&& (s =? (Γ ⊢ A))
   | _,_,_ => false
@@ -461,6 +590,8 @@ Definition captcha_bug :=
 
 Compute valid_deriv Intuiti captcha_bug.
 
+(** Two early proofs : correctness of boolean equality on terms ... *)
+
 Instance : EqbSpec term.
 Proof.
  red.
@@ -470,6 +601,9 @@ Proof.
    change (list_forallb2 eqb l l') with (l =? l').
    case (@eqbspec_list _ _ IH l l'); cons.
 Qed.
+
+(** ... and an alternative induction principle over terms
+    (correctly handling list of sub-terms). *)
 
 Lemma term_ind' (P: term -> Prop) :
   (forall v, P (Var v)) ->

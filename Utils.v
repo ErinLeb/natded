@@ -8,6 +8,11 @@ Proof.
  now destruct b, b'.
 Qed.
 
+Lemma cons_app {A} (x:A) l : x::l = [x]++l.
+Proof.
+ reflexivity.
+Qed.
+
 (** A bit of overloading of notations (via Coq Classes) *)
 
 Delimit Scope eqb_scope with eqb.
@@ -153,6 +158,23 @@ Proof.
    + intuition.
 Qed.
 
+Lemma list_assoc_app_l {A B}`{EqbSpec A}
+ (l l' : list (A*B)) x :
+ In x (map fst l) -> list_assoc x (l++l') = list_assoc x l.
+Proof.
+ induction l as [|(a,b) l IH]; simpl; try easy.
+ - case eqbspec; auto.
+   intros NE [->|IN]; [easy|auto].
+Qed.
+
+Lemma list_assoc_app_r {A B}`{EqbSpec A}
+ (l l' : list (A*B)) x :
+ ~In x (map fst l) -> list_assoc x (l++l') = list_assoc x l'.
+Proof.
+ induction l as [|(a,b) l IH]; simpl; try easy.
+ - case eqbspec; auto. intros <-. intuition.
+Qed.
+
 Lemma list_assoc_dft_alt {A B}`{EqbSpec A} (l : list (A*B)) x d :
  list_assoc_dft x l d =
  match list_assoc x l with
@@ -252,6 +274,27 @@ Proof.
  case eqbspec; try easy.
  intros NE. rewrite IH.
  destruct list_index; simpl; intuition congruence.
+Qed.
+
+Lemma filter_app {A} (f:A->bool) l l' :
+  filter f (l++l') = filter f l ++ filter f l'.
+Proof.
+ induction l as [|a l IH]; simpl; auto.
+ destruct (f a); [simpl; f_equal|]; auto.
+Qed.
+
+Lemma unassoc_app {A B}`{Eqb A} x (l1 l2 : list (A*B)) :
+ list_unassoc x (l1++l2) = list_unassoc x l1 ++ list_unassoc x l2.
+Proof.
+ unfold list_unassoc.
+ apply filter_app.
+Qed.
+
+Lemma unassoc_in {A B}`{EqbSpec A} x a b (l : list (A*B)) :
+ In (a,b) (list_unassoc x l) <-> In (a,b) l /\ a <> x.
+Proof.
+ unfold list_unassoc.
+ now rewrite filter_In, <- eqb_neq, negb_true_iff.
 Qed.
 
 (** Max and lists *)

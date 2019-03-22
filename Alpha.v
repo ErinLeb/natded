@@ -3,51 +3,15 @@
 
 Require Import RelationClasses Arith Omega Defs Proofs Nam.
 Import ListNotations.
+Import Nam.Form.
+Import Nam.Form.Alt.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
 Local Coercion Var : variable >-> term.
 
-(** Alternative definition of substitution,
-    closer to the initial document,
-    but needs induction over height, due to double recursive call *)
-
-Fixpoint form_height f :=
-  match f with
-  | True | False | Pred _ _ => 0
-  | Not f => S (form_height f)
-  | Op _ f1 f2 => S (Nat.max (form_height f1) (form_height f2))
-  | Quant _ _ f => S (form_height f)
-  end.
-
-Fixpoint form_substH h x t f :=
- match h with
- | 0 => True
- | S h =>
-   match f with
-   | True | False => f
-   | Pred p args => Pred p (List.map (term_subst x t) args)
-   | Not f => Not (form_substH h x t f)
-   | Op o f f' => Op o (form_substH h x t f) (form_substH h x t f')
-   | Quant q v f' =>
-     if x =? v then f
-     else
-       let out_vars := term_vars t in
-       if negb (Vars.mem v out_vars) then
-         Quant q v (form_substH h x t f')
-       else
-         (* variable capture : we change v into a fresh variable first *)
-         let z := fresh_var (vars_unions [allvars f; out_vars; Vars.singleton x])
-         in
-         Quant q z (form_substH h x t (form_substH h v z f'))
-   end
- end.
-
-Definition form_subst x t f :=
- form_substH (S (form_height f)) x t f.
-
-(** Basic results about [form_subst] *)
+(** Basic results about [Form.Alt.subst] *)
 
 Ltac simpl_height :=
  match goal with
@@ -58,9 +22,9 @@ Ltac simpl_height :=
  | _ => idtac
  end.
 
-Lemma form_substH_height v t f h :
-  form_height f < h ->
-  form_height (form_substH h v t f) = form_height f.
+Lemma hsubst_height v t f h :
+  height f < h ->
+  height (hsubst h v t f) = height f.
 Proof.
  revert v t f.
  induction h.
@@ -71,15 +35,15 @@ Proof.
    repeat rewrite IHh; auto.
 Qed.
 
-Lemma form_subst_height v t f :
-  form_height (form_subst v t f) = form_height f.
+Lemma subst_height v t f :
+  height (subst v t f) = height f.
 Proof.
- apply form_substH_height; auto with *.
+ apply hsubst_height; auto with *.
 Qed.
 
-Lemma form_substH_indep v t f h h' :
-  form_height f < h -> form_height f < h' ->
-  form_substH h v t f = form_substH h' v t f.
+Lemma hsubst_indep v t f h h' :
+  height f < h -> height f < h' ->
+  hsubst h v t f = hsubst h' v t f.
 Proof.
  revert h' v t f.
  induction h; [inversion 1|]; destruct h';[inversion 2|].
@@ -87,89 +51,73 @@ Proof.
  case eqbspec; intros; auto.
  destruct negb eqn:E; f_equal; auto.
  rewrite (IHh h' v0) by auto.
- apply IHh; rewrite form_substH_height; auto.
+ apply IHh; rewrite hsubst_height; auto.
 Qed.
 
-Lemma form_substH_subst v t f h :
-  form_height f < h ->
-  form_substH h v t f = form_subst v t f.
+Lemma hsubst_subst v t f h :
+  height f < h ->
+  hsubst h v t f = subst v t f.
 Proof.
- intros. apply form_substH_indep; auto with *.
+ intros. apply hsubst_indep; auto with *.
 Qed.
 
-Lemma form_subst_eqn x t f :
- form_subst x t f =
+Lemma subst_eqn x t f :
+ subst x t f =
  match f with
  | True => True
  | False => False
- | Pred p l => Pred p (List.map (term_subst x t) l)
- | Not f => Not (form_subst x t f)
- | Op o f f' => Op o (form_subst x t f) (form_subst x t f')
+ | Pred p l => Pred p (List.map (Term.subst x t) l)
+ | Not f => Not (subst x t f)
+ | Op o f f' => Op o (subst x t f) (subst x t f')
  | Quant q v f' =>
     if x =? v then f
     else
-      let out_vars := term_vars t in
+      let out_vars := Term.vars t in
       if negb (Vars.mem v out_vars) then
-        Quant q v (form_subst x t f')
+        Quant q v (subst x t f')
       else
         let z := fresh_var (vars_unions [allvars f; out_vars; Vars.singleton x])
       in
-        Quant q z (form_subst x t (form_subst v z f'))
+        Quant q z (subst x t (subst v z f'))
  end.
 Proof.
  destruct f; try reflexivity.
- - unfold form_subst.
-   set (h1 := S (form_height f1)).
-   set (h2 := S (form_height f2)).
-   set (h := form_height _).
-   assert (LT1 : form_height f1 < h1) by (cbn; auto with * ).
-   assert (LT2 : form_height f2 < h2) by (cbn; auto with * ).
-   assert (LT1' : form_height f1 < h) by (cbn; auto with * ).
-   assert (LT2' : form_height f2 < h) by (cbn; auto with * ).
+ - unfold subst.
+   set (h1 := S (height f1)).
+   set (h2 := S (height f2)).
+   set (h := height _).
+   assert (LT1 : height f1 < h1) by (cbn; auto with * ).
+   assert (LT2 : height f2 < h2) by (cbn; auto with * ).
+   assert (LT1' : height f1 < h) by (cbn; auto with * ).
+   assert (LT2' : height f2 < h) by (cbn; auto with * ).
    clearbody h h1 h2.
-   cbn. f_equal; apply form_substH_indep; auto.
- - unfold form_subst. rewrite form_substH_height; auto with *.
+   cbn. f_equal; apply hsubst_indep; auto.
+ - unfold subst. rewrite hsubst_height; auto with *.
 Qed.
 
-(** Before studying more this full substitution,
-    we consider a partial version, sufficient to define
-    alpha-equivalence *)
-
-Fixpoint partialsubst x t f :=
-  match f with
-  | True | False => f
-  | Pred p args => Pred p (List.map (term_subst x t) args)
-  | Not f => Not (partialsubst x t f)
-  | Op o f f' => Op o (partialsubst x t f) (partialsubst x t f')
-  | Quant q v f' =>
-    Quant q v
-     (if (x=?v) || Vars.mem v (term_vars t) then f'
-      else partialsubst x t f')
-  end.
-
 Lemma partialsubst_height x t f :
- form_height (partialsubst x t f) = form_height f.
+ height (partialsubst x t f) = height f.
 Proof.
  induction f; cbn; auto. f_equal.
  destruct orb; auto.
 Qed.
 
 Lemma partialsubst_height_lt x t f h :
- form_height f < h -> form_height (partialsubst x t f) < h.
+ height f < h -> height (partialsubst x t f) < h.
 Proof.
  now rewrite partialsubst_height.
 Qed.
 
 Hint Resolve partialsubst_height_lt.
 
-(** Places where [form_subst] and [partialsubst] will agree *)
+(** Places where [subst] and [partialsubst] will agree *)
 
 Fixpoint IsSimple v t f :=
   match f with
   | True | False | Pred _ _ => Logic.True
   | Not f => IsSimple v t f
   | Op _ f f' => IsSimple v t f /\ IsSimple v t f'
-  | Quant _ x f => v = x \/ (~Vars.In x (term_vars t)
+  | Quant _ x f => v = x \/ (~Vars.In x (Term.vars t)
                              /\ IsSimple v t f)
   end.
 
@@ -180,7 +128,7 @@ Inductive SimpleSubst (v:variable)(t:term)
 | SubTr : SimpleSubst v t True True
 | SubFa : SimpleSubst v t False False
 | SubPred p l :
-  SimpleSubst v t (Pred p l) (Pred p (List.map (term_subst v t) l))
+  SimpleSubst v t (Pred p l) (Pred p (List.map (Term.subst v t) l))
 | SubNot f f' :
     SimpleSubst v t f f' ->
     SimpleSubst v t (Not f) (Not f')
@@ -189,7 +137,7 @@ Inductive SimpleSubst (v:variable)(t:term)
     SimpleSubst v t f2 f2' ->
     SimpleSubst v t (Op o f1 f2) (Op o f1' f2')
 | SubQu1 q f : SimpleSubst v t (Quant q v f) (Quant q v f)
-| SubQu2 q f f' x : x<>v -> ~Vars.In x (term_vars t) ->
+| SubQu2 q f f' x : x<>v -> ~Vars.In x (Term.vars t) ->
     SimpleSubst v t f f' ->
     SimpleSubst v t (Quant q x f) (Quant q x f').
 
@@ -202,10 +150,10 @@ Proof.
  induction H1; inversion 1; subst; f_equal; auto; easy.
 Qed.
 
-Lemma SimpleSubst_substH x t f h :
-  form_height f < h ->
+Lemma SimpleSubst_hsubst x t f h :
+  height f < h ->
   IsSimple x t f ->
-  SimpleSubst x t f (form_substH h x t f).
+  SimpleSubst x t f (hsubst h x t f).
 Proof.
  revert f.
  induction h.
@@ -222,9 +170,9 @@ Qed.
 
 Lemma SimpleSubst_subst x t f :
   IsSimple x t f ->
-  SimpleSubst x t f (form_subst x t f).
+  SimpleSubst x t f (subst x t f).
 Proof.
- apply SimpleSubst_substH. auto with *.
+ apply SimpleSubst_hsubst. auto with *.
 Qed.
 
 Lemma SimpleSubst_IsSimple x t f f' :
@@ -245,7 +193,7 @@ Proof.
 Qed.
 
 Lemma partialsubst_subst x t f :
-  IsSimple x t f -> partialsubst x t f = form_subst x t f.
+  IsSimple x t f -> partialsubst x t f = subst x t f.
 Proof.
  intros IS. apply (SimpleSubst_fun x t f).
  now apply SimpleSubst_partialsubst.
@@ -278,7 +226,7 @@ Qed.
 (** A sufficient condition for simplicity: *)
 
 Lemma noninter_IsSimple x t f :
-  Vars.Empty (Vars.inter (allvars f) (term_vars t)) -> IsSimple x t f.
+  Vars.Empty (Vars.inter (allvars f) (Term.vars t)) -> IsSimple x t f.
 Proof.
  induction f; cbn in *; auto.
  intros E; split; (apply IHf1 || apply IHf2); varsdec.
@@ -301,8 +249,8 @@ Hint Resolve notin_IsSimple.
 (** No-op substitutions *)
 
 Lemma term_subst_notin x u t :
- ~Vars.In x (term_vars t) ->
- term_subst x u t = t.
+ ~Vars.In x (Term.vars t) ->
+ Term.subst x u t = t.
 Proof.
  induction t as [v|f a IH] using term_ind'; cbn.
  - case eqbspec; auto. varsdec.
@@ -330,8 +278,8 @@ Proof.
 Qed.
 
 Lemma term_vars_subst x u t :
- Vars.Subset (term_vars (term_subst x u t))
-             (Vars.union (Vars.remove x (term_vars t)) (term_vars u)).
+ Vars.Subset (Term.vars (Term.subst x u t))
+             (Vars.union (Vars.remove x (Term.vars t)) (Term.vars u)).
 Proof.
  induction t using term_ind'; cbn.
  - case eqbspec; cbn; auto with set.
@@ -347,9 +295,9 @@ Proof.
 Qed.
 
 Lemma term_vars_subst_in x u t :
- Vars.In x (term_vars t) ->
- Vars.Equal (term_vars (term_subst x u t))
-            (Vars.union (Vars.remove x (term_vars t)) (term_vars u)).
+ Vars.In x (Term.vars t) ->
+ Vars.Equal (Term.vars (Term.subst x u t))
+            (Vars.union (Vars.remove x (Term.vars t)) (Term.vars u)).
 Proof.
  revert t.
  fix IH 1; destruct t; cbn.
@@ -357,42 +305,42 @@ Proof.
  - revert l.
    fix IH' 1; destruct l; cbn.
    + varsdec.
-   + destruct (VarsP.In_dec x (term_vars t)) as [E|E];
-     destruct (VarsP.In_dec x (vars_unionmap term_vars l)) as [E'|E'].
+   + destruct (VarsP.In_dec x (Term.vars t)) as [E|E];
+     destruct (VarsP.In_dec x (vars_unionmap Term.vars l)) as [E'|E'].
      * intros _.
-       fold (term_subst x u t). rewrite (IH t E).
+       fold (Term.subst x u t). rewrite (IH t E).
        rewrite (IH' l E'). varsdec.
      * intros _.
-       assert (E'' : map (term_substs [(x, u)]) l = l).
+       assert (E'' : map (Term.substs [(x, u)]) l = l).
        { apply map_id_iff. intros a Ha.
          apply term_subst_notin. contradict E'.
          rewrite vars_unionmap_in. now exists a. }
        change Vars.elt with variable in *.
        rewrite E''.
-       fold (term_subst x u t). rewrite (IH t E).
+       fold (Term.subst x u t). rewrite (IH t E).
        varsdec.
      * intros _.
-       fold (term_subst x u t).
+       fold (Term.subst x u t).
        rewrite (term_subst_notin x u t) by trivial.
        rewrite (IH' l E'). varsdec.
      * VarsF.set_iff. tauto.
 Qed.
 
 Lemma term_vars_subst_in' x u t :
- Vars.In x (term_vars t) ->
- Vars.Subset (term_vars u) (term_vars (term_subst x u t)).
+ Vars.In x (Term.vars t) ->
+ Vars.Subset (Term.vars u) (Term.vars (Term.subst x u t)).
 Proof.
  induction t using term_ind'; cbn.
  - case eqbspec; cbn; auto with set.
  - intros IN v Hv. rewrite vars_unionmap_in in *.
    destruct IN as (a & Ha & IN).
-   exists (term_subst x u a); split; auto using in_map.
+   exists (Term.subst x u a); split; auto using in_map.
    now apply (H a IN Ha).
 Qed.
 
 Lemma allvars_partialsubst x t f :
  Vars.Subset (allvars (partialsubst x t f))
-             (Vars.union (allvars f) (term_vars t)).
+             (Vars.union (allvars f) (Term.vars t)).
 Proof.
  induction f; cbn; try varsdec.
  - generalize (term_vars_subst x t (Fun "" l)). cbn. varsdec.
@@ -402,7 +350,7 @@ Qed.
 Lemma allvars_partialsubst_2 x t f :
  IsSimple x t f ->
  Vars.In x (freevars f) ->
- Vars.Subset (term_vars t) (allvars (partialsubst x t f)).
+ Vars.Subset (Term.vars t) (allvars (partialsubst x t f)).
 Proof.
  induction f; cbn; intros IS; try varsdec.
  - apply (term_vars_subst_in' x t (Fun "" l)).
@@ -422,7 +370,7 @@ Lemma freevars_partialsubst_in x t f :
  IsSimple x t f ->
  Vars.In x (freevars f) ->
  Vars.Equal (freevars (partialsubst x t f))
-            (Vars.union (Vars.remove x (freevars f)) (term_vars t)).
+            (Vars.union (Vars.remove x (freevars f)) (Term.vars t)).
 Proof.
  induction f; cbn; intros IS IN.
  - varsdec.
@@ -447,7 +395,7 @@ Qed.
 Lemma freevars_partialsubst_subset x t f :
  IsSimple x t f ->
  Vars.Subset (freevars (partialsubst x t f))
-             (Vars.union (Vars.remove x (freevars f)) (term_vars t)).
+             (Vars.union (Vars.remove x (freevars f)) (Term.vars t)).
 Proof.
  induction f; cbn; intros IS.
  - varsdec.
@@ -486,9 +434,9 @@ Qed.
 (** Swapping substitutions *)
 
 Lemma term_subst_subst x u y v t :
- x<>y -> ~Vars.In x (term_vars v) ->
-  term_subst y v (term_subst x u t) =
-  term_subst x (term_subst y v u) (term_subst y v t).
+ x<>y -> ~Vars.In x (Term.vars v) ->
+  Term.subst y v (Term.subst x u t) =
+  Term.subst x (Term.subst y v u) (Term.subst y v t).
 Proof.
  intros NE NI.
  induction t using term_ind'; cbn.
@@ -507,11 +455,11 @@ Proof.
 Qed.
 
 Lemma partialsubst_partialsubst x y u v f :
- x<>y -> ~Vars.In x (term_vars v) ->
+ x<>y -> ~Vars.In x (Term.vars v) ->
  IsSimple x u f ->
  IsSimple y v f ->
  partialsubst y v (partialsubst x u f) =
- partialsubst x (term_subst y v u) (partialsubst y v f).
+ partialsubst x (Term.subst y v u) (partialsubst y v f).
 Proof.
  intros NE NI.
  induction f; cbn; intros IS1 IS2; f_equal; auto.
@@ -525,7 +473,7 @@ Proof.
      rewrite term_subst_notin; auto.
    + destruct IS1 as [->|(NI1,IS1)]; [easy|].
      destruct IS2 as [->|(NI2,IS2)]; [easy|].
-     assert (~Vars.In v0 (term_vars (term_subst y v u))).
+     assert (~Vars.In v0 (Term.vars (Term.subst y v u))).
      { rewrite term_vars_subst. varsdec. }
      repeat (rewrite vars_mem_false by trivial).
      auto.
@@ -533,6 +481,11 @@ Qed.
 
 (** ALPHA EQUIVALENCE *)
 
+(** An inductive definition, based on [partialsubst].
+    We'll show later that it is equivalent to [Form.AlphaEq]
+    and [Form.Alt.AlphaEq]. *)
+
+Module Ind.
 
 Inductive AlphaEq : formula -> formula -> Prop :=
 | AEqTr : AlphaEq True True
@@ -546,12 +499,10 @@ Inductive AlphaEq : formula -> formula -> Prop :=
   ~Vars.In z (Vars.union (allvars f) (allvars f')) ->
   AlphaEq (partialsubst v z f) (partialsubst v' z f') ->
   AlphaEq (Quant q v f) (Quant q v' f').
-Hint Constructors AlphaEq.
 
-Lemma get_fresh_var vars : exists z, ~Vars.In z vars.
-Proof.
- exists (fresh_var vars). apply fresh_var_ok.
-Qed.
+End Ind.
+Import Ind.
+Hint Constructors AlphaEq.
 
 (** A weaker but faster version of varsdec *)
 
@@ -566,14 +517,14 @@ Ltac simpl_fresh vars H :=
  repeat (apply Decidable.not_or in H; destruct H as (?,H));
  clear vars H.
 
-Lemma form_height_ind (P : formula -> Prop) :
- (forall h, (forall f, form_height f < h -> P f) ->
-            (forall f, form_height f < S h -> P f)) ->
+Lemma height_ind (P : formula -> Prop) :
+ (forall h, (forall f, height f < h -> P f) ->
+            (forall f, height f < S h -> P f)) ->
  forall f, P f.
 Proof.
  intros IH f.
- set (h := S (form_height f)).
- assert (LT : form_height f < h) by (cbn; auto with * ).
+ set (h := S (height f)).
+ assert (LT : height f < h) by (cbn; auto with * ).
  clearbody h. revert f LT.
  induction h as [|h IHh]; [inversion 1|eauto].
 Qed.
@@ -581,7 +532,7 @@ Qed.
 Lemma AEq_refl f :
  AlphaEq f f.
 Proof.
- induction f as [h IH f LT] using form_height_ind.
+ induction f as [h IH f LT] using height_ind.
  destruct f; cbn in *; simpl_height; auto.
  destruct (get_fresh_var (allvars f)) as (z,Hz).
  apply AEqQu with (z:=z); auto with set.
@@ -591,7 +542,7 @@ Lemma AEq_sym f f' :
  AlphaEq f f' -> AlphaEq f' f.
 Proof.
  revert f'.
- induction f as [h IH f LT] using form_height_ind.
+ induction f as [h IH f LT] using height_ind.
  destruct f, f'; cbn in *; simpl_height;
    try (inversion_clear 1; auto).
  apply AEqQu with (z:=z); auto with set.
@@ -617,10 +568,10 @@ Proof.
 Qed.
 
 Lemma term_subst_rename (x x' z z' : variable) t t':
-  ~Vars.In z (Vars.union (term_vars t) (term_vars t')) ->
-  ~Vars.In z' (Vars.union (term_vars t) (term_vars t')) ->
-  term_subst x z t = term_subst x' z t'  ->
-  term_subst x z' t = term_subst x' z' t'.
+  ~Vars.In z (Vars.union (Term.vars t) (Term.vars t')) ->
+  ~Vars.In z' (Vars.union (Term.vars t) (Term.vars t')) ->
+  Term.subst x z t = Term.subst x' z t'  ->
+  Term.subst x z' t = Term.subst x' z' t'.
 Proof.
  revert t t'.
  fix IH 1. destruct t, t'; intros Hz Hz'; cbn in *; try easy.
@@ -673,12 +624,12 @@ Lemma AEq_rename_any f f' (x x' z z' : variable) :
   AlphaEq (partialsubst x z' f) (partialsubst x' z' f').
 Proof.
  revert f' x x' z z'.
- induction f as [h IH f LT] using form_height_ind.
+ induction f as [h IH f LT] using height_ind.
  destruct f, f'; intros x x' z z' Hz Hz'; cbn in *; simpl_height;
   try (inversion 1; auto; fail).
  - inversion 1; subst.
-   assert (E : map (term_subst x z') l =
-                map (term_subst x' z') l0).
+   assert (E : map (Term.subst x z') l =
+                map (Term.subst x' z') l0).
    { injection (term_subst_rename x x' z z' (Fun "" l) (Fun "" l0)).
      auto. varsdec0. varsdec0. cbn; f_equal; auto. }
    now rewrite E.
@@ -739,7 +690,7 @@ Lemma AEq_trans f1 f2 f3 :
  AlphaEq f1 f2 -> AlphaEq f2 f3 -> AlphaEq f1 f3.
 Proof.
  revert f2 f3.
- induction f1 as [h IH f1 LT] using form_height_ind.
+ induction f1 as [h IH f1 LT] using height_ind.
  destruct f1, f2, f3; cbn in *; simpl_height;
   inversion_clear 1; inversion_clear 1; eauto.
  set (vars :=
@@ -762,7 +713,7 @@ Lemma AEq_partialsubst f f' :
  AlphaEq (partialsubst x t f) (partialsubst x t f').
 Proof.
  revert f'.
- induction f as [h IH f LT] using form_height_ind.
+ induction f as [h IH f LT] using height_ind.
  destruct f, f'; intros EQ x t IS1 IS2; inversion_clear EQ;
   cbn in *; simpl_height; auto.
  - constructor; intuition.
@@ -808,7 +759,7 @@ Proof.
      set (vars :=
             Vars.add x (Vars.add v (Vars.add v'
               (vars_unions
-                 [ term_vars t; allvars f; allvars f'])))).
+                 [ Term.vars t; allvars f; allvars f'])))).
      destruct (get_fresh_var vars) as (z',Hz').
      simpl_fresh vars Hz'.
      apply AEq_rename_any with (z' := z') in EQ;
@@ -931,7 +882,7 @@ Qed.
 
 Lemma Subst_Qu2 x t q v f f' :
   x <> v ->
-  ~Vars.In v (term_vars t) ->
+  ~Vars.In v (Term.vars t) ->
   Subst x t f f' ->
   Subst x t (Quant q v f) (Quant q v f').
 Proof.
@@ -956,11 +907,11 @@ Proof.
   apply AEq_freevars in EQ. now rewrite <- EQ.
 Qed.
 
-Lemma Subst_subst x t f : Subst x t f (form_subst x t f).
+Lemma Subst_subst x t f : Subst x t f (subst x t f).
 Proof.
- unfold form_subst.
- set (h := S (form_height f)).
- assert (LT : form_height f < h) by (cbn; auto with * ).
+ unfold subst.
+ set (h := S (height f)).
+ assert (LT : height f < h) by (cbn; auto with * ).
  clearbody h. revert x t f LT.
  induction h as [|h IH]; [inversion 1|];
   intros x t [ ] LT; cbn -[fresh_var] in *; simpl_height.
@@ -975,56 +926,29 @@ Proof.
    case eqbspec.
    + intros ->. apply Subst_Qu1.
    + intros NE.
-     destruct (Vars.mem v (term_vars t)) eqn:IN; cbn - [fresh_var].
+     destruct (Vars.mem v (Term.vars t)) eqn:IN; cbn - [fresh_var].
      * clear IN.
-       apply Subst_Qu3 with (form_substH h v z f); auto.
+       apply Subst_Qu3 with (hsubst h v z f); auto.
        { rewrite freevars_allvars. varsdec. }
        { apply Subst_Qu2; auto; try varsdec.
-         apply IH. now rewrite form_substH_height. }
+         apply IH. now rewrite hsubst_height. }
      * apply Subst_Qu2; auto.
        rewrite <- Vars.mem_spec. now rewrite IN.
 Qed.
 
 Lemma Subst_exists x t f : exists f', Subst x t f f'.
 Proof.
- exists (form_subst x t f). apply Subst_subst.
+ exists (subst x t f). apply Subst_subst.
 Qed.
 
-
-(** Alpha equivalence, now as a boolean function *)
-
-Fixpoint alpha_equivH h f1 f2 :=
-  match h with
-  | 0 => false
-  | S h =>
-    match f1, f2 with
-    | True, True | False, False => true
-    | Pred p1 args1, Pred p2 args2 =>
-      (p1 =? p2) &&& (args1 =? args2)
-    | Not f1, Not f2 => alpha_equivH h f1 f2
-    | Op o1 f1 f1', Op o2 f2 f2' =>
-      (o1 =? o2) &&&
-      alpha_equivH h f1 f2 &&&
-      alpha_equivH h f1' f2'
-    | Quant q1 v1 f1', Quant q2 v2 f2' =>
-      (q1 =? q2) &&&
-      (let z := fresh_var (Vars.union (allvars f1) (allvars f2))
-       in
-       alpha_equivH h (form_subst v1 z f1') (form_subst v2 (Var z) f2'))
-    | _,_ => false
-    end
-  end.
-
-Definition alpha_equiv f1 f2 :=
- alpha_equivH (S (Nat.max (form_height f1) (form_height f2))) f1 f2.
-
-Lemma alpha_equiv_ok f f' :
-  alpha_equiv f f' = true <-> AlphaEq f f'.
+Lemma AlphaEq_equiv f f' :
+  Alt.AlphaEq f f' <-> Ind.AlphaEq f f'.
 Proof.
- unfold alpha_equiv.
+ unfold Alt.AlphaEq.
+ unfold αeq.
  set (h := S _).
- assert (LT : form_height f < h) by (unfold h; auto with *).
- assert (LT' : form_height f' < h) by (unfold h; auto with *).
+ assert (LT : height f < h) by (unfold h; auto with *).
+ assert (LT' : height f' < h) by (unfold h; auto with *).
  clearbody h. revert f f' LT LT'.
  induction h as [|h IH]; [inversion 1|].
  destruct f, f'; simpl; intros LT LT'; simpl_height; try easy.
@@ -1046,4 +970,38 @@ Proof.
    + intros (<-,?). apply AEqQu with z; auto with set.
    + inversion_clear 1. split; trivial.
      apply AEq_rename_any with z0; auto. varsdec.
+Qed.
+
+Lemma Subst_compat' x t f1 f2 f1' :
+ AlphaEq f1 f2 -> Subst x t f1 f1' ->
+ exists f2',  Subst x t f2 f2' /\ AlphaEq f1' f2'.
+Proof.
+ intros EQ SU.
+ exists (subst x t f2).
+ split. apply Subst_subst.
+ eapply Subst_compat; eauto. apply Subst_subst.
+Qed.
+
+Require Import Morphisms RelationClasses.
+
+Instance : Proper (eq ==> eq ==> AlphaEq ==> eq ==> iff) Subst.
+Proof.
+ intros x x' <- t t' <- f f' Hf g g' <-.
+ split.
+ - intros (f0 & EQ & SI).
+   exists f0. split; auto. now transitivity f.
+ - intros (f0 & EQ & SI).
+   exists f0. split; auto. now transitivity f'.
+Qed.
+
+Instance : Proper (eq ==> eq ==> AlphaEq ==> AlphaEq) subst.
+Proof.
+ intros x x' <- t t' <- f f' Hf.
+ apply (Subst_compat x t f f'); auto using Subst_subst.
+Qed.
+
+Lemma subst_Qu1 x t q f :
+ subst x t (Quant q x f) = Quant q x f.
+Proof.
+ rewrite subst_eqn. now rewrite eqb_refl.
 Qed.

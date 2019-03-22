@@ -355,6 +355,11 @@ Proof.
  unfold strict_prefixes. simpl. varsdec.
 Qed.
 
+Lemma get_fresh_var vars : exists z, ~Vars.In z vars.
+Proof.
+ exists (fresh_var vars). apply fresh_var_ok.
+Qed.
+
 Instance : Proper (Vars.Equal ==> eq ==> eq ==> eq) fresh_var_loop.
 Proof.
  intros vs vs' EQ id id' <- n n' <-.

@@ -1090,6 +1090,93 @@ Qed.
 
 Ltac varsdec00 := clear; VarsF.set_iff; intuition auto.
 
+Lemma stack_notin_term
+  (v z z' : variable)(t : term)
+  (stk : list variable)(h g : renaming) g' :
+  g = list_unassoc v h ->
+  g' = map putVar g ->
+  ~Vars.In z (term_vars t) ->
+  ~Vars.In z' (Vars.union (subvars g') (Vars.add v (term_vars t))) ->
+  let stk' := map (fun a : variable => if a =? z then z' else a) stk in
+  (forall v : variable,
+    In v stk -> ~ Vars.In (chgVar h v) (term_vars t)) ->
+  forall v' : variable,
+    In v' (v :: stk') ->
+    ~ Vars.In (chgVar ((v, z) :: g) v') (term_vars t).
+Proof.
+ intros Hg Hg' Hz Hz' stk' CL v0 [<-|IN].
+ - unfold chgVar. simpl. rewrite eqb_refl. varsdec0.
+ - unfold stk' in IN. rewrite in_map_iff in IN.
+   destruct IN as (y & EQ & IN). revert EQ.
+   case eqbspec.
+   + intros -> <-.
+     rewrite chgVar_none; [varsdec0|]; simpl.
+     case eqbspec; [intros <-;varsdec0|].
+     intros _.
+     assert (NO : list_assoc z' g' = None).
+     { apply list_assoc_notin.
+       rewrite <- subinvars_in. unfold subvars in Hz'. varsdec0. }
+     revert NO.
+     rewrite Hg'. rewrite assoc_putVar.
+     now destruct (list_assoc z' g).
+   + intros NE' ->. unfold chgVar. simpl.
+     case eqbspec; [varsdec0|].
+     intros NE''.
+     fold (chgVar g v0). rewrite Hg.
+     rewrite chgVar_unassoc_else by auto.
+     now apply CL.
+Qed.
+
+Lemma Inv_Inv
+  (x v z z' : variable)(t : term)(f : formula)
+  (stk : list variable)(h g : renaming) g' :
+  let vars := Vars.union (Vars.add v (allvars f))
+                         (Vars.add x (term_vars t)) in
+  Inv (Vars.union (vars_of_list stk) vars) h ->
+  g = list_unassoc v h ->
+  g' = map putVar g ->
+  ~Vars.In z (Vars.union (subvars g') vars) ->
+  ~Vars.In z' (Vars.union (subvars g') vars) ->
+  ~Vars.In z' (vars_of_list stk) ->
+  let stk' := map (fun a : variable => if a =? z then z' else a) stk in
+  Inv
+    (Vars.union (vars_of_list (v :: stk'))
+       (Vars.union (allvars f)
+          (Vars.union (Vars.add x (term_vars t)) Vars.empty)))
+    ((v, z) :: g).
+Proof.
+ intros vars IV Hg Hg' Hz Hz' Hz'' stk'.
+ simpl. split; [|split].
+ - assert (NI' : ~Vars.In z (vars_of_list stk')).
+   { rewrite vars_of_list_in.
+     unfold stk'. rewrite in_map_iff.
+     intros (z0 & EQ & IN). rewrite <- vars_of_list_in in IN.
+     revert EQ. case eqbspec; [|easy].
+     intros -> <-; exact (Hz'' IN). }
+   revert Hz NI'. unfold vars. varsdec00.
+ - intros a b Hab.
+   assert (In (a,Var b) g').
+   { rewrite Hg'. rewrite in_map_iff. now exists (a,b). }
+   assert (Vars.In a (subinvars g')).
+   { rewrite subinvars_in. rewrite in_map_iff. now exists (a,Var b). }
+   assert (Vars.In b (suboutvars g')).
+   { unfold suboutvars. rewrite vars_unionmap_in. exists (a,Var b).
+     simpl. auto with set. }
+   unfold vars, subvars in Hz.
+   split; varsdec.
+ - apply Inv_unassoc with (v:=v) in IV. rewrite <- Hg in IV.
+   apply Inv_add with (x:=z') in IV;
+     [ | varsdec| rewrite <- Hg'; revert Hz'; varsdec00].
+   eapply Inv_subset; eauto.
+   assert (Vars.Subset (vars_of_list stk')
+                       (Vars.add z' (vars_of_list stk))).
+   { unfold stk'. clear. intros x.
+     rewrite Vars.add_spec, !vars_of_list_in, in_map_iff.
+     intros (x0 & EQ & IN). revert EQ.
+     case eqbspec; intros; subst; auto. }
+   rewrite H. intro. unfold vars. varsdec00.
+Qed.
+
 Lemma nam2mix_substs_aux1
   (x v z z' : variable)(t : term)(f : formula)
   (stk : list variable)(h g : renaming) g' :
@@ -1294,33 +1381,10 @@ Proof.
        { f_equal.
          apply (nam2mix_shadowstack_map [v] stk);
           right; rewrite freevars_allvars; varsdec0. }
-       { simpl. split; [|split].
-         - assert (NI' : ~In z stk').
-           { unfold stk'. rewrite in_map_iff.
-             intros (z0 & EQ & IN').
-             revert EQ. case eqbspec; [|easy].
-             intros -> <-. rewrite <- vars_of_list_in in IN'. varsdec0. }
-           rewrite <- vars_of_list_in in NI'. varsdec0.
-         - intros a b Hab.
-           assert (In (a,Var b) g').
-           { rewrite Hg. rewrite in_map_iff. now exists (a,b). }
-           assert (Vars.In a (subinvars g')).
-           { rewrite subinvars_in. rewrite in_map_iff. now exists (a,Var b). }
-           assert (Vars.In b (suboutvars g')).
-           { unfold suboutvars. rewrite vars_unionmap_in. exists (a,Var b).
-             simpl. auto with set. }
-           split; varsdec.
-         - apply Inv_unassoc with (v:=v) in IV. fold g in IV.
-           apply Inv_add with (x:=z') in IV;
-             [ | varsdec| rewrite <- Hg; unfold subvars; varsdec0].
-           eapply Inv_subset; eauto.
-           assert (Vars.Subset (vars_of_list stk')
-                               (Vars.add z' (vars_of_list stk))).
-           { unfold stk'. clear. intros x.
-             rewrite Vars.add_spec, !vars_of_list_in, in_map_iff.
-             intros (x0 & EQ & IN). revert EQ.
-             case eqbspec; intros; subst; auto. }
-           rewrite H. intro. varsdec00. }
+       { eapply Inv_Inv with (h:=h); auto.
+         eapply Inv_subset; eauto. intro. varsdec00.
+         revert Hz. rewrite <- Hg. unfold subvars. varsdec00.
+         revert Hz'. rewrite <- Hg. unfold subvars. varsdec00. }
        { clear CL CL' IN.
          intros a b [[= -> ->]|IN]; simpl; auto.
          assert (Vars.In a (subinvars g')).
@@ -1333,34 +1397,11 @@ Proof.
          case eqbspec; try easy. split; auto. eapply SU. apply IN. }
        { clear CL CL' IN.
          intros [->|IN]; [easy|]. unfold stk' in IN. rewrite in_map_iff in IN.
-         destruct IN as (x0 & EQ & IN).
-         revert EQ.
-         case eqbspec.
-         - intros -> ->. varsdec0.
-         - intros _ ->. auto. }
-       { clear CL' IN.
-         intros v0 [<-|IN].
-         - unfold chgVar. simpl. rewrite eqb_refl. varsdec0.
-         - unfold stk' in IN. rewrite in_map_iff in IN.
-           destruct IN as (y & EQ & IN). revert EQ.
-           case eqbspec.
-           + intros -> <-.
-             rewrite chgVar_none; [varsdec0|]; simpl.
-             case eqbspec; [intros <-;varsdec0|].
-             intros _.
-             assert (NO : list_assoc z' g' = None).
-             { apply list_assoc_notin.
-               rewrite <- subinvars_in. varsdec0. }
-             revert NO.
-             unfold g'. rewrite unassoc_putVar. fold g.
-             rewrite assoc_putVar.
-             now destruct (list_assoc z' g).
-           + intros NE' ->. unfold chgVar. simpl.
-             case eqbspec; [varsdec0|].
-             intros NE''.
-             fold (chgVar g v0). unfold g.
-             rewrite chgVar_unassoc_else by auto.
-             now apply CL. }
+         destruct IN as (x0 & EQ & IN). revert EQ.
+         case eqbspec; intros; subst; auto. varsdec0. }
+       { apply stack_notin_term with (h:=h)(g':=g'); auto.
+         revert Hz. varsdec00.
+         revert Hz'. unfold subvars. varsdec00. }
      * (* No capture of variable v *)
        assert (~Vars.In v (term_vars t)).
        { simpl in MM. rewrite <-not_true_iff_false, Vars.mem_spec in MM.

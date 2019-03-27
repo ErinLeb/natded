@@ -1,7 +1,7 @@
 
 (** Conversion from Named derivations to Locally Nameless derivations *)
 
-Require Import RelationClasses Arith Omega Defs Proofs Equiv Alpha Alpha2.
+Require Import RelationClasses Arith Omega Defs Proofs Equiv Alpha Alpha2 Meta.
 Require Nam Mix.
 Import ListNotations.
 Import Nam Nam.Form.
@@ -129,91 +129,22 @@ Proof.
 Qed.
 
 
-(*
-
-Lemma nam2mix_term_substs_ext
- (vars:list variable)
- (subvar subvar' : list (variable*variable))
- (sub : Nam.Subst.st) t :
-  (forall v, list_assoc_dft v subvar v = list_assoc_dft v subvar' v) ->
-  nam2mix_term (List.map (fun v => list_assoc_dft v subvar v) vars)
-          (Nam.term_substs (subvar2sub subvar ++ sub) t) =
-  nam2mix_term (List.map (fun v => list_assoc_dft v subvar' v) vars)
-          (Nam.term_substs (subvar2sub subvar' ++ sub) t).
+Lemma nam2mix_alt_subst_nop x f :
+  nam2mix [] (Alt.subst x (Var x) f) = nam2mix [] f.
 Proof.
- induction t as [v|f l IH] using Nam.term_ind'; intros E.
- - cbn.
+ rewrite nam2mix_alt_subst. simpl.
+ unfold Mix.fsubst.
+ apply form_vmap_id.
+ intros y Hy. unfold Mix.varsubst.
+ case eqbspec; intros; subst; auto.
+Qed.
 
-
-Lemma nam2mix_substs_ext
- (vars:list variable)
- (subvar subvar' : list (variable*variable))
- (sub : Nam.Subst.st) f :
-  (forall v, subvar v = subvar') ->
-  nam2mix (List.map (fun v => list_assoc_dft v subvar v) vars)
-          (Nam.formula_substs (subvar2sub subvar ++ sub) f) =
-  nam2mix (List.map (fun v => list_assoc_dft v subvar' v) vars)
-          (Nam.formula_substs (subvar2sub subvar' ++ sub) f).
+Lemma alt_subst_nop x f :
+  AlphaEq (Alt.subst x (Var x) f) f.
 Proof.
- revert vars subvar subvar' sub.
- induction f; intros var subvar subvar' sub.
- - now cbn.
- - now cbn.
- - cbn. f_equal. rewrite !map_map. apply map_ext.
-
-
-Definition InvSubVar v t f subvar :=
-  ~In v (List.map fst subvar) /\ ~In v (List.map snd subvar) /\
-   (forall w, In w (List.map snd subvar) ->
-              ~Vars.In w (Vars.union (Nam.term_vars t) (Nam.allvars f))).
-
-Lemma nam2mix_substs n (subvar: list (variable*variable)) v t f :
-  InvSubVar v t f subvar ->
-  n = List.length subvar ->
-  let sub := List.map (fun '(v,w) => (v,Nam.Var w)) subvar
-  in
-  nam2mix (List.map snd subvar) (Nam.formula_substs (sub++[(v,t)]) f) =
-  Mix.bsubst n (nam2mix_term [] t)
-    (nam2mix ((List.map fst subvar) ++ [v]) f).
-Proof.
- revert n subvar.
- induction f; cbn -[fresh_var Vars.union]; trivial.
- - intros.
-   f_equal.
-   rewrite !map_map.
-   apply map_ext_in.
-   admit.
- - intros. f_equal; auto.
- - intros. f_equal; auto. admit. admit.
- - intros.
-   set (cond := negb _).
-   destruct cond eqn:Hcond.
-   + cbn. f_equal.
-     set (sub := filter _ _) in *.
-     specialize (IHf (S n) ((v0,v0)::subvar)).
-     cbn in IHf. rewrite <- IHf; auto.
-     case (eqbspec v v0).
-     * intros <-.
-       assert (sub = map (fun '(v, w) => (v, Nam.Var w)) subvar).
-       { admit. }
-
-     *
-
-     admit.
-   + set (sub := filter _ _) in *.
-     set (z := fresh_var _).
-     cbn -[z].
-     f_equal.
-     specialize (IHf (S n) ((v0,z)::subvar)).
-     cbn in IHf. rewrite <- IHf; auto.
-     admit.
-
-Lemma nam2mix_subst v t f :
-  nam2mix [] (Nam.formula_subst v t f) =
-  Mix.bsubst 0 (nam2mix_term [] t) (nam2mix [v] f).
-Proof.
-Admitted. (* preuve ??? *)
-*)
+ apply nam2mix_canonical.
+ apply nam2mix_alt_subst_nop.
+Qed.
 
 Lemma nam2mix_deriv_valid_step logic (d:Nam.derivation) :
   Mix.valid_deriv_step logic (nam2mix_deriv d) =
@@ -254,41 +185,37 @@ Proof.
    rewrite <- nam2mix_ctx_eqb.
    case eqbspec; auto. intro Ec. simpl.
    rewrite <- nam2mix_eqb. cbn.
-   apply eq_true_iff_eq. simpl.
+   apply eq_true_iff_eq.
    rewrite !andb_true_iff.
    rewrite !negb_true_iff, <- !not_true_iff_false.
    rewrite !Vars.mem_spec.
    rewrite !eqb_eq.
    split; intros (U,V); split.
-   + change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)) in U.
-     simpl in U.
-     rewrite <- nam2mix_rename_iff with (z:=x).
-     rewrite <- partialsubst_bsubst0 in U.
-     rewrite <- U.
+   + change (Mix.FVar x) with (nam2mix_term [] (Var x)) in U.
+     rewrite <- nam2mix_alt_subst_bsubst0 in U.
+(*     rewrite <- nam2mix_rename_iff with (z:=x).
+     rewrite <- U. *)
      (* subst x par x donc idem. Mais quid des allvars au lieu de freevars :( ? *)
-     admit.
-     admit.
      admit.
    + (* faut montrer que c equiv c0 -> memes variables libres *)
      rewrite <- nam2mix_ctx_fvars. rewrite <- Ec. varsdec.
    + rewrite U.
      change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
-     simpl.
-     rewrite <- partialsubst_bsubst0.
-     (* subst x par x donc idem. Mais quid des allvars au lieu de freevars :( ? *)
-     admit.
-     admit.
+     rewrite <- nam2mix_alt_subst_bsubst0.
+     symmetry. apply nam2mix_alt_subst_nop.
    + rewrite Ec, U, nam2mix_ctx_fvars.
      rewrite nam2mix_fvars. simpl. varsdec.
 
  - repeat (break; cbn; auto).
    rewrite !nam2mix_ctx_eqb. case eqb; simpl; auto.
    rewrite <- nam2mix_eqb.
-   admit.
+   rewrite nam2mix_subst_alt.
+   now rewrite nam2mix_alt_subst_bsubst0.
  - repeat (break; cbn; auto).
    rewrite !nam2mix_ctx_eqb. case eqb; simpl; auto.
    rewrite <- nam2mix_eqb.
-   admit.
+   rewrite nam2mix_subst_alt.
+   now rewrite nam2mix_alt_subst_bsubst0.
  - repeat (break; cbn - [αeq]; auto);
     rewrite ?andb_false_r; auto.
    rewrite <- nam2mix_seq_eqb, <- nam2mix_eqb. cbn.
@@ -310,7 +237,8 @@ Proof.
        rewrite V. auto.
      * rewrite W.
        change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
-       admit.
+       rewrite <- nam2mix_alt_subst_bsubst0.
+       symmetry. apply nam2mix_alt_subst_nop.
      * destruct s. cbn in *. injection U as U U'. admit.
  - repeat (break; cbn; auto).
    case eqb; simpl; auto.

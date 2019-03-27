@@ -518,6 +518,56 @@ Proof.
  apply Subst_subst.
 Qed.
 
+Lemma nam2mix_rename_iff2 z v v' f f' :
+  ~ Vars.In z (Vars.union (freevars f) (freevars f')) ->
+  nam2mix [] (Alt.subst v (Var z) f) =
+  nam2mix [] (Alt.subst v' (Var z) f')
+  <->
+  nam2mix [v] f = nam2mix [v'] f'.
+Proof.
+ intros Hz.
+ rewrite 2 nam2mix_alt_subst_bsubst0. cbn.
+ split.
+ - intros H. apply bsubst_fresh_inj in H; auto.
+   rewrite !nam2mix_fvars. cbn. varsdec.
+ - now intros ->.
+Qed.
+
+Lemma nam2mix_alt_subst_nop x f :
+  nam2mix [] (Alt.subst x (Var x) f) = nam2mix [] f.
+Proof.
+ rewrite nam2mix_alt_subst. simpl.
+ unfold Mix.fsubst.
+ apply form_vmap_id.
+ intros y Hy. unfold Mix.varsubst.
+ case eqbspec; intros; subst; auto.
+Qed.
+
+Lemma alt_subst_nop x f :
+  AlphaEq (Alt.subst x (Var x) f) f.
+Proof.
+ apply nam2mix_canonical'.
+ apply nam2mix_alt_subst_nop.
+Qed.
+
+Lemma nam2mix_rename_iff3 (v x : variable) f f' :
+  ~ Vars.In x (Vars.remove v (freevars f)) ->
+  nam2mix [] (Alt.subst v (Var x) f) = nam2mix [] f'
+  <->
+  nam2mix [v] f = nam2mix [x] f'.
+Proof.
+ intros Hx.
+ rewrite nam2mix_alt_subst_bsubst0. cbn.
+ split.
+ - rewrite <- (nam2mix_alt_subst_nop x f').
+   rewrite nam2mix_alt_subst_bsubst0. cbn.
+   apply bsubst_fresh_inj.
+   rewrite !nam2mix_fvars. cbn. varsdec.
+ - intros ->.
+   rewrite <- (nam2mix_alt_subst_bsubst0 x (Var x)).
+   apply nam2mix_alt_subst_nop.
+Qed.
+
 
 Lemma term_substs_ext h h' t :
  (forall v, list_assoc_dft v h (Var v) =

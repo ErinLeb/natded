@@ -123,29 +123,6 @@ Ltac break :=
  | |- match ?x with _ => _ end = _ => destruct x
  end.
 
-Lemma lazy_andb_false (a:bool) : a &&& false = false.
-Proof.
- now destruct a.
-Qed.
-
-
-Lemma nam2mix_alt_subst_nop x f :
-  nam2mix [] (Alt.subst x (Var x) f) = nam2mix [] f.
-Proof.
- rewrite nam2mix_alt_subst. simpl.
- unfold Mix.fsubst.
- apply form_vmap_id.
- intros y Hy. unfold Mix.varsubst.
- case eqbspec; intros; subst; auto.
-Qed.
-
-Lemma alt_subst_nop x f :
-  AlphaEq (Alt.subst x (Var x) f) f.
-Proof.
- apply nam2mix_canonical.
- apply nam2mix_alt_subst_nop.
-Qed.
-
 Lemma nam2mix_deriv_valid_step logic (d:Nam.derivation) :
   Mix.valid_deriv_step logic (nam2mix_deriv d) =
   Nam.valid_deriv_step logic d.
@@ -193,19 +170,15 @@ Proof.
    split; intros (U,V); split.
    + change (Mix.FVar x) with (nam2mix_term [] (Var x)) in U.
      rewrite <- nam2mix_alt_subst_bsubst0 in U.
-(*     rewrite <- nam2mix_rename_iff with (z:=x).
-     rewrite <- U. *)
-     (* subst x par x donc idem. Mais quid des allvars au lieu de freevars :( ? *)
-     admit.
-   + (* faut montrer que c equiv c0 -> memes variables libres *)
-     rewrite <- nam2mix_ctx_fvars. rewrite <- Ec. varsdec.
+     apply nam2mix_rename_iff3; auto.
+     rewrite nam2mix_fvars in V. simpl in V. varsdec.
+   + rewrite <- nam2mix_ctx_fvars. rewrite <- Ec. varsdec.
    + rewrite U.
      change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
      rewrite <- nam2mix_alt_subst_bsubst0.
      symmetry. apply nam2mix_alt_subst_nop.
    + rewrite Ec, U, nam2mix_ctx_fvars.
      rewrite nam2mix_fvars. simpl. varsdec.
-
  - repeat (break; cbn; auto).
    rewrite !nam2mix_ctx_eqb. case eqb; simpl; auto.
    rewrite <- nam2mix_eqb.
@@ -218,29 +191,50 @@ Proof.
    now rewrite nam2mix_alt_subst_bsubst0.
  - repeat (break; cbn - [αeq]; auto);
     rewrite ?andb_false_r; auto.
-   rewrite <- nam2mix_seq_eqb, <- nam2mix_eqb. cbn.
+   rewrite <- nam2mix_seq_eqb, <- nam2mix_eqb, <- nam2mix_ctx_eqb.
+   cbn.
    apply eq_true_iff_eq.
    rewrite !andb_true_iff.
    rewrite !negb_true_iff, <- !not_true_iff_false.
    rewrite !Vars.mem_spec.
    rewrite !eqb_eq.
    split.
-   + intros (((U,V),W),X); repeat split.
+   + intros (((U,V),W),X); repeat split; auto.
      * rewrite <-V in U; exact U.
-     * rewrite <- nam2mix_ctx_eqb. now apply eqb_eq.
-     * admit. (* bsubst... *)
-     * destruct s. cbn in *. injection U as U U'. admit.
-   + intros ((U,(V,W)),Z); repeat split.
-     * rewrite <- nam2mix_ctx_eqb in V. apply eqb_eq in V.
-       rewrite U. f_equal; auto.
-     * rewrite <- nam2mix_ctx_eqb in V. apply eqb_eq in V.
-       rewrite V. auto.
+     * change (Mix.FVar x) with (nam2mix_term [] (Var x)) in W.
+       rewrite <- nam2mix_alt_subst_bsubst0 in W.
+       apply nam2mix_rename_iff3; auto.
+       rewrite nam2mix_fvars in X. simpl in X. varsdec.
+     * revert X. destruct s. cbn in *. injection U as <- <-.
+       rewrite <-!nam2mix_ctx_fvars, !nam2mix_fvars. simpl.
+       clear. varsdec.
+   + intros ((U,(V,W)),Z); repeat split; auto.
+     * rewrite U. f_equal; auto.
      * rewrite W.
        change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
        rewrite <- nam2mix_alt_subst_bsubst0.
        symmetry. apply nam2mix_alt_subst_nop.
-     * destruct s. cbn in *. injection U as U U'. admit.
+     * revert Z. destruct s. cbn in *.
+       rewrite V, W. injection U as <- <-.
+       rewrite <-!nam2mix_ctx_fvars, !nam2mix_fvars.
+       simpl. clear. varsdec.
  - repeat (break; cbn; auto).
    case eqb; simpl; auto.
    now rewrite <- nam2mix_seq_eqb.
-Admitted.
+Qed.
+
+Lemma nam2mix_deriv_valid logic (d:Nam.derivation) :
+  Mix.valid_deriv logic (nam2mix_deriv d) =
+  Nam.valid_deriv logic d.
+Proof.
+ revert d.
+ fix IH 1. destruct d.
+ cbn -[Mix.valid_deriv_step Nam.valid_deriv_step].
+ rewrite <- nam2mix_deriv_valid_step.
+ cbn -[Mix.valid_deriv_step Nam.valid_deriv_step].
+ destruct Mix.valid_deriv_step; auto.
+ revert l.
+ fix IH' 1. destruct l; simpl.
+ reflexivity.
+ now rewrite IH, IH'.
+Qed.

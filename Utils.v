@@ -8,6 +8,11 @@ Proof.
  now destruct b, b'.
 Qed.
 
+Lemma lazy_andb_false (a:bool) : a &&& false = false.
+Proof.
+ now destruct a.
+Qed.
+
 Lemma cons_app {A} (x:A) l : x::l = [x]++l.
 Proof.
  reflexivity.

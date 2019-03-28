@@ -3,23 +3,12 @@
 
  - affichage court du <->
 
- - verifier que Nam.formula_substs est bien ok
-
-Nam:
-
-  - preuves de lemmes de substitution
-  - definition valid_deriv invariante par alpha
-  - Valid via predicat inductif + adéquation valid_deriv
-  - Plongement comme formules Coq + correction
-
-Equiv:
-
-   preuves reliant Nam.valid_deriv et Mix.valid_deriv (ou Mix.Pr)
-
 Meta
 
   - cleanup proofs Meta
   - faire les preuves de Meta directement sur Valid plutot que Pr ?
+
+  - Theoreme de complétude !!
 
 General
 

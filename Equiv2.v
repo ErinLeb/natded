@@ -9,8 +9,6 @@ Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
-
-
 (** Contexts *)
 
 Definition nam2mix_ctx (c:Nam.context) : Mix.context :=
@@ -123,76 +121,47 @@ Ltac break :=
  | |- match ?x with _ => _ end = _ => destruct x
  end.
 
-Lemma nam2mix_deriv_valid_step logic (d:Nam.derivation) :
+Lemma nam2mix_valid_deriv_step logic (d:Nam.derivation) :
   Mix.valid_deriv_step logic (nam2mix_deriv d) =
   Nam.valid_deriv_step logic d.
 Proof.
- destruct d as [[ ] s ds]; cbn.
- - repeat (break; cbn; auto).
-   unfold nam2mix_ctx.
+ destruct d as [[ ] s ds]; cbn;
+  repeat (break; cbn -[αeq]; auto);
+  rewrite ?andb_false_r, <- ?nam2mix_seq_eqb,
+          <- ?nam2mix_ctx_eqb, <- ?nam2mix_eqb; auto.
+ - unfold nam2mix_ctx.
    induction c as [|A c IH]; cbn; auto.
    rewrite <- nam2mix_eqb.
    case eqbspec; auto.
- - repeat (break; cbn; auto).
- - repeat (break; cbn; auto).
-   rewrite <- !nam2mix_seq_eqb. now destruct d.
- - repeat (break; cbn; auto).
-   rewrite <- !nam2mix_seq_eqb. now destruct d.
- - repeat (break; cbn; auto).
-   now rewrite nam2mix_eqb, !nam2mix_ctx_eqb.
- - repeat (break; cbn; auto).
-   rewrite <- !nam2mix_seq_eqb. now destruct d, d0.
- - repeat (break; cbn; auto).
-   now rewrite <- !nam2mix_seq_eqb.
- - repeat (break; cbn; auto).
-   now rewrite <- !nam2mix_seq_eqb.
- - repeat (break; cbn; auto).
-   rewrite <- !nam2mix_seq_eqb. now destruct d.
- - repeat (break; cbn; auto).
-   rewrite <- !nam2mix_seq_eqb. now destruct d.
- - repeat (break; cbn; auto).
-   rewrite <- nam2mix_ctx_eqb, <- !nam2mix_seq_eqb.
-   now destruct d, d0.
- - repeat (break; cbn; auto).
-   rewrite <- nam2mix_seq_eqb. now destruct d.
- - repeat (break; cbn; auto).
-   rewrite <- !nam2mix_seq_eqb. now destruct d.
- - repeat (break; cbn - [αeq]; auto);
-    rewrite ?andb_false_r; auto.
-   rewrite <- nam2mix_ctx_eqb.
-   case eqbspec; auto. intro Ec. simpl.
-   rewrite <- nam2mix_eqb. cbn.
+ - now destruct d.
+ - now destruct d.
+ - now destruct d, d0.
+ - now destruct d.
+ - now destruct d.
+ - now destruct d, d0.
+ - now destruct d.
+ - now destruct d.
+ - cbn.
    apply eq_true_iff_eq.
    rewrite !andb_true_iff.
    rewrite !negb_true_iff, <- !not_true_iff_false.
    rewrite !Vars.mem_spec.
    rewrite !eqb_eq.
-   split; intros (U,V); split.
-   + change (Mix.FVar x) with (nam2mix_term [] (Var x)) in U.
-     rewrite <- nam2mix_alt_subst_bsubst0 in U.
+   split; intros ((U,V),W); split; try split; auto.
+   + change (Mix.FVar x) with (nam2mix_term [] (Var x)) in V.
+     rewrite <- nam2mix_alt_subst_bsubst0 in V.
      apply nam2mix_rename_iff3; auto.
-     rewrite nam2mix_fvars in V. simpl in V. varsdec.
-   + rewrite <- nam2mix_ctx_fvars. rewrite <- Ec. varsdec.
-   + rewrite U.
+     rewrite nam2mix_fvars in W. simpl in W. varsdec.
+   + rewrite <- nam2mix_ctx_fvars. rewrite <- U. varsdec.
+   + rewrite V.
      change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
      rewrite <- nam2mix_alt_subst_bsubst0.
      symmetry. apply nam2mix_alt_subst_nop.
-   + rewrite Ec, U, nam2mix_ctx_fvars.
+   + rewrite U, V, nam2mix_ctx_fvars.
      rewrite nam2mix_fvars. simpl. varsdec.
- - repeat (break; cbn; auto).
-   rewrite !nam2mix_ctx_eqb. case eqb; simpl; auto.
-   rewrite <- nam2mix_eqb.
-   rewrite nam2mix_subst_alt.
-   now rewrite nam2mix_alt_subst_bsubst0.
- - repeat (break; cbn; auto).
-   rewrite !nam2mix_ctx_eqb. case eqb; simpl; auto.
-   rewrite <- nam2mix_eqb.
-   rewrite nam2mix_subst_alt.
-   now rewrite nam2mix_alt_subst_bsubst0.
- - repeat (break; cbn - [αeq]; auto);
-    rewrite ?andb_false_r; auto.
-   rewrite <- nam2mix_seq_eqb, <- nam2mix_eqb, <- nam2mix_ctx_eqb.
-   cbn.
+ - now rewrite nam2mix_subst_alt, nam2mix_alt_subst_bsubst0.
+ - now rewrite nam2mix_subst_alt, nam2mix_alt_subst_bsubst0.
+ - cbn.
    apply eq_true_iff_eq.
    rewrite !andb_true_iff.
    rewrite !negb_true_iff, <- !not_true_iff_false.
@@ -218,23 +187,269 @@ Proof.
        rewrite V, W. injection U as <- <-.
        rewrite <-!nam2mix_ctx_fvars, !nam2mix_fvars.
        simpl. clear. varsdec.
- - repeat (break; cbn; auto).
-   case eqb; simpl; auto.
-   now rewrite <- nam2mix_seq_eqb.
 Qed.
 
-Lemma nam2mix_deriv_valid logic (d:Nam.derivation) :
+Lemma nam2mix_valid_deriv logic (d:Nam.derivation) :
   Mix.valid_deriv logic (nam2mix_deriv d) =
   Nam.valid_deriv logic d.
 Proof.
  revert d.
  fix IH 1. destruct d.
  cbn -[Mix.valid_deriv_step Nam.valid_deriv_step].
- rewrite <- nam2mix_deriv_valid_step.
+ rewrite <- nam2mix_valid_deriv_step.
  cbn -[Mix.valid_deriv_step Nam.valid_deriv_step].
  destruct Mix.valid_deriv_step; auto.
  revert l.
  fix IH' 1. destruct l; simpl.
  reflexivity.
  now rewrite IH, IH'.
+Qed.
+
+Lemma mix_nam_mix_rule (r:Mix.rule_kind) :
+  Mix.closed r ->
+  nam2mix_rule (mix2nam_rule r) = r.
+Proof.
+ unfold Mix.closed.
+ destruct r; cbn; intros CL; auto.
+ f_equal. apply mix_nam_mix_term, CL.
+ f_equal. apply mix_nam_mix_term, CL.
+Qed.
+
+Lemma mix_nam_mix_ctx (c:Mix.context) :
+  Mix.closed c ->
+  nam2mix_ctx (mix2nam_ctx c) = c.
+Proof.
+ unfold Mix.closed.
+ induction c as [|f c IH]; cbn; intros CL; auto.
+ apply max_0 in CL. destruct CL as (CL,CL').
+ f_equal; auto using mix_nam_mix.
+Qed.
+
+Lemma mix_nam_mix_seq (s:Mix.sequent) :
+  Mix.closed s ->
+  nam2mix_seq (mix2nam_seq s) = s.
+Proof.
+ unfold Mix.closed.
+ destruct s; cbn. intros CL.
+ apply max_0 in CL. destruct CL as (CL,CL').
+ f_equal.
+ - apply mix_nam_mix_ctx; auto.
+ - apply mix_nam_mix; auto.
+Qed.
+
+Lemma mix_nam_mix_deriv (d:Mix.derivation) :
+  Mix.closed d ->
+  nam2mix_deriv (mix2nam_deriv d) = d.
+Proof.
+ unfold Mix.closed.
+ induction d as [r s l IH] using Mix.derivation_ind'.
+ cbn; intros CL.
+ rewrite !max_0 in CL. destruct CL as (CL & CL' & CL'').
+ f_equal.
+ - now apply mix_nam_mix_rule.
+ - now apply mix_nam_mix_seq.
+ - rewrite map_map. apply map_id_iff. intros d Hd.
+   rewrite Forall_forall in IH.
+   apply IH; auto.
+   rewrite list_max_map_0 in CL''; auto.
+Qed.
+
+Lemma mix2nam_valid_deriv logic (d:Mix.derivation) :
+  Mix.closed d ->
+  Nam.valid_deriv logic (mix2nam_deriv d) =
+  Mix.valid_deriv logic d.
+Proof.
+ intros CL.
+ now rewrite <- nam2mix_valid_deriv, mix_nam_mix_deriv.
+Qed.
+
+(** nam2mix and closeness *)
+
+Lemma nam2mix_ctx_closed c : Mix.closed (nam2mix_ctx c).
+Proof.
+ unfold Mix.closed.
+ induction c; cbn; auto. rewrite nam2mix_closed. auto.
+Qed.
+
+Lemma nam2mix_seq_closed s : Mix.closed (nam2mix_seq s).
+Proof.
+ unfold Mix.closed.
+ destruct s; cbn. now rewrite nam2mix_closed, nam2mix_ctx_closed.
+Qed.
+
+Lemma nam2mix_rule_closed r : Mix.closed (nam2mix_rule r).
+Proof.
+ unfold Mix.closed.
+ destruct r; cbn; auto; apply nam2mix_term_closed.
+Qed.
+
+Lemma nam2mix_deriv_closed d : Mix.level (nam2mix_deriv d) = 0.
+Proof.
+ revert d.
+ fix IH 1. destruct d as (r,s,l); cbn.
+ rewrite nam2mix_rule_closed, nam2mix_seq_closed. simpl.
+ revert l.
+ fix IH' 1. destruct l as [|d l]; cbn; trivial.
+ rewrite IH. simpl. apply IH'.
+Qed.
+
+(** Alpha equivalence for contexts, sequents, rules, derivations *)
+
+Instance eqb_rule : Eqb Nam.rule_kind :=
+ fun r r' =>
+   match r, r' with
+   | Nam.Ax, Nam.Ax
+   | Nam.Tr_i, Nam.Tr_i
+   | Nam.Fa_e, Nam.Fa_e
+   | Nam.Not_i, Nam.Not_i
+   | Nam.Not_e, Nam.Not_e
+   | Nam.And_i, Nam.And_i
+   | Nam.And_e1, Nam.And_e1
+   | Nam.And_e2, Nam.And_e2
+   | Nam.Or_i1, Nam.Or_i1
+   | Nam.Or_i2, Nam.Or_i2
+   | Nam.Or_e, Nam.Or_e
+   | Nam.Imp_i, Nam.Imp_i
+   | Nam.Imp_e, Nam.Imp_e
+   | Nam.Absu, Nam.Absu => true
+   | Nam.All_i v, Nam.All_i v'
+   | Nam.Ex_e v, Nam.Ex_e v' => v =? v'
+   | Nam.All_e t, Nam.All_e t'
+   | Nam.Ex_i t, Nam.Ex_i t' => t =? t'
+   | _, _ => false
+   end.
+
+Instance eqb_deriv : Eqb Nam.derivation :=
+ fix eqb_deriv d d' :=
+   match d, d' with
+   | Rule r s l, Rule r' s' l' =>
+     (r =? r') &&& (s =? s') &&& (list_forallb2 eqb_deriv l l')
+   end.
+
+Definition AlphaEq_ctx (c c':Nam.context) := (c =? c') = true.
+Definition AlphaEq_seq (s s':Nam.sequent) := (s =? s') = true.
+Definition AlphaEq_rule (r r':Nam.rule_kind) := (r =? r') = true.
+Definition AlphaEq_deriv (d d':Nam.derivation) := (d =? d') = true.
+
+(** [nam2mix] is canonical for contexts, sequents, rules, derivatsions :
+    alpha-equivalent stuffs are converted to equal things. *)
+
+Lemma nam2mix_ctx_canonical c c' :
+  nam2mix_ctx c = nam2mix_ctx c' <-> AlphaEq_ctx c c'.
+Proof.
+ revert c'.
+ unfold AlphaEq_ctx.
+ induction c as [|f c IH]; destruct c' as [|f' c']; cbn; try easy.
+ rewrite !lazy_andb_iff.
+ rewrite <- IH, <- (nam2mix_canonical f f').
+ change (map (nam2mix [])) with nam2mix_ctx.
+ split.
+ - now intros [= <- <-].
+ - now intros (<-,<-).
+Qed.
+
+Lemma nam2mix_seq_canonical s s' :
+  nam2mix_seq s = nam2mix_seq s' <-> AlphaEq_seq s s'.
+Proof.
+ unfold AlphaEq_seq.
+ destruct s, s'; cbn. rewrite !lazy_andb_iff.
+ rewrite <- (nam2mix_ctx_canonical c c0), <- (nam2mix_canonical f f0).
+ split.
+ - now intros [= <- <-].
+ - now intros (<-,<-).
+Qed.
+
+Lemma nam2mix_rule_canonical r r' :
+  nam2mix_rule r = nam2mix_rule r' <-> AlphaEq_rule r r'.
+Proof.
+ unfold AlphaEq_rule.
+ destruct r, r'; cbn; try easy; rewrite ?eqb_eq.
+ - split; [now intros [= <-] | now intros <-].
+ - split; [intros [=]; now apply nam2mix_term_inj | now intros <-].
+ - split; [intros [=]; now apply nam2mix_term_inj | now intros <-].
+ - split; [now intros [= <-] | now intros <-].
+Qed.
+
+Lemma nam2mix_deriv_canonical d d' :
+  nam2mix_deriv d = nam2mix_deriv d' <-> AlphaEq_deriv d d'.
+Proof.
+ unfold AlphaEq_deriv.
+ revert d d'.
+ fix IH 1. destruct d as [r s l], d' as [r' s' l']. cbn.
+ rewrite !lazy_andb_iff.
+ rewrite <- (nam2mix_rule_canonical r r'),
+         <- (nam2mix_seq_canonical s s').
+ assert (map nam2mix_deriv l = map nam2mix_deriv l' <->
+         list_forallb2 eqb l l' = true).
+ { revert l l'.
+   fix IH' 1. destruct l as [|d l], l' as [|d' l']; cbn; try easy.
+   rewrite !lazy_andb_iff.
+   rewrite <- IH. rewrite <- IH'. intuition congruence. }
+ rewrite <- H.
+ intuition congruence.
+Qed.
+
+(** These alpha-equivalence are hence indeed equivalences *)
+
+Lemma AlphaEq_ctx_equivalence :
+  Equivalence AlphaEq_ctx.
+Proof.
+ constructor; [ intro | intros ? ? | intros ? ? ?];
+  rewrite <-!nam2mix_ctx_canonical; eauto using eq_trans.
+Qed.
+
+Lemma AlphaEq_seq_equivalence :
+  Equivalence AlphaEq_seq.
+Proof.
+ constructor; [ intro | intros ? ? | intros ? ? ?];
+  rewrite <-!nam2mix_seq_canonical; eauto using eq_trans.
+Qed.
+
+Lemma AlphaEq_rule_equivalence :
+  Equivalence AlphaEq_rule.
+Proof.
+ constructor; [ intro | intros ? ? | intros ? ? ?];
+  rewrite <-!nam2mix_rule_canonical; eauto using eq_trans.
+Qed.
+
+Lemma AlphaEq_deriv_equivalence :
+  Equivalence AlphaEq_deriv.
+Proof.
+ constructor; [ intro | intros ? ? | intros ? ? ?];
+  rewrite <-!nam2mix_deriv_canonical; eauto using eq_trans.
+Qed.
+
+(** Starting from a named derivation [d], alpha-equivalence between
+    [mix2nam_deriv (nam2mix_deriv d)] and [d] *)
+
+Lemma nam_mix_nam_ctx c : AlphaEq_ctx (mix2nam_ctx (nam2mix_ctx c)) c.
+Proof.
+ apply nam2mix_ctx_canonical, mix_nam_mix_ctx, nam2mix_ctx_closed.
+Qed.
+
+Lemma nam_mix_nam_seq s : AlphaEq_seq (mix2nam_seq (nam2mix_seq s)) s.
+Proof.
+ apply nam2mix_seq_canonical, mix_nam_mix_seq, nam2mix_seq_closed.
+Qed.
+
+Lemma nam_mix_nam_rule r : AlphaEq_rule (mix2nam_rule (nam2mix_rule r)) r.
+Proof.
+ apply nam2mix_rule_canonical, mix_nam_mix_rule, nam2mix_rule_closed.
+Qed.
+
+Lemma nam_mix_nam_deriv d :
+  AlphaEq_deriv (mix2nam_deriv (nam2mix_deriv d)) d.
+Proof.
+ apply nam2mix_deriv_canonical, mix_nam_mix_deriv, nam2mix_deriv_closed.
+Qed.
+
+(** [Nam.valid_deriv] is compatible with alpha-equivalence *)
+
+Lemma AlphaEq_valid_deriv logic d d' :
+  AlphaEq_deriv d d' ->
+  Nam.valid_deriv logic d = Nam.valid_deriv logic d'.
+Proof.
+ rewrite <- nam2mix_deriv_canonical.
+ rewrite <- !nam2mix_valid_deriv.
+ now intros <-.
 Qed.

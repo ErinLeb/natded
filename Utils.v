@@ -13,6 +13,11 @@ Proof.
  now destruct a.
 Qed.
 
+Lemma lazy_orb_false (a:bool) : a ||| false = a.
+Proof.
+ now destruct a.
+Qed.
+
 Lemma cons_app {A} (x:A) l : x::l = [x]++l.
 Proof.
  reflexivity.

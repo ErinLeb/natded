@@ -219,6 +219,20 @@ Proof.
      * apply IH'; auto. eapply Inv_weak; eauto. varsdec.
 Qed.
 
+Lemma term_substs_nil t :
+ Term.substs [] t = t.
+Proof.
+ induction t using term_ind'; simpl; f_equal; auto.
+ apply map_id_iff; auto.
+Qed.
+
+Lemma nam2mix_term_inj t t' :
+ nam2mix_term [] t = nam2mix_term [] t' <-> t = t'.
+Proof.
+ split; [|now intros ->].
+ rewrite <- (nam2mix_term_ok [] []), !term_substs_nil; auto.
+Qed.
+
 Lemma nam2mix_canonical_gen sub sub' f f' :
  Inv (Vars.union (allvars f) (allvars f')) sub sub' ->
  αeq_gen sub f sub' f' = true <->
@@ -254,7 +268,7 @@ Qed.
 
 (** Proofs about [mix2nam] *)
 
-Lemma mix_nam_mix_term stack t :
+Lemma mix_nam_mix_term_gen stack t :
  NoDup stack ->
  Mix.level t <= List.length stack ->
  (forall v, In v stack -> ~Vars.In v (Mix.fvars t)) ->
@@ -287,7 +301,7 @@ Proof.
  revert stack.
  induction f; simpl; trivial; intros stack ND LE FR.
  - f_equal.
-   injection (mix_nam_mix_term stack (Mix.Fun "" l)); auto.
+   injection (mix_nam_mix_term_gen stack (Mix.Fun "" l)); auto.
  - f_equal. auto.
  - cbn in *. f_equal.
    + apply IHf1; auto. omega with *.
@@ -308,6 +322,15 @@ Proof.
      * set (vars := Vars.union (vars_of_list stack) (Mix.fvars f)).
        generalize (fresh_var_ok vars). varsdec.
      * apply FR in IN. varsdec.
+Qed.
+
+Lemma mix_nam_mix_term t :
+ Mix.closed t ->
+ nam2mix_term [] (mix2nam_term [] t) = t.
+Proof.
+ intros CL.
+ apply mix_nam_mix_term_gen; auto. constructor.
+ now rewrite CL.
 Qed.
 
 Lemma mix_nam_mix f :
@@ -342,6 +365,13 @@ Proof.
  - specialize (IHf (v::stack)). cbn in *. omega.
 Qed.
 
+Lemma nam2mix_term_closed t :
+ Mix.closed (nam2mix_term [] t).
+Proof.
+ unfold Mix.closed.
+ generalize (nam2mix_term_level [] t); simpl; omega.
+Qed.
+
 Lemma nam2mix_closed f :
   Mix.closed (nam2mix [] f).
 Proof.
@@ -349,6 +379,13 @@ Proof.
  generalize (nam2mix_level [] f). simpl. auto with *.
 Qed.
 
+Lemma nam_mix_nam_term t :
+ mix2nam_term [] (nam2mix_term [] t) = t.
+Proof.
+ apply nam2mix_term_inj.
+ apply mix_nam_mix_term.
+ apply nam2mix_term_closed.
+Qed.
 
 Lemma nam_mix_nam f :
   AlphaEq (mix2nam [] (nam2mix [] f)) f.

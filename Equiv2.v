@@ -149,18 +149,18 @@ Proof.
    rewrite !eqb_eq.
    split; intros ((U,V),W); split; try split; auto.
    + change (Mix.FVar x) with (nam2mix_term [] (Var x)) in V.
-     rewrite <- nam2mix_alt_subst_bsubst0 in V.
+     rewrite <- nam2mix_altsubst_bsubst0 in V.
      apply nam2mix_rename_iff3; auto.
      rewrite nam2mix_fvars in W. simpl in W. varsdec.
    + rewrite <- nam2mix_ctx_fvars. rewrite <- U. varsdec.
    + rewrite V.
      change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
-     rewrite <- nam2mix_alt_subst_bsubst0.
-     symmetry. apply nam2mix_alt_subst_nop.
+     rewrite <- nam2mix_altsubst_bsubst0.
+     symmetry. apply nam2mix_altsubst_nop.
    + rewrite U, V, nam2mix_ctx_fvars.
      rewrite nam2mix_fvars. simpl. varsdec.
- - now rewrite nam2mix_subst_alt, nam2mix_alt_subst_bsubst0.
- - now rewrite nam2mix_subst_alt, nam2mix_alt_subst_bsubst0.
+ - now rewrite nam2mix_subst_alt, nam2mix_altsubst_bsubst0.
+ - now rewrite nam2mix_subst_alt, nam2mix_altsubst_bsubst0.
  - cbn.
    apply eq_true_iff_eq.
    rewrite !andb_true_iff.
@@ -171,7 +171,7 @@ Proof.
    + intros (((U,V),W),X); repeat split; auto.
      * rewrite <-V in U; exact U.
      * change (Mix.FVar x) with (nam2mix_term [] (Var x)) in W.
-       rewrite <- nam2mix_alt_subst_bsubst0 in W.
+       rewrite <- nam2mix_altsubst_bsubst0 in W.
        apply nam2mix_rename_iff3; auto.
        rewrite nam2mix_fvars in X. simpl in X. varsdec.
      * revert X. destruct s. cbn in *. injection U as <- <-.
@@ -181,8 +181,8 @@ Proof.
      * rewrite U. f_equal; auto.
      * rewrite W.
        change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
-       rewrite <- nam2mix_alt_subst_bsubst0.
-       symmetry. apply nam2mix_alt_subst_nop.
+       rewrite <- nam2mix_altsubst_bsubst0.
+       symmetry. apply nam2mix_altsubst_nop.
      * revert Z. destruct s. cbn in *.
        rewrite V, W. injection U as <- <-.
        rewrite <-!nam2mix_ctx_fvars, !nam2mix_fvars.

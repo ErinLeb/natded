@@ -226,6 +226,13 @@ Proof.
  apply map_id_iff; auto.
 Qed.
 
+Lemma substs_nil f :
+ substs [] f = f.
+Proof.
+ induction f; cbn - [fresh_var]; f_equal; auto.
+ apply map_id_iff. intros a _. apply term_substs_nil.
+Qed.
+
 Lemma nam2mix_term_inj t t' :
  nam2mix_term [] t = nam2mix_term [] t' <-> t = t'.
 Proof.

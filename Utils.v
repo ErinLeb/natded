@@ -1,6 +1,7 @@
 Require Import Bool Arith Omega Ascii String AsciiOrder StringOrder List.
 Import ListNotations.
 Open Scope lazy_bool_scope.
+Add Search Blacklist "OrdersEx.Nat_as".
 
 Lemma lazy_andb_iff (b b' : bool) :
  b &&& b' = true <-> b = true /\ b' = true.
@@ -314,6 +315,11 @@ Proof.
  omega with *.
 Qed.
 
+Lemma max_lt n m p : Nat.max n m < p <-> n < p /\ m < p.
+Proof.
+ omega with *.
+Qed.
+
 Lemma max_0 n m : Nat.max n m = 0 <-> n=0 /\ m=0.
 Proof.
  omega with *.
@@ -329,6 +335,14 @@ Lemma list_max_le l p :
  list_max l <= p <-> (forall n, In n l -> n <= p).
 Proof.
  induction l; simpl; rewrite ?max_le in *; intuition.
+Qed.
+
+(** /!\ The other direction is only true for non-empty lists *)
+
+Lemma list_max_lt l p :
+ list_max l < p -> (forall n, In n l -> n < p).
+Proof.
+ induction l; simpl; rewrite ?max_lt in *; intuition.
 Qed.
 
 Lemma list_max_0 l :

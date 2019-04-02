@@ -16,3 +16,4 @@ Equiv2.v
 Meta.v
 ToCoq.v
 Countable.v
+Theories.v

@@ -9,6 +9,9 @@ Local Open Scope eqb_scope.
 Definition ClosedFormulaOn (sign:gen_signature) (A:formula) :=
   check sign A = true /\ closed A /\ Vars.Empty (fvars A).
 
+Definition ValidDerivOn logic (sign:gen_signature) d :=
+  check sign d = true /\ closed d /\ Valid logic d.
+
 Record theory :=
   { sign :> gen_signature;
     IsAxiom : formula -> Prop;
@@ -19,9 +22,27 @@ Implicit Type th : theory.
 Section SomeLogic.
 Variable logic : Defs.logic.
 
+Definition IsTheoremStrict th T :=
+  ClosedFormulaOn th T /\
+  exists d axs,
+    ValidDerivOn logic th d /\
+    Forall th.(IsAxiom) axs /\
+    Claim d (axs ⊢ T).
+
 Definition IsTheorem th T :=
   ClosedFormulaOn th T /\
-  exists axs, Forall th.(IsAxiom) axs /\ Pr logic (axs ⊢ T).
+  exists axs,
+    Forall th.(IsAxiom) axs /\
+    Pr logic (axs ⊢ T).
+
+(** We can "fix" a proof made with things not in the signature,
+    or a signature badly used, or with remaining bounded vars. *)
+
+Lemma thm_alt th T :
+  IsTheorem th T <-> IsTheoremStrict th T.
+Proof.
+(* Cf preuve a finir dans Meta *)
+Admitted.
 
 Lemma ax_thm th A : IsAxiom th A -> IsTheorem th A.
 Proof.
@@ -151,20 +172,61 @@ Proof.
  eapply consext_inconsistency; eauto.
 Qed.
 
+(** If we only extend the signature, not the axioms, then
+    it's a conservative extension. To prove this, we restrict
+    derivations to the small signature. *)
+
 Lemma ext_sign_only th1 th2 :
  SignExtend th1 th2 ->
  (forall A, IsAxiom th1 A <-> IsAxiom th2 A) ->
  ConservativeExt th1 th2.
 Proof.
-Admitted.
+ intros SE EQ. split.
+ - apply extend_alt. split; auto.
+   intros A. rewrite EQ. apply ax_thm.
+ - intros T (CL & axs & F & PR) CK. split.
+   + split; auto. apply CL.
+   + exists axs. split.
+     * rewrite Forall_forall in *. intros x Hx. rewrite EQ; auto.
+     * auto.
+       (* normally we should adapt the proof to use only
+          th1.(sign), thanks to [restrict] and co.
+          But the Pr relation doesn't care... *)
+       (*
+       rewrite Provable_alt in *. unfold Provable in *.
+       destruct PR as (d & V & C).
+       assert (Hx := fresh_var_ok (fvars d)).
+       set (x := fresh_var (fvars d)) in *. clearbody x.
+       exists (restrict_deriv th1 x d); split.
+       { apply restrict_valid; auto. }
+       { unfold Claim. rewrite claim_restrict, C. cbn; f_equal.
+         - unfold restrict_ctx. apply map_id_iff.
+           intros A HA. apply restrict_check.
+           apply th1.(WfAxiom). rewrite EQ.
+           rewrite Forall_forall in F; auto.
+         - apply restrict_check; auto. }
+        *)
+Qed.
+
+(** Henkin extension : adding a new constant as witness
+    for an existential statement. *)
 
 Definition Henkin_sign sign c :=
   {| gen_fun_symbs := fun f => if f =? c then Some 0 else
                                   sign.(gen_fun_symbs) f;
-     gen_pred_symbs := sign.(gen_fun_symbs) |}.
+     gen_pred_symbs := sign.(gen_pred_symbs) |}.
 
 Definition Henkin_axiom Ax (A:formula) c :=
-  fun f => f = (bsubst 0 (Fun c []) A) \/ Ax f.
+  fun f => f = (bsubst 0 (Cst c) A) \/ Ax f.
+
+Lemma Henkin_SignExtend sign c :
+ sign.(gen_fun_symbs) c = None ->
+ SignExtend sign (Henkin_sign sign c).
+Proof.
+ intros Hc.
+ split; unfold optfun_finer, opt_finer; cbn; auto.
+ intros a. case eqbspec; intros; subst; auto.
+Qed.
 
 Lemma Henkin_ax_wf th A c :
  th.(gen_fun_symbs) c = None ->
@@ -172,7 +234,28 @@ Lemma Henkin_ax_wf th A c :
  forall B, Henkin_axiom th.(IsAxiom) A c B ->
            ClosedFormulaOn (Henkin_sign th.(sign) c) B.
 Proof.
-Admitted.
+ intros Hc (CL & _) B [->|HB].
+ - repeat split.
+   + apply check_bsubst.
+     * cbn. now rewrite eqb_refl.
+     * apply signext_check with th.
+       apply Henkin_SignExtend; auto.
+       apply CL.
+   + assert (level (bsubst 0 (Cst c) A) <= 0).
+     { apply level_bsubst; auto.
+       assert (level (∃ A)%form = 0) by apply CL.
+       cbn in *. omega. }
+     unfold closed; omega.
+   + rewrite bsubst_fvars. cbn - [Vars.union].
+     intro v. VarsF.set_iff.
+     assert (Vars.Empty (fvars (∃ A)%form)) by apply CL.
+     varsdec.
+ - apply th.(WfAxiom) in HB.
+   split; [|apply HB].
+   apply signext_check with th.
+   apply Henkin_SignExtend; auto.
+   apply HB.
+Qed.
 
 Definition Henkin_ext th A c
  (E:th.(gen_fun_symbs) c = None)
@@ -187,7 +270,39 @@ Lemma Henkin_consext th A c
  (Thm:IsTheorem th (∃A)) :
  ConservativeExt th (Henkin_ext th A c E Thm).
 Proof.
+ split.
+ - apply extend_alt. split.
+   + now apply Henkin_SignExtend.
+   + intros A0 HA0.
+     apply ax_thm; simpl; right; auto.
+ - intros T (CL & axs & F & PR) CK; simpl in *.
+   split.
+   + split; auto. apply CL.
+   + set (newAx := bsubst 0 (Cst c) A).
+     set (axs' := filter (fun f => negb (f =? newAx)) axs).
+     simpl in *.
+     destruct Thm as (CLA & axsA & FA & PRA).
+     exists (axs' ++ axsA); split.
+     * rewrite Forall_forall in *.
+       intros x. unfold axs'. rewrite in_app_iff, filter_In.
+       rewrite negb_true_iff, eqb_neq.
+       intros [(IN,NE)|IN]; auto. apply F in IN. cbn in IN.
+       unfold Henkin_axiom in IN; intuition.
+     * (* TODO: restrict ? *)
+       assert (Pr logic (newAx::axs' ⊢ T)).
+       { eapply Pr_weakening; eauto.
+         constructor. unfold axs'.
+         intros v. simpl. rewrite filter_In.
+         rewrite negb_true_iff, eqb_neq.
+         destruct (eqbspec v newAx); intuition. }
+       apply R_Ex_e with "x"%string A.
+       { admit. }
+       { apply Pr_weakening with (axsA ⊢ (∃ A)); auto.
+         constructor. intros a. rewrite in_app_iff; auto. }
+       { admit. }
 Admitted.
+
+(** Completeness of a theory *)
 
 Definition Complete th :=
  forall A, ClosedFormulaOn th A ->

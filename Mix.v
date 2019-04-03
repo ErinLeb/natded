@@ -456,6 +456,42 @@ Instance check_derivation : Check derivation :=
   check sign s &&&
   List.forallb check_derivation ds.
 
+Instance fvars_rule : FVars rule_kind :=
+ fun r =>
+ match r with
+ | All_i x | Ex_e x => Vars.singleton x
+ | All_e wit | Ex_i wit => fvars wit
+ | _ => Vars.empty
+ end.
+
+Instance fvars_derivation : FVars derivation :=
+ fix fvars_derivation d :=
+  let '(Rule r s ds) := d in
+  vars_unions [fvars r; fvars s; vars_unionmap fvars_derivation ds].
+
+Instance bsubst_rule : BSubst rule_kind :=
+ fun n u r =>
+ match r with
+ | All_e wit => All_e (bsubst n u wit)
+ | Ex_i wit => Ex_i (bsubst n u wit)
+ | _ => r
+ end.
+
+Instance bsubst_deriv : BSubst derivation :=
+ fix bsubst_deriv n u d :=
+ let '(Rule r s ds) := d in
+ Rule (bsubst n u r) (bsubst n u s ) (map (bsubst_deriv n u) ds).
+
+Instance vmap_rule : VMap rule_kind :=
+ fun h r =>
+ match r with
+ | All_e wit => All_e (vmap h wit)
+ | Ex_i wit => Ex_i (vmap h wit)
+ | r => r
+ end.
+
+(** See Meta for [vmap_deriv], which is slightly more complex
+    due to some variable renaming. *)
 
 (** Validity of a derivation : is it using correct rules
     of classical logic (resp. intuitionistic logic) ? *)

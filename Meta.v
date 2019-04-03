@@ -7,6 +7,93 @@ Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
+(** [bsubst] and [check] *)
+
+Lemma check_bsubst_term sign n (u t:term) :
+ check sign u = true -> check sign t = true ->
+ check sign (bsubst n u t) = true.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ - case eqbspec; auto.
+ - destruct gen_fun_symbs; auto.
+   rewrite !lazy_andb_iff, map_length.
+   intros Hu (Hl,Hl'); split; auto.
+   rewrite forallb_forall in *. intros t Ht.
+   rewrite in_map_iff in Ht. destruct Ht as (t' & <- & Ht'); auto.
+Qed.
+
+Lemma check_bsubst sign n u (f:formula) :
+ check sign u = true -> check sign f = true ->
+ check sign (bsubst n u f) = true.
+Proof.
+ revert n.
+ induction f; cbn; intros n Hu Hf; auto.
+ - destruct gen_pred_symbs; auto.
+   rewrite !lazy_andb_iff in *. rewrite map_length.
+   destruct Hf as (Hl,Hl'); split; auto.
+   rewrite forallb_forall in *. intros t Ht.
+   rewrite in_map_iff in Ht.
+   destruct Ht as (t' & <- & Ht'); auto using check_bsubst_term.
+ - rewrite !lazy_andb_iff in *; intuition.
+Qed.
+
+(** [bsubst] and [level] *)
+
+Lemma level_bsubst_term n (u t:term) :
+ level t <= S n -> level u <= n ->
+ level (bsubst n u t) <= n.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto with arith.
+ - case eqbspec; cbn; auto. intros; omega.
+ - intros Hl Hu. rewrite map_map. apply list_max_map_le.
+   rewrite list_max_map_le in Hl; auto.
+Qed.
+
+Lemma level_bsubst n u (f:formula) :
+ level f <= S n -> level u <= n ->
+ level (bsubst n u f) <= n.
+Proof.
+ revert n.
+ induction f; cbn; intros n Hf Hu; auto with arith.
+ - rewrite map_map. apply list_max_map_le.
+   rewrite list_max_map_le in Hf; auto using level_bsubst_term.
+ - rewrite max_le in *; intuition.
+ - specialize (IHf (S n)). omega.
+Qed.
+
+(** [bsubst] and [fvars] *)
+
+Lemma bsubst_term_fvars n (u t:term) :
+ Vars.Subset (fvars (bsubst n u t)) (Vars.union (fvars u) (fvars t)).
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
+ intros v. rewrite Vars.union_spec, !vars_unionmap_in.
+ intros (a & Hv & Ha). rewrite in_map_iff in Ha.
+ destruct Ha as (a' & <- & Ha'). apply IH in Hv; auto.
+ rewrite Vars.union_spec in Hv; destruct Hv as [Hv|Hv]; auto.
+ right. now exists a'.
+Qed.
+
+Lemma bsubst_fvars n u (f:formula) :
+ Vars.Subset (fvars (bsubst n u f)) (Vars.union (fvars u) (fvars f)).
+Proof.
+ revert n.
+ induction f; cbn; intros; auto with *.
+ - intros v. rewrite Vars.union_spec, !vars_unionmap_in.
+   intros (a & Hv & Ha). rewrite in_map_iff in Ha.
+   destruct Ha as (a' & <- & Ha'). apply bsubst_term_fvars in Hv; auto.
+   rewrite Vars.union_spec in Hv; destruct Hv as [Hv|Hv]; auto.
+   right. now exists a'.
+ - rewrite IHf1, IHf2. varsdec.
+Qed.
+
+Lemma bsubst_ctx_fvars n u (c:context) :
+ Vars.Subset (fvars (bsubst n u c)) (Vars.union (fvars u) (fvars c)).
+Proof.
+ induction c as [|f c IH]; cbn; auto with *.
+ rewrite bsubst_fvars, IH. varsdec.
+Qed.
+
 (** [bsubst] above the level does nothing *)
 
 Lemma term_level_bsubst_id n u (t:term) :
@@ -343,7 +430,7 @@ Lemma Pr_fsubst logic (s:sequent) :
   Pr logic (fsubst v t s).
 Proof.
  intros.
- change (fsubst v t) with (vmap (varsubst v t)).
+ unfold fsubst.
  apply Pr_vmap; auto.
  intros x. unfold varsubst. case eqbspec; auto.
 Qed.
@@ -374,14 +461,6 @@ Qed.
     the substituted sequent : it is roughly the substituted
     derivation, apart for rules [R_All_i] and [R_Ex_e] were
     we shift to some fresh variable. *)
-
-Instance vmap_rule : VMap rule_kind :=
- fun h r =>
- match r with
- | All_e wit => All_e (vmap h wit)
- | Ex_i wit => Ex_i (vmap h wit)
- | r => r
- end.
 
 Definition getA ds :=
  match ds with
@@ -1025,3 +1104,481 @@ Proof.
  unfold Excluded_Middle_core_deriv.
  repeat (econstructor; eauto; unfold In; intuition).
 Qed.
+
+(** We could restrict a proof to use only some signature
+    (and only correctly). For that we replace unknown or incorrect
+    terms by a free variable, and unknown or incorrect predicates
+    by False. *)
+
+Fixpoint restrict_term sign x t :=
+ match t with
+ | Fun f l =>
+   match sign.(gen_fun_symbs) f with
+   | None => FVar x
+   | Some ar =>
+     if length l =? ar then Fun f (map (restrict_term sign x) l)
+     else FVar x
+   end
+ | _ => t
+ end.
+
+Fixpoint restrict sign x f :=
+ match f with
+ | True => True
+ | False => False
+ | Pred p l =>
+   match sign.(gen_pred_symbs) p with
+   | None => False
+   | Some ar =>
+     if length l =? ar then Pred p (map (restrict_term sign x) l)
+     else False
+   end
+ | Not f => Not (restrict sign x f)
+ | Op o f1 f2 => Op o (restrict sign x f1) (restrict sign x f2)
+ | Quant q f => Quant q (restrict sign x f)
+ end.
+
+Definition restrict_ctx sign x c :=
+  map (restrict sign x) c.
+
+Definition restrict_seq sign x '(c ⊢ f) :=
+  (restrict_ctx sign x c ⊢ restrict sign x f).
+
+Definition restrict_rule sign x r :=
+ match r with
+ | All_e t => All_e (restrict_term sign x t)
+ | Ex_i t => Ex_i (restrict_term sign x t)
+ | _ => r
+ end.
+
+Fixpoint restrict_deriv sign x d :=
+ let '(Rule r s l) := d in
+ Rule (restrict_rule sign x r)
+      (restrict_seq sign x s)
+      (map (restrict_deriv sign x) l).
+
+Lemma claim_restrict sign x d :
+  claim (restrict_deriv sign x d) =
+  restrict_seq sign x (claim d).
+Proof.
+ now destruct d.
+Qed.
+
+Lemma restrict_term_fvars sign x t :
+ Vars.Subset (fvars (restrict_term sign x t))
+             (Vars.add x (fvars t)).
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
+ destruct gen_fun_symbs; cbn; auto with *.
+ case eqbspec; cbn; auto with *.
+ intros _. clear f a.
+ intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+ intros (t & Hv & Ht).
+ rewrite in_map_iff in Ht.
+ destruct Ht as (a & <- & Ha).
+ apply IH in Hv; auto.
+ rewrite Vars.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
+ right. now exists a.
+Qed.
+
+Lemma restrict_form_fvars sign x f :
+ Vars.Subset (fvars (restrict sign x f))
+             (Vars.add x (fvars f)).
+Proof.
+ induction f; cbn; auto with *.
+ destruct gen_pred_symbs; cbn; auto with *.
+ case eqbspec; cbn; auto with *.
+ intros _. clear p a.
+ intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+ intros (t & Hv & Ht).
+ rewrite in_map_iff in Ht.
+ destruct Ht as (a & <- & Ha).
+ apply restrict_term_fvars in Hv; auto.
+ rewrite Vars.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
+ right. now exists a.
+Qed.
+
+Lemma restrict_ctx_fvars sign x c :
+ Vars.Subset (fvars (restrict_ctx sign x c))
+             (Vars.add x (fvars c)).
+Proof.
+ unfold restrict_ctx.
+ intros v. unfold fvars, fvars_list.
+ rewrite Vars.add_spec, !vars_unionmap_in.
+ intros (f & Hv & Hf).
+ rewrite in_map_iff in Hf.
+ destruct Hf as (a & <- & Ha).
+ apply restrict_form_fvars in Hv; auto.
+ rewrite Vars.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
+ right. now exists a.
+Qed.
+
+Lemma restrict_seq_fvars sign x s :
+ Vars.Subset (fvars (restrict_seq sign x s))
+             (Vars.add x (fvars s)).
+Proof.
+ destruct s; cbn. rewrite restrict_ctx_fvars, restrict_form_fvars.
+ varsdec.
+Qed.
+
+Lemma restrict_term_bsubst sign x n (t u:term) :
+  restrict_term sign x (bsubst n u t) =
+  bsubst n (restrict_term sign x u) (restrict_term sign x t).
+Proof.
+ induction t as [ | |f l IH] using term_ind'; cbn; auto.
+ - case eqbspec; auto.
+ - destruct gen_fun_symbs; cbn; auto with *.
+   rewrite map_length.
+   case eqbspec; cbn; auto.
+   intros _.
+   f_equal. rewrite !map_map. apply map_ext_iff; auto.
+Qed.
+
+Lemma restrict_bsubst sign x n t f :
+  restrict sign x (bsubst n t f) =
+  bsubst n (restrict_term sign x t) (restrict sign x f).
+Proof.
+ revert n.
+ induction f; cbn; intros; f_equal; auto.
+ destruct gen_pred_symbs; cbn; auto with *.
+ rewrite map_length.
+ case eqbspec; cbn; auto.
+ intros _.
+ f_equal. rewrite !map_map.
+ apply map_ext_iff; auto using restrict_term_bsubst.
+Qed.
+
+Ltac solver :=
+  try econstructor; auto;
+  try match goal with
+  | H : ~Vars.In _ _ -> Valid _ ?d |- Valid _ ?d => apply H; varsdec end;
+  try (unfold Claim; rewrite claim_restrict);
+  try match goal with
+  | H : claim ?d = _ |- context [claim ?d] => now rewrite H end.
+
+Lemma restrict_valid logic sign x (d:derivation) :
+ ~Vars.In x (fvars d) ->
+ Valid logic d ->
+ Valid logic (restrict_deriv sign x d).
+Proof.
+ induction 2; cbn - [Vars.union] in *; try (solver; fail).
+  - constructor. now apply in_map.
+  - constructor.
+    + cbn. rewrite restrict_ctx_fvars, restrict_form_fvars. varsdec.
+    + apply IHValid; varsdec.
+    + unfold Claim. rewrite claim_restrict. rewrite H2. simpl.
+      f_equal. apply restrict_bsubst.
+  - rewrite restrict_bsubst.
+    constructor.
+    + apply IHValid; varsdec.
+    + unfold Claim. rewrite claim_restrict. now rewrite H1.
+  - constructor.
+    + apply IHValid; varsdec.
+    + unfold Claim. rewrite claim_restrict. rewrite H1.
+      cbn. now rewrite restrict_bsubst.
+  - apply V_Ex_e with (restrict sign x A).
+    + cbn. rewrite restrict_ctx_fvars, !restrict_form_fvars. varsdec.
+    + apply IHValid1; varsdec.
+    + apply IHValid2; varsdec.
+    + unfold Claim. rewrite claim_restrict. now rewrite H1.
+    + unfold Claim. rewrite claim_restrict. rewrite H2.
+      cbn. f_equal. f_equal. apply restrict_bsubst.
+Qed.
+
+Lemma check_restrict_term_id sign x (t:term) :
+ check sign t = true -> restrict_term sign x t = t.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ destruct gen_fun_symbs; try easy.
+ rewrite lazy_andb_iff. intros (->,H). f_equal.
+ rewrite forallb_forall in H.
+ apply map_id_iff; auto.
+Qed.
+
+Lemma check_restrict_id sign x (f:formula) :
+ check sign f = true -> restrict sign x f = f.
+Proof.
+ induction f; cbn; intros; f_equal; auto.
+ - destruct gen_pred_symbs; try easy.
+   rewrite lazy_andb_iff in H. destruct H as (->,H). f_equal.
+   rewrite forallb_forall in H.
+   apply map_id_iff; auto using check_restrict_term_id.
+ - rewrite ?lazy_andb_iff in H; intuition.
+ - rewrite ?lazy_andb_iff in H; intuition.
+Qed.
+
+Lemma check_restrict_ctx_id sign x (c:context) :
+ check sign c = true -> restrict_ctx sign x c = c.
+Proof.
+ induction c as [|f c IH]; cbn; rewrite ?andb_true_iff; intros;
+  f_equal; auto.
+ - now apply check_restrict_id.
+ - now apply IH.
+Qed.
+
+Lemma restrict_term_check sign x (t:term) :
+ check sign (restrict_term sign x t) = true.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ destruct gen_fun_symbs eqn:E; try easy.
+ case eqbspec; cbn; auto.
+ intros <-.
+ rewrite E.
+ rewrite map_length, eqb_refl.
+ rewrite forallb_forall. intros t Ht.
+ rewrite in_map_iff in Ht. destruct Ht as (a & <- & Ha); auto.
+Qed.
+
+Lemma restrict_form_check sign x (f:formula) :
+ check sign (restrict sign x f) = true.
+Proof.
+ induction f; cbn; auto.
+ - destruct gen_pred_symbs eqn:E; try easy.
+   case eqbspec; cbn; auto.
+   intros <-.
+   rewrite E.
+   rewrite map_length, eqb_refl.
+   rewrite forallb_forall. intros t Ht.
+   rewrite in_map_iff in Ht.
+   destruct Ht as (a & <- & Ha); auto using restrict_term_check.
+ - now rewrite IHf1, IHf2.
+Qed.
+
+Lemma restrict_ctx_check sign x (c:context) :
+ check sign (restrict_ctx sign x c) = true.
+Proof.
+ induction c as [ |f c IH]; cbn; auto.
+ rewrite andb_true_iff; split; auto using restrict_form_check.
+Qed.
+
+Lemma restrict_seq_check sign x (s:sequent) :
+ check sign (restrict_seq sign x s) = true.
+Proof.
+ destruct s. cbn.
+ now rewrite restrict_ctx_check, restrict_form_check.
+Qed.
+
+Lemma restrict_rule_check sign x (r:rule_kind) :
+ check sign (restrict_rule sign x r) = true.
+Proof.
+ destruct r; cbn; auto using restrict_term_check.
+Qed.
+
+Lemma restrict_deriv_check sign x (d:derivation) :
+ check sign (restrict_deriv sign x d) = true.
+Proof.
+ induction d as [r s ds IH] using derivation_ind'; cbn.
+ rewrite restrict_rule_check, restrict_seq_check.
+ rewrite forallb_forall. intros d Hd.
+ apply in_map_iff in Hd. destruct Hd as (d' & <- & Hd').
+ rewrite Forall_forall in IH; auto.
+Qed.
+
+(** When a derivation has some bounded variables, we could
+    replace them by anything free. *)
+
+Fixpoint forcelevel_term n x t :=
+ match t with
+ | FVar _ => t
+ | BVar m => if m <? n then t else FVar x
+ | Fun f l => Fun f (map (forcelevel_term n x) l)
+ end.
+
+Fixpoint forcelevel n x f :=
+ match f with
+ | True => True
+ | False => False
+ | Pred p l => Pred p (map (forcelevel_term n x) l)
+ | Not f => Not (forcelevel n x f)
+ | Op o f1 f2 => Op o (forcelevel n x f1) (forcelevel n x f2)
+ | Quant q f => Quant q (forcelevel (S n) x f)
+ end.
+
+Definition forcelevel_ctx x (c:context) :=
+  map (forcelevel 0 x) c.
+
+Definition forcelevel_seq x '(c ⊢ f) :=
+ forcelevel_ctx x c ⊢ forcelevel 0 x f.
+
+Definition forcelevel_rule x r :=
+ match r with
+ | All_e wit => All_e (forcelevel_term 0 x wit)
+ | Ex_i wit => Ex_i (forcelevel_term 0 x wit)
+ | _ => r
+ end.
+
+Fixpoint forcelevel_deriv x d :=
+ let '(Rule r s ds) := d in
+ Rule (forcelevel_rule x r) (forcelevel_seq x s)
+      (map (forcelevel_deriv x) ds).
+
+Lemma claim_forcelevel x d :
+ claim (forcelevel_deriv x d) = forcelevel_seq x (claim d).
+Proof.
+ now destruct d.
+Qed.
+
+Lemma forcelevel_term_fvars n x t :
+ Vars.Subset (fvars (forcelevel_term n x t)) (Vars.add x (fvars t)).
+Proof.
+ induction t as [ | | f l IH] using term_ind';
+   cbn - [Nat.ltb]; auto with *.
+ - case Nat.ltb_spec; cbn; auto with *.
+ - intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+   intros (a & Hv & Ha).
+   rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
+   apply IH in Hv; auto. apply Vars.add_spec in Hv.
+   destruct Hv; auto. right; now exists a'.
+Qed.
+
+Lemma forcelevel_fvars n x f :
+ Vars.Subset (fvars (forcelevel n x f)) (Vars.add x (fvars f)).
+Proof.
+ revert n.
+ induction f; cbn; intros; auto with *.
+ - intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+   intros (a & Hv & Ha).
+   rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
+   apply forcelevel_term_fvars in Hv; auto. apply Vars.add_spec in Hv.
+   destruct Hv; auto. right; now exists a'.
+ - rewrite IHf1, IHf2. varsdec.
+Qed.
+
+Lemma forcelevel_ctx_fvars x (c:context) :
+ Vars.Subset (fvars (forcelevel_ctx x c)) (Vars.add x (fvars c)).
+Proof.
+ unfold forcelevel_ctx. unfold fvars, fvars_list.
+ intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+ intros (a & Hv & Ha).
+ rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
+ apply forcelevel_fvars in Hv; auto. apply Vars.add_spec in Hv.
+ destruct Hv; auto. right; now exists a'.
+Qed.
+
+Lemma forcelevel_term_level n x t :
+  level (forcelevel_term n x t) <= n.
+Proof.
+ induction t as [ | | f l IH] using term_ind';
+   cbn - [Nat.ltb]; auto with *.
+ - case Nat.ltb_spec; cbn; auto with *.
+ - rewrite map_map. apply list_max_map_le; auto.
+Qed.
+
+Lemma forcelevel_term_id n x t :
+ level t <= n -> forcelevel_term n x t = t.
+Proof.
+ induction t as [ | | f l IH] using term_ind';
+   cbn - [Nat.ltb]; intros H; auto with *.
+ - case Nat.ltb_spec; cbn; auto; omega.
+ - f_equal.
+   rewrite list_max_map_le in H.
+   apply map_id_iff; auto.
+Qed.
+
+Lemma forcelevel_bsubst_term n x (u t:term) :
+  forcelevel_term n x (bsubst n u t) =
+  bsubst n (forcelevel_term n x u) (forcelevel_term (S n) x t).
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ - case eqbspec.
+   + intros; subst.
+     case Nat.leb_spec; try omega. cbn. now rewrite eqb_refl.
+   + simpl.
+     case Nat.leb_spec.
+     * intros LE NE. cbn - [Nat.ltb].
+       case eqbspec; [intros; exfalso; omega|intros _].
+       case Nat.ltb_spec; auto; omega.
+     * intros LT _. cbn - [Nat.ltb].
+       case Nat.ltb_spec; auto; omega.
+ - f_equal. rewrite !map_map. apply map_ext_iff; auto.
+Qed.
+
+Lemma forcelevel_bsubst_term' n x (u t:term) :
+  level u <= n ->
+  forcelevel_term n x (bsubst n u t) =
+  bsubst n u (forcelevel_term (S n) x t).
+Proof.
+ intros Hu.
+ rewrite forcelevel_bsubst_term. f_equal.
+ now apply forcelevel_term_id.
+Qed.
+
+Lemma forcelevel_bsubst n x u f :
+  level u <= n ->
+  forcelevel n x (bsubst n u f) =
+  bsubst n u (forcelevel (S n) x f).
+Proof.
+ revert n.
+ induction f; cbn; intros; f_equal; auto.
+ rewrite !map_map. apply map_ext_iff.
+ auto using forcelevel_bsubst_term'.
+Qed.
+
+(*
+Lemma forcelevel_bsubst' n x u f :
+  forcelevel n x (bsubst n u f) =
+  bsubst n (forcelevel_term n x u) (forcelevel (S n) x f).
+Proof.
+ revert n u.
+ induction f; cbn; intros; f_equal; auto.
+ - rewrite !map_map. apply map_ext_iff.
+   auto using forcelevel_bsubst_term.
+ - rewrite IHf.
+
+Qed.
+*)
+(*
+Lemma forcelevel_bsubst_adhoc n x u f :
+ forcelevel n x (bsubst n u f) =
+ forcelevel n x (bsubst n (forcelevel_term n x u) f).
+Proof.
+ revert n.
+ induction f; cbn; intros; f_equal; auto.
+ rewrite !map_map. apply map_ext_iff.
+ intros a Ha.
+ rewrite !forcelevel_bsubst_term. f_equal.
+ symmetry. apply forcelevel_term_id. apply forcelevel_term_level.
+*)
+
+Ltac solver' :=
+  try econstructor; auto;
+  try match goal with
+  | H : ~Vars.In _ _ -> Valid _ ?d |- Valid _ ?d => apply H; varsdec end;
+  try (unfold Claim; rewrite claim_forcelevel);
+  try match goal with
+  | H : claim ?d = _ |- context [claim ?d] => now rewrite H end.
+
+Lemma forcelevel_deriv_valid logic x (d:derivation) :
+ ~Vars.In x (fvars d) ->
+ Valid logic d ->
+ Valid logic (forcelevel_deriv x d).
+Proof.
+ induction 2; cbn - [Vars.union] in *; try (solver'; fail).
+ - constructor. now apply in_map.
+ - constructor.
+   + cbn. rewrite forcelevel_ctx_fvars, forcelevel_fvars.
+     varsdec.
+   + apply IHValid. varsdec.
+   + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
+     rewrite forcelevel_bsubst; auto.
+ - replace (forcelevel 0 x (bsubst 0 t A))
+       with (bsubst 0 (forcelevel_term 0 x t) (forcelevel 1 x A)).
+   constructor.
+   + apply IHValid; varsdec.
+   + unfold Claim. now rewrite claim_forcelevel, H1.
+   + rewrite <- forcelevel_bsubst.
+     admit.
+     now rewrite forcelevel_term_level.
+ - constructor.
+   + apply IHValid. varsdec.
+   + unfold Claim; rewrite claim_forcelevel, H1. cbn. f_equal.
+     admit.
+ - apply V_Ex_e with (forcelevel 1 x A).
+   + cbn. rewrite forcelevel_ctx_fvars, !forcelevel_fvars.
+     varsdec.
+   + apply IHValid1. varsdec.
+   + apply IHValid2. varsdec.
+   + unfold Claim; now rewrite claim_forcelevel, H1.
+   + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
+     f_equal. apply forcelevel_bsubst; auto.
+Admitted.

@@ -106,9 +106,11 @@ Arguments vmap {_} {_} _ !_.
 
 (** Some generic definitions based on the previous ones *)
 
-Definition closed {A}`{Level A} (a:A) := level a = 0.
+Definition BClosed {A}`{Level A} (a:A) := level a = 0.
 
-Hint Unfold closed.
+Definition FClosed {A}`{FVars A} (a:A) := Vars.Empty (fvars a).
+
+Hint Unfold BClosed FClosed.
 
 (** Substitution of a free variable in a term :
     in [t], free var [v] is replaced by [u]. *)
@@ -314,6 +316,14 @@ Instance form_level : Level formula :=
   | Pred _ args => list_max (map level args)
   end.
 
+(** Important note : [bsubst] below is only intended to be
+    used with a replacement term [t] with no bounded variables !
+    In a full De Bruijn implementation, we would tweak [t]
+    (i.e. "lift" it) when entering a quantified part of a formula.
+    Here it's much simpler to *not* do it, but this may lead to
+    unexpected results if [t] still has some bounded variables,
+    see later the treatment of rules ∀e and ∃i. *)
+
 Instance form_bsubst : BSubst formula :=
  fix form_bsubst n t f :=
  match f with
@@ -426,7 +436,7 @@ Inductive derivation :=
 Definition claim '(Rule _ s _) := s.
 
 (** Utility functions on derivations:
-    - bounded-vars level (used by the [closed] predicate),
+    - bounded-vars level (used by the [BClosed] predicate),
     - check w.r.t. signature *)
 
 Instance level_rule_kind : Level rule_kind :=
@@ -496,6 +506,24 @@ Instance vmap_rule : VMap rule_kind :=
 (** Validity of a derivation : is it using correct rules
     of classical logic (resp. intuitionistic logic) ? *)
 
+(** Note that we require the witness terms in rules ∀e and ∃i
+    to be [BClosed] (i.e. without any [BVar]). Otherwise
+    awkward things may happen due to our implementation
+    of [bsubst].
+
+    For instance think of [∀ ∃ ~(Pred "=" [#0;#1])] i.e.
+    [∀x∃y,x≠y], a possible way of saying that the world isn't
+    a singleton. With an unrestricted ∀e, we could deduce
+    [bsubst 0 (#0) (∃ ~(Pred "=" [#0;#1]))] which reduces
+    to [∃ ~(Pred "=" [#0;#0])], a formula negating the reflexivity
+    of equality !
+
+    Apart from these witnesses, the rest of the derivation
+    could technically have unbounded variables, even though
+    we intend all derivations to be [BClosed]. We will be able
+    to force this later on (see [Meta.forcelevel])
+*)
+
 Definition valid_deriv_step logic '(Rule r s ld) :=
   match r, s, List.map claim ld with
   | Ax,     (Γ ⊢ A), [] => list_mem A Γ
@@ -519,9 +547,9 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
      (Γ =? Γ') &&& (A' =? bsubst 0 (FVar x) A)
      &&& negb (Vars.mem x (fvars (Γ⊢A)))
   | All_e t, (Γ ⊢ B), [Γ'⊢ ∀A] =>
-    (Γ =? Γ') &&& (B =? bsubst 0 t A)
+    (Γ =? Γ') &&& (B =? bsubst 0 t A) &&& (level t =? 0)
   | Ex_i t,  (Γ ⊢ ∃A), [Γ'⊢B] =>
-    (Γ =? Γ') &&& (B =? bsubst 0 t A)
+    (Γ =? Γ') &&& (B =? bsubst 0 t A) &&& (level t =? 0)
   | Ex_e x,  s, [Γ⊢∃A; A'::Γ'⊢B] =>
      (s =? (Γ ⊢ B)) &&& (Γ' =? Γ)
      &&& (A' =? bsubst 0 (FVar x) A)
@@ -729,10 +757,10 @@ Inductive Valid (l:logic) : derivation -> Prop :=
      Valid l d -> Claim d (Γ ⊢ bsubst 0 (FVar x) A) ->
      Valid l (Rule (All_i x) (Γ ⊢ ∀A) [d])
  | V_All_e t d Γ A :
-     Valid l d -> Claim d (Γ ⊢ ∀A) ->
+     BClosed t -> Valid l d -> Claim d (Γ ⊢ ∀A) ->
      Valid l (Rule (All_e t) (Γ ⊢ bsubst 0 t A) [d])
  | V_Ex_i t d Γ A :
-     Valid l d -> Claim d (Γ ⊢ bsubst 0 t A) ->
+     BClosed t -> Valid l d -> Claim d (Γ ⊢ bsubst 0 t A) ->
      Valid l (Rule (Ex_i t) (Γ ⊢ ∃A) [d])
  | V_Ex_e x d1 d2 Γ A B :
      ~Vars.In x (fvars (A::Γ⊢B)) ->
@@ -770,7 +798,7 @@ Ltac mytac :=
  rewrite ?@eqb_eq in * by auto with typeclass_instances.
 
 Ltac rewr :=
- unfold Claim in *;
+ unfold Claim, BClosed in *;
  match goal with
  | H: _ = _ |- _ => rewrite H in *; clear H; rewr
  | _ => rewrite ?eqb_refl
@@ -811,7 +839,8 @@ Qed.
 
 (** A provability notion directly on sequents, without derivations.
     Pros: lighter
-    Cons: no easy way to say later that the whole proof is closed *)
+    Cons: no easy way to express meta-theoretical facts about the proof
+          itself (e.g. free or bounded variables used during the proof). *)
 
 Inductive Pr (l:logic) : sequent -> Prop :=
  | R_Ax Γ A : In A Γ -> Pr l (Γ ⊢ A)
@@ -842,10 +871,10 @@ Inductive Pr (l:logic) : sequent -> Prop :=
  | R_All_i x Γ A : ~Vars.In x (fvars (Γ ⊢ A)) ->
                    Pr l (Γ ⊢ bsubst 0 (FVar x) A) ->
                    Pr l (Γ ⊢ ∀A)
- | R_All_e t Γ A : Pr l (Γ ⊢ ∀A) ->
-                     Pr l (Γ ⊢ bsubst 0 t A)
- | R_Ex_i t Γ A : Pr l (Γ ⊢ bsubst 0 t A) ->
-                    Pr l (Γ ⊢ ∃A)
+ | R_All_e t Γ A : BClosed t -> Pr l (Γ ⊢ ∀A) ->
+                   Pr l (Γ ⊢ bsubst 0 t A)
+ | R_Ex_i t Γ A : BClosed t -> Pr l (Γ ⊢ bsubst 0 t A) ->
+                  Pr l (Γ ⊢ ∃A)
  | R_Ex_e x Γ A B : ~Vars.In x (fvars (A::Γ⊢B)) ->
       Pr l (Γ ⊢ ∃A) -> Pr l ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
       Pr l (Γ ⊢ B)

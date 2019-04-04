@@ -332,7 +332,7 @@ Proof.
 Qed.
 
 Lemma mix_nam_mix_term t :
- Mix.closed t ->
+ Mix.BClosed t ->
  nam2mix_term [] (mix2nam_term [] t) = t.
 Proof.
  intros CL.
@@ -341,10 +341,10 @@ Proof.
 Qed.
 
 Lemma mix_nam_mix f :
-  Mix.closed f ->
+  Mix.BClosed f ->
   nam2mix [] (mix2nam [] f) = f.
 Proof.
- unfold Mix.closed. intros E.
+ unfold Mix.BClosed. intros E.
  apply mix_nam_mix_gen; auto.
  constructor.
  simpl. rewrite E. auto.
@@ -372,17 +372,17 @@ Proof.
  - specialize (IHf (v::stack)). cbn in *. omega.
 Qed.
 
-Lemma nam2mix_term_closed t :
- Mix.closed (nam2mix_term [] t).
+Lemma nam2mix_term_bclosed t :
+ Mix.BClosed (nam2mix_term [] t).
 Proof.
- unfold Mix.closed.
+ unfold Mix.BClosed.
  generalize (nam2mix_term_level [] t); simpl; omega.
 Qed.
 
-Lemma nam2mix_closed f :
-  Mix.closed (nam2mix [] f).
+Lemma nam2mix_bclosed f :
+  Mix.BClosed (nam2mix [] f).
 Proof.
- unfold Mix.closed.
+ unfold Mix.BClosed.
  generalize (nam2mix_level [] f). simpl. auto with *.
 Qed.
 
@@ -391,7 +391,7 @@ Lemma nam_mix_nam_term t :
 Proof.
  apply nam2mix_term_inj.
  apply mix_nam_mix_term.
- apply nam2mix_term_closed.
+ apply nam2mix_term_bclosed.
 Qed.
 
 Lemma nam_mix_nam f :
@@ -399,7 +399,7 @@ Lemma nam_mix_nam f :
 Proof.
  apply nam2mix_canonical.
  apply mix_nam_mix.
- apply nam2mix_closed.
+ apply nam2mix_bclosed.
 Qed.
 
 Lemma AlphaEq_equivalence :

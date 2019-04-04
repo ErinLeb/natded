@@ -116,10 +116,10 @@ Proof.
  - apply IHf. omega with *.
 Qed.
 
-Lemma closed_bsubst_id n u (t:term) :
- closed t -> bsubst n u t = t.
+Lemma bclosed_bsubst_id n u (t:term) :
+ BClosed t -> bsubst n u t = t.
 Proof.
- unfold closed. intros. apply term_level_bsubst_id. auto with *.
+ unfold BClosed. intros. apply term_level_bsubst_id. auto with *.
 Qed.
 
 (** [bsubst] to a fesh variable is injective *)
@@ -319,22 +319,22 @@ Qed.
 
 (** Alternating [vmap] and [bsubst] *)
 
-Definition closed_sub (h:variable->term) :=
- forall v, closed (h v).
+Definition BClosed_sub (h:variable->term) :=
+ forall v, BClosed (h v).
 
 Lemma term_vmap_bsubst h n u (t:term) :
- closed_sub h ->
+ BClosed_sub h ->
  vmap h (bsubst n u t) = bsubst n (vmap h u) (vmap h t).
 Proof.
  intros CL.
  induction t as [ | | f l IH] using term_ind'; cbn.
- - symmetry. apply closed_bsubst_id. apply CL.
+ - symmetry. apply bclosed_bsubst_id. apply CL.
  - auto with eqb.
  - f_equal. rewrite !map_map. now apply map_ext_in.
 Qed.
 
 Lemma form_vmap_bsubst h n u (f:formula) :
- closed_sub h ->
+ BClosed_sub h ->
  vmap h (bsubst n u f) = bsubst n (vmap h u) (vmap h f).
 Proof.
  intros CL. revert n.
@@ -345,10 +345,10 @@ Qed.
 Definition sub_set (x:variable)(t:term)(h:variable->term) :=
  fun v => if v =? x then t else h v.
 
-Lemma closed_sub_set x t h :
- closed_sub h -> closed t -> closed_sub (sub_set x t h).
+Lemma bclosed_sub_set x t h :
+ BClosed_sub h -> BClosed t -> BClosed_sub (sub_set x t h).
 Proof.
- unfold sub_set, closed_sub; auto with eqb.
+ unfold sub_set, BClosed_sub; auto with eqb.
 Qed.
 
 Lemma sub_set_at x t h : sub_set x t h x = t.
@@ -376,16 +376,71 @@ Proof.
 Qed.
 
 Lemma vmap_bsubst_adhoc h x t (f:formula) :
- closed_sub h ->
- closed t ->
+ BClosed_sub h ->
+ BClosed t ->
  ~Vars.In x (fvars f) ->
  bsubst 0 t (vmap h f) =
   vmap (sub_set x t h) (bsubst 0 (FVar x) f).
 Proof.
  intros.
- rewrite form_vmap_bsubst by now apply closed_sub_set.
+ rewrite form_vmap_bsubst by now apply bclosed_sub_set.
  cbn. rewrite sub_set_at. f_equal. now rewrite form_sub_set_ext.
 Qed.
+
+(** Bounded variables after a [vmap] *)
+
+Lemma level_term_vmap h (t:term) :
+ BClosed_sub h -> level (vmap h t) <= level t.
+Proof.
+ intros Hh.
+ induction t as [ | |f l IH] using term_ind'; cbn.
+ - now rewrite (Hh v).
+ - trivial.
+ - rewrite map_map. now apply list_max_map_incr.
+Qed.
+
+Lemma level_form_vmap h (f:formula) :
+ BClosed_sub h -> level (vmap h f) <= level f.
+Proof.
+ intros Hh.
+ induction f; cbn; auto with *.
+ - apply (level_term_vmap h (Fun "" l) Hh).
+ - omega with *.
+Qed.
+
+Lemma bclosed_term_vmap h (t:term) :
+ BClosed_sub h -> BClosed t -> BClosed (vmap h t).
+Proof.
+ unfold BClosed. intros Hh Ht.
+ generalize (level_term_vmap h t Hh). omega.
+Qed.
+
+Lemma bclosed_form_vmap h (f:formula) :
+ BClosed_sub h -> BClosed f -> BClosed (vmap h f).
+Proof.
+ unfold BClosed. intros Hh Hf.
+ generalize (level_form_vmap h f Hh). omega.
+Qed.
+
+Lemma bclosed_ctx_vmap h (c:context) :
+ BClosed_sub h -> BClosed c -> BClosed (vmap h c).
+Proof.
+ unfold BClosed. intros Hh.
+ induction c as [|f c IH]; cbn; auto.
+ rewrite !max_0. intuition. now apply bclosed_form_vmap.
+Qed.
+
+Lemma bclosed_seq_vmap h (s:sequent) :
+ BClosed_sub h -> BClosed s -> BClosed (vmap h s).
+Proof.
+ destruct s as (c,f). intros Hh. unfold BClosed. cbn.
+ rewrite !max_0. intuition.
+ now apply bclosed_ctx_vmap.
+ now apply bclosed_form_vmap.
+Qed.
+
+Hint Resolve bclosed_term_vmap bclosed_form_vmap.
+Hint Resolve bclosed_ctx_vmap bclosed_seq_vmap.
 
 (** The substitution lemma for proof derivations *)
 
@@ -396,12 +451,12 @@ Ltac Fresh z vars :=
 
 Ltac tryinst :=
  repeat match goal with
- | H : (forall h, closed_sub h -> _), H' : closed_sub _ |- _ =>
+ | H : (forall h, BClosed_sub h -> _), H' : BClosed_sub _ |- _ =>
    specialize (H _ H') end.
 
 Lemma Pr_vmap logic (s:sequent) :
   Pr logic s ->
-  forall h, closed_sub h ->
+  forall h, BClosed_sub h ->
   Pr logic (vmap h s).
 Proof.
  induction 1; cbn in *; intros; try (tryinst; eauto 2; fail).
@@ -411,9 +466,9 @@ Proof.
    apply R_All_i with z; auto.
    rewrite (vmap_bsubst_adhoc h x) by auto.
    rewrite <- (ctx_sub_set_ext x (FVar z)) by auto.
-   apply IHPr. now apply closed_sub_set.
+   apply IHPr. now apply bclosed_sub_set.
  - rewrite form_vmap_bsubst by auto. apply R_All_e; auto.
- - apply R_Ex_i with (vmap h t).
+ - apply R_Ex_i with (vmap h t); auto.
    rewrite <- form_vmap_bsubst by auto. apply IHPr; auto.
  - Fresh z (fvars (vmap h (A::Γ⊢B))).
    rewrite !Vars.union_spec in H.
@@ -421,12 +476,12 @@ Proof.
    rewrite (vmap_bsubst_adhoc h x) by auto.
    rewrite <- (ctx_sub_set_ext x (FVar z)) by auto.
    rewrite <- (form_sub_set_ext x (FVar z) h B) by auto.
-   apply IHPr2. now apply closed_sub_set.
+   apply IHPr2. now apply bclosed_sub_set.
 Qed.
 
 Lemma Pr_fsubst logic (s:sequent) :
   Pr logic s ->
-  forall v t, closed t ->
+  forall v t, BClosed t ->
   Pr logic (fsubst v t s).
 Proof.
  intros.
@@ -437,7 +492,7 @@ Qed.
 
 Lemma Valid_vmap logic (d:derivation) :
  Valid logic d ->
- forall h, closed_sub h ->
+ forall h, BClosed_sub h ->
   exists d', Valid logic d' /\ claim d' = vmap h (claim d).
 Proof.
  intros.
@@ -449,7 +504,7 @@ Qed.
 
 Lemma Valid_fsubst logic (d:derivation) :
   Valid logic d ->
-  forall v t, closed t ->
+  forall v t, BClosed t ->
    exists d', Valid logic d' /\ claim d' = fsubst v t (claim d).
 Proof.
  intros.
@@ -459,7 +514,7 @@ Qed.
 
 (** We could even be more specific about the derivation of
     the substituted sequent : it is roughly the substituted
-    derivation, apart for rules [R_All_i] and [R_Ex_e] were
+    derivation, apart for rules [R_All_i] and [R_Ex_e] where
     we shift to some fresh variable. *)
 
 Definition getA ds :=
@@ -497,7 +552,7 @@ Ltac doClaim h :=
 
 Lemma Valid_vmap_direct logic (d:derivation) :
  Valid logic d ->
- forall h, closed_sub h ->
+ forall h, BClosed_sub h ->
  Valid logic (vmap h d).
 Proof.
  induction 1; intros h CL; cbn; try (econstructor; eauto; doClaim h).
@@ -508,7 +563,7 @@ Proof.
    set (h':=sub_set x (FVar z) h).
    constructor.
    + cbn. varsdec.
-   + apply IHValid, closed_sub_set; auto.
+   + apply IHValid, bclosed_sub_set; auto.
    + cbn in H.
      rewrite <- (ctx_sub_set_ext x (FVar z)) by varsdec.
      rewrite (vmap_bsubst_adhoc h x) by (auto; varsdec).
@@ -527,8 +582,8 @@ Proof.
    set (h':=sub_set x (FVar z) h).
    apply V_Ex_e with (vmap h A).
    + cbn. varsdec.
-   + apply IHValid1, closed_sub_set; auto.
-   + apply IHValid2, closed_sub_set; auto.
+   + apply IHValid1, bclosed_sub_set; auto.
+   + apply IHValid2, bclosed_sub_set; auto.
    + cbn in H.
      rewrite <- (ctx_sub_set_ext x (FVar z)) by varsdec.
      rewrite <- (form_sub_set_ext x (FVar z) h A) by varsdec.
@@ -543,7 +598,7 @@ Qed.
 (** Same in the case of a simple [fsubst] substitution. *)
 
 Lemma Valid_fsubst_direct logic (d:derivation) v t :
-  closed t ->
+  BClosed t ->
   Valid logic d ->
   Valid logic (fsubst v t d) /\
   Claim (fsubst v t d) (fsubst v t (claim d)).
@@ -555,65 +610,15 @@ Proof.
 Qed.
 
 (** Thanks to this more precise result, we could say that
-    a closed derivation stays closed after a closed substitution. *)
-
-Lemma level_term_vmap h (t:term) :
- closed_sub h -> level (vmap h t) <= level t.
-Proof.
- intros Hh.
- induction t as [ | |f l IH] using term_ind'; cbn.
- - now rewrite (Hh v).
- - trivial.
- - rewrite map_map. now apply list_max_map_incr.
-Qed.
-
-Lemma level_form_vmap h (f:formula) :
- closed_sub h -> level (vmap h f) <= level f.
-Proof.
- intros Hh.
- induction f; cbn; auto with *.
- - apply (level_term_vmap h (Fun "" l) Hh).
- - omega with *.
-Qed.
-
-Lemma closed_term_vmap h (t:term) :
- closed_sub h -> closed t -> closed (vmap h t).
-Proof.
- unfold closed. intros Hh Ht.
- generalize (level_term_vmap h t Hh). omega.
-Qed.
-
-Lemma closed_form_vmap h (f:formula) :
- closed_sub h -> closed f -> closed (vmap h f).
-Proof.
- unfold closed. intros Hh Hf.
- generalize (level_form_vmap h f Hh). omega.
-Qed.
-
-Lemma closed_ctx_vmap h (c:context) :
- closed_sub h -> closed c -> closed (vmap h c).
-Proof.
- unfold closed. intros Hh.
- induction c as [|f c IH]; cbn; auto.
- rewrite !max_0. intuition. now apply closed_form_vmap.
-Qed.
-
-Lemma closed_seq_vmap h (s:sequent) :
- closed_sub h -> closed s -> closed (vmap h s).
-Proof.
- destruct s as (c,f). intros Hh. unfold closed. cbn.
- rewrite !max_0. intuition.
- now apply closed_ctx_vmap.
- now apply closed_form_vmap.
-Qed.
+    a BClosed derivation stays BClosed after a BClosed substitution. *)
 
 Lemma closed_deriv_vmap (d:derivation) :
- closed d -> forall h, closed_sub h -> closed (vmap h d).
+ BClosed d -> forall h, BClosed_sub h -> BClosed (vmap h d).
 Proof.
- unfold closed.
+ unfold BClosed.
  induction d as [r s ds IH] using derivation_ind'.
  intros H. cbn in H. rewrite !max_0 in H. destruct H as (Hr & Hs & Hds).
- assert (IH' : forall h, closed_sub h -> list_max (map level (map (vmap h) ds)) = 0).
+ assert (IH' : forall h, BClosed_sub h -> list_max (map level (map (vmap h) ds)) = 0).
  { intros h Hh. apply list_max_0. intros n.
    unfold vmap, vmap_list. rewrite map_map.
    rewrite in_map_iff. intros (d & Hd & Hd').
@@ -622,12 +627,12 @@ Proof.
    rewrite list_max_0 in Hds. apply Hds. now apply in_map. }
  clear IH Hds.
  intros h Hh; destruct r; cbn; repeat (apply max_0; split);
- try apply IH'; auto; try apply closed_seq_vmap; auto;
- try apply closed_sub_set; try apply closed_term_vmap; auto.
+ try apply IH'; auto; try apply bclosed_seq_vmap; auto;
+ try apply bclosed_sub_set; try apply bclosed_term_vmap; auto.
 Qed.
 
 Lemma closed_deriv_fsubst (d:derivation) v t :
- closed d -> closed t -> closed (fsubst v t d).
+ BClosed d -> BClosed t -> BClosed (fsubst v t d).
 Proof.
  intros. apply closed_deriv_vmap; auto.
  intros x. unfold varsubst. case eqbspec; auto.
@@ -661,10 +666,12 @@ Hint Resolve ListSubset_cons ListSubset_map.
 Definition sub_rename (x z : variable) :=
  fun v => if v =? x then FVar z else FVar v.
 
-Lemma sub_rename_closed x z : closed_sub (sub_rename x z).
+Lemma sub_rename_bclosed x z : BClosed_sub (sub_rename x z).
 Proof.
- unfold closed_sub, sub_rename. auto with eqb.
+ unfold BClosed_sub, sub_rename. auto with eqb.
 Qed.
+
+Hint Resolve sub_rename_bclosed.
 
 Lemma sub_rename_at x z : sub_rename x z x = FVar z.
 Proof.
@@ -729,8 +736,7 @@ Proof.
      now apply ListSubset_map. }
    assert (PR : Pr logic (Γ'z ⊢ ∀A)).
    { apply R_All_i with x; cbn; intuition. }
-   apply Pr_vmap with (h := sub_rename z x) in PR;
-    auto using sub_rename_closed.
+   apply Pr_vmap with (h := sub_rename z x) in PR; auto.
    revert PR. cbn; unfold Γ'z.
    rewrite ctx_rename_rename, form_rename_id; intuition.
  - Fresh z (Vars.add x (fvars (A::Γ' ⊢ B))). cbn in *.
@@ -743,8 +749,7 @@ Proof.
      now apply ListSubset_map. }
    assert (PR : Pr logic (Γ'z ⊢ B)).
    { apply R_Ex_e with x A; cbn; intuition. }
-   apply Pr_vmap with (h := sub_rename z x) in PR;
-    auto using sub_rename_closed.
+   apply Pr_vmap with (h := sub_rename z x) in PR; auto.
    revert PR. cbn; unfold Γ'z.
    rewrite ctx_rename_rename, form_rename_id; intuition.
 Qed.
@@ -829,7 +834,7 @@ Proof.
    assert (Hz := fresh_var_ok vars).
    set (z := fresh_var vars) in *.
    set (h := sub_rename x z).
-   apply Valid_vmap_direct; auto using sub_rename_closed.
+   apply Valid_vmap_direct; auto.
    cbn in H.
    constructor; eauto using claim_subset.
    + unfold h. cbn - [z vmap sub_rename].
@@ -842,7 +847,7 @@ Proof.
    assert (Hz := fresh_var_ok vars).
    set (z := fresh_var vars) in *.
    set (h := sub_rename x z).
-   apply Valid_vmap_direct; auto using sub_rename_closed.
+   apply Valid_vmap_direct; auto.
    cbn in H.
    econstructor; eauto using claim_subset.
    + unfold h. cbn - [z vmap sub_rename].
@@ -902,7 +907,6 @@ Proof.
  intro. cbn. intuition.
  eapply claim_subset; eauto.
 Qed.
-
 
 Lemma Valid_swap logic A B C Γ d :
  Valid logic d -> Claim d (A::B::Γ ⊢ C) ->
@@ -968,13 +972,14 @@ Proof.
 Qed.
 
 Lemma R'_All_e logic Γ A B t :
+ BClosed t ->
  Pr logic (bsubst 0 t A :: Γ ⊢ B) ->
  Pr logic ((∀A) :: Γ ⊢ B)%form.
 Proof.
  intros.
  apply R_Imp_e with (bsubst 0 t A).
  - now apply Pr_pop, R_Imp_i.
- - apply R_All_e, R'_Ax.
+ - now apply R_All_e, R'_Ax.
 Qed.
 
 Lemma R'_Ex_e logic Γ A B x :
@@ -1164,6 +1169,41 @@ Proof.
  now destruct d.
 Qed.
 
+Lemma restrict_term_level sign x t :
+  level (restrict_term sign x t) <= level t.
+Proof.
+ revert t.
+ fix IH 1. destruct t as [ | | f l]; cbn; auto with *.
+ destruct gen_fun_symbs; cbn; auto with *.
+ case eqbspec; cbn; auto with *.
+ intros _. clear f a.
+ revert l.
+ fix IH' 1. destruct l as [ |t l]; cbn; auto using Nat.max_le_compat with *.
+Qed.
+
+Lemma restrict_term_bclosed sign x t :
+ BClosed t -> BClosed (restrict_term sign x t).
+Proof.
+ unfold BClosed. assert (H := restrict_term_level sign x t). auto with *.
+Qed.
+
+Lemma restrict_level sign x f :
+  level (restrict sign x f) <= level f.
+Proof.
+ induction f; cbn; auto using Nat.max_le_compat with *.
+ destruct gen_pred_symbs; cbn; auto with *.
+ case eqbspec; cbn; auto with *.
+ intros _. clear p a.
+ induction l as [|t l IH]; cbn;
+   auto using Nat.max_le_compat, restrict_term_level.
+Qed.
+
+Lemma restrict_bclosed sign x f :
+ BClosed f -> BClosed (restrict sign x f).
+Proof.
+ unfold BClosed. assert (H := restrict_level sign x f). auto with *.
+Qed.
+
 Lemma restrict_term_fvars sign x t :
  Vars.Subset (fvars (restrict_term sign x t))
              (Vars.add x (fvars t)).
@@ -1221,6 +1261,30 @@ Proof.
  varsdec.
 Qed.
 
+Lemma restrict_rule_fvars sign x r :
+ Vars.Subset (fvars (restrict_rule sign x r))
+             (Vars.add x (fvars r)).
+Proof.
+ destruct r; cbn; rewrite ?restrict_term_fvars; auto with *.
+Qed.
+
+Lemma restrict_deriv_fvars sign x d :
+ Vars.Subset (fvars (restrict_deriv sign x d))
+             (Vars.add x (fvars d)).
+Proof.
+ induction d as [r s ds IH] using derivation_ind'; cbn.
+ rewrite restrict_rule_fvars, restrict_seq_fvars.
+ rewrite Forall_forall in IH.
+ intros v. VarsF.set_iff.
+ rewrite !vars_unionmap_in. intuition.
+ destruct H0 as (a & Hv & Ha).
+ rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
+ apply IH in Hv; auto. rewrite Vars.add_spec in Hv.
+ destruct Hv; auto.
+ right; right; right; left. now exists a'.
+Qed.
+
+
 Lemma restrict_term_bsubst sign x n (t u:term) :
   restrict_term sign x (bsubst n u t) =
   bsubst n (restrict_term sign x u) (restrict_term sign x t).
@@ -1270,11 +1334,13 @@ Proof.
       f_equal. apply restrict_bsubst.
   - rewrite restrict_bsubst.
     constructor.
+    + now apply restrict_term_bclosed.
     + apply IHValid; varsdec.
-    + unfold Claim. rewrite claim_restrict. now rewrite H1.
+    + unfold Claim. rewrite claim_restrict. now rewrite H2.
   - constructor.
+    + now apply restrict_term_bclosed.
     + apply IHValid; varsdec.
-    + unfold Claim. rewrite claim_restrict. rewrite H1.
+    + unfold Claim. rewrite claim_restrict. rewrite H2.
       cbn. now rewrite restrict_bsubst.
   - apply V_Ex_e with (restrict sign x A).
     + cbn. rewrite restrict_ctx_fvars, !restrict_form_fvars. varsdec.
@@ -1400,6 +1466,10 @@ Definition forcelevel_ctx x (c:context) :=
 Definition forcelevel_seq x '(c ⊢ f) :=
  forcelevel_ctx x c ⊢ forcelevel 0 x f.
 
+(** Normally the witnesses in [rule_kind] are already BClosed,
+    at least for valid derivations. Forcing it nonetheless
+    allow to write a few lemmas below without preconditions. *)
+
 Definition forcelevel_rule x r :=
  match r with
  | All_e wit => All_e (forcelevel_term 0 x wit)
@@ -1464,6 +1534,66 @@ Proof.
  - rewrite map_map. apply list_max_map_le; auto.
 Qed.
 
+Lemma forcelevel_term_bclosed x t :
+  BClosed (forcelevel_term 0 x t).
+Proof.
+ assert (H := forcelevel_term_level 0 x t). auto with *.
+Qed.
+
+Lemma forcelevel_level n x f :
+ level (forcelevel n x f) <= n.
+Proof.
+ revert n.
+ induction f; cbn; intros; auto with *.
+ - rewrite map_map. apply list_max_map_le.
+   auto using forcelevel_term_level.
+ - apply max_le; auto.
+ - specialize (IHf (S n)). auto with *.
+Qed.
+
+Lemma forcelevel_bclosed x f :
+ BClosed (forcelevel 0 x f).
+Proof.
+ assert (H := forcelevel_level 0 x f). auto with *.
+Qed.
+
+Lemma forcelevel_ctx_bclosed x c :
+ BClosed (forcelevel_ctx x c).
+Proof.
+ induction c as [|f c IH]; cbn; auto.
+ unfold BClosed, level, level_list. cbn.
+ now rewrite forcelevel_bclosed, IH.
+Qed.
+
+Lemma forcelevel_seq_bclosed x s :
+ BClosed (forcelevel_seq x s).
+Proof.
+ destruct s; cbn.
+ unfold BClosed, level, level_seq.
+ now rewrite forcelevel_bclosed, forcelevel_ctx_bclosed.
+Qed.
+
+Lemma forcelevel_rule_bclosed x r :
+ BClosed (forcelevel_rule x r).
+Proof.
+ destruct r; cbn; auto.
+ unfold BClosed; cbn; apply forcelevel_term_bclosed.
+ unfold BClosed; cbn; apply forcelevel_term_bclosed.
+Qed.
+
+Lemma forcelevel_deriv_bclosed x d :
+ BClosed (forcelevel_deriv x d).
+Proof.
+ induction d as [r s ds IH] using derivation_ind'.
+ unfold BClosed; cbn.
+ rewrite forcelevel_rule_bclosed, forcelevel_seq_bclosed.
+ simpl.
+ apply list_max_0.
+ rewrite map_map.
+ intros n. rewrite in_map_iff. intros (d & <- & IN).
+ rewrite Forall_forall in IH. now apply IH.
+Qed.
+
 Lemma forcelevel_term_id n x t :
  level t <= n -> forcelevel_term n x t = t.
 Proof.
@@ -1473,6 +1603,55 @@ Proof.
  - f_equal.
    rewrite list_max_map_le in H.
    apply map_id_iff; auto.
+Qed.
+
+Lemma forcelevel_id n x f :
+ level f <= n -> forcelevel n x f = f.
+Proof.
+ revert n.
+ induction f; cbn; intros; rewrite ?max_le in *; f_equal; intuition.
+ apply map_id_iff. rewrite list_max_map_le in H.
+ auto using forcelevel_term_id.
+Qed.
+
+Lemma forcelevel_ctx_id x c :
+ BClosed c -> forcelevel_ctx x c = c.
+Proof.
+ induction c as [|f c IH]; cbn; auto.
+ unfold BClosed, level, level_list; cbn. rewrite max_0.
+ intros (Hf,Hc); f_equal; auto. apply forcelevel_id. now rewrite Hf.
+Qed.
+
+Lemma forcelevel_seq_id x s :
+ BClosed s -> forcelevel_seq x s = s.
+Proof.
+ destruct s; cbn. unfold BClosed, level, level_seq. rewrite max_0.
+ intros (Hc,Hf). f_equal. now apply forcelevel_ctx_id.
+ apply forcelevel_id. now rewrite Hf.
+Qed.
+
+Lemma forcelevel_rule_id x r :
+ BClosed r -> forcelevel_rule x r = r.
+Proof.
+ destruct r; cbn; auto.
+ unfold BClosed; cbn; intros Hw. f_equal.
+  apply forcelevel_term_id. now rewrite Hw.
+ unfold BClosed; cbn; intros Hw. f_equal.
+  apply forcelevel_term_id. now rewrite Hw.
+Qed.
+
+Lemma forcelevel_deriv_id x d :
+ BClosed d -> forcelevel_deriv x d = d.
+Proof.
+ induction d as [r s ds IH] using derivation_ind'; cbn.
+ unfold BClosed. cbn. rewrite !max_0.
+ intros (Hr & Hs & Hds).
+ f_equal.
+ now apply forcelevel_rule_id.
+ now apply forcelevel_seq_id.
+ rewrite Forall_forall in IH.
+ rewrite list_max_map_0 in Hds.
+ apply map_id_iff. auto.
 Qed.
 
 Lemma forcelevel_bsubst_term n x (u t:term) :
@@ -1514,32 +1693,6 @@ Proof.
  auto using forcelevel_bsubst_term'.
 Qed.
 
-(*
-Lemma forcelevel_bsubst' n x u f :
-  forcelevel n x (bsubst n u f) =
-  bsubst n (forcelevel_term n x u) (forcelevel (S n) x f).
-Proof.
- revert n u.
- induction f; cbn; intros; f_equal; auto.
- - rewrite !map_map. apply map_ext_iff.
-   auto using forcelevel_bsubst_term.
- - rewrite IHf.
-
-Qed.
-*)
-(*
-Lemma forcelevel_bsubst_adhoc n x u f :
- forcelevel n x (bsubst n u f) =
- forcelevel n x (bsubst n (forcelevel_term n x u) f).
-Proof.
- revert n.
- induction f; cbn; intros; f_equal; auto.
- rewrite !map_map. apply map_ext_iff.
- intros a Ha.
- rewrite !forcelevel_bsubst_term. f_equal.
- symmetry. apply forcelevel_term_id. apply forcelevel_term_level.
-*)
-
 Ltac solver' :=
   try econstructor; auto;
   try match goal with
@@ -1561,24 +1714,84 @@ Proof.
    + apply IHValid. varsdec.
    + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
      rewrite forcelevel_bsubst; auto.
- - replace (forcelevel 0 x (bsubst 0 t A))
-       with (bsubst 0 (forcelevel_term 0 x t) (forcelevel 1 x A)).
-   constructor.
+ - rewrite forcelevel_bsubst by now rewrite H0.
+   rewrite forcelevel_term_id by now rewrite H0.
+   constructor; auto.
    + apply IHValid; varsdec.
-   + unfold Claim. now rewrite claim_forcelevel, H1.
-   + rewrite <- forcelevel_bsubst.
-     admit.
-     now rewrite forcelevel_term_level.
- - constructor.
+   + unfold Claim. now rewrite claim_forcelevel, H2.
+ - rewrite forcelevel_term_id by now rewrite H0.
+   constructor; auto.
    + apply IHValid. varsdec.
-   + unfold Claim; rewrite claim_forcelevel, H1. cbn. f_equal.
-     admit.
+   + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
+     apply forcelevel_bsubst; now rewrite H0.
  - apply V_Ex_e with (forcelevel 1 x A).
-   + cbn. rewrite forcelevel_ctx_fvars, !forcelevel_fvars.
-     varsdec.
+   + cbn. rewrite forcelevel_ctx_fvars, !forcelevel_fvars. varsdec.
    + apply IHValid1. varsdec.
    + apply IHValid2. varsdec.
    + unfold Claim; now rewrite claim_forcelevel, H1.
    + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
      f_equal. apply forcelevel_bsubst; auto.
-Admitted.
+Qed.
+
+Lemma restrict_forcelevel_term sign x n y t :
+ restrict_term sign x (forcelevel_term n y t) =
+ forcelevel_term n y (restrict_term sign x t).
+Proof.
+ induction t as [ | | f l IH] using term_ind';
+  cbn - [Nat.ltb]; auto.
+ - case Nat.ltb_spec; auto.
+ - destruct gen_fun_symbs as [ar|] eqn:E; auto.
+   rewrite map_length.
+   case eqbspec; cbn; auto.
+   intros _. f_equal.
+   rewrite !map_map.
+   apply map_ext_iff; auto.
+Qed.
+
+Lemma restrict_forcelevel sign x n y f :
+ restrict sign x (forcelevel n y f) =
+ forcelevel n y (restrict sign x f).
+Proof.
+ revert n.
+ induction f; cbn; intros; f_equal; auto.
+ destruct gen_pred_symbs as [ar|] eqn:E; auto.
+ rewrite map_length.
+ case eqbspec; cbn; auto.
+ intros _. f_equal.
+ rewrite !map_map.
+ apply map_ext_iff; auto using restrict_forcelevel_term.
+Qed.
+
+Lemma restrict_forcelevel_ctx sign x y c :
+ restrict_ctx sign x (forcelevel_ctx y c) =
+ forcelevel_ctx y (restrict_ctx sign x c).
+Proof.
+ induction c; cbn; f_equal; auto using restrict_forcelevel.
+Qed.
+
+Lemma restrict_forcelevel_seq sign x y s :
+ restrict_seq sign x (forcelevel_seq y s) =
+ forcelevel_seq y (restrict_seq sign x s).
+Proof.
+ destruct s; cbn; f_equal;
+ auto using restrict_forcelevel, restrict_forcelevel_ctx.
+Qed.
+
+Lemma restrict_forcelevel_rule sign x y r :
+ restrict_rule sign x (forcelevel_rule y r) =
+ forcelevel_rule y (restrict_rule sign x r).
+Proof.
+ destruct r; cbn; f_equal; auto using restrict_forcelevel_term.
+Qed.
+
+Lemma restrict_forcelevel_deriv sign x y d :
+ restrict_deriv sign x (forcelevel_deriv y d) =
+ forcelevel_deriv y (restrict_deriv sign x d).
+Proof.
+ induction d as [r s ds IH] using derivation_ind'; cbn.
+ f_equal.
+ - apply restrict_forcelevel_rule.
+ - apply restrict_forcelevel_seq.
+ - rewrite !map_map. apply map_ext_iff.
+   rewrite Forall_forall in IH; auto.
+Qed.

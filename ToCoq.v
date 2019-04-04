@@ -158,17 +158,17 @@ Proof.
 Qed.
 
 Lemma interp_term_closed genv lenv t :
- closed t ->
+ BClosed t ->
  interp_term genv lenv t = interp_term genv [] t.
 Proof.
- unfold closed. intros E.
+ unfold BClosed. intros E.
  apply (interp_term_more_lenv genv [] lenv). simpl. auto with *.
 Qed.
 
 Lemma interp_term_bsubst genv lenv u m n t :
  level t <= S n ->
  List.length lenv = n ->
- closed u ->
+ BClosed u ->
  interp_term genv [] u = m ->
  interp_term genv (lenv++[m]) t =
   interp_term genv lenv (bsubst n u t).
@@ -189,7 +189,7 @@ Qed.
 Lemma interp_form_bsubst genv lenv u m n f :
  level f <= S n ->
  List.length lenv = n ->
- closed u ->
+ BClosed u ->
  interp_term genv [] u = m ->
  interp_form genv (lenv++[m]) f <-> interp_form genv lenv (bsubst n u f).
 Proof.
@@ -215,7 +215,7 @@ Qed.
 
 Lemma interp_form_bsubst0 genv u m f :
  level f <= 1 ->
- closed u ->
+ BClosed u ->
  interp_term genv [] u = m ->
  interp_form genv [m] f <-> interp_form genv [] (bsubst 0 u f).
 Proof.
@@ -281,10 +281,10 @@ Ltac substClaim :=
 Lemma correctness (logic:Defs.logic)(d:derivation) :
  CoqRequirements logic ->
  Valid logic d ->
- closed d ->
+ BClosed d ->
  forall genv, interp_seq genv [] (claim d).
 Proof.
- unfold closed.
+ unfold BClosed.
  intros CR.
  induction 1; intros CL genv Hc; substClaim;
   cbn in CL; rewrite ?eqb_eq, ?max_0 in CL;
@@ -315,7 +315,7 @@ Qed.
 Lemma coherence logic : CoqRequirements logic ->
  forall (d:derivation),
  Valid logic d ->
- closed d ->
+ BClosed d ->
  ~Claim d ([]⊢False).
 Proof.
  intros CR d VD CL E.

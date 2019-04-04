@@ -159,8 +159,12 @@ Proof.
      symmetry. apply nam2mix_altsubst_nop.
    + rewrite U, V, nam2mix_ctx_fvars.
      rewrite nam2mix_fvars. simpl. varsdec.
- - now rewrite nam2mix_subst_alt, nam2mix_altsubst_bsubst0.
- - now rewrite nam2mix_subst_alt, nam2mix_altsubst_bsubst0.
+ - rewrite nam2mix_subst_alt, nam2mix_altsubst_bsubst0.
+   rewrite nam2mix_term_bclosed, eqb_refl.
+   apply andb_true_r.
+ - rewrite nam2mix_subst_alt, nam2mix_altsubst_bsubst0.
+   rewrite nam2mix_term_bclosed, eqb_refl.
+   apply andb_true_r.
  - cbn.
    apply eq_true_iff_eq.
    rewrite !andb_true_iff.
@@ -206,30 +210,30 @@ Proof.
 Qed.
 
 Lemma mix_nam_mix_rule (r:Mix.rule_kind) :
-  Mix.closed r ->
+  Mix.BClosed r ->
   nam2mix_rule (mix2nam_rule r) = r.
 Proof.
- unfold Mix.closed.
+ unfold Mix.BClosed.
  destruct r; cbn; intros CL; auto.
  f_equal. apply mix_nam_mix_term, CL.
  f_equal. apply mix_nam_mix_term, CL.
 Qed.
 
 Lemma mix_nam_mix_ctx (c:Mix.context) :
-  Mix.closed c ->
+  Mix.BClosed c ->
   nam2mix_ctx (mix2nam_ctx c) = c.
 Proof.
- unfold Mix.closed.
+ unfold Mix.BClosed.
  induction c as [|f c IH]; cbn; intros CL; auto.
  apply max_0 in CL. destruct CL as (CL,CL').
  f_equal; auto using mix_nam_mix.
 Qed.
 
 Lemma mix_nam_mix_seq (s:Mix.sequent) :
-  Mix.closed s ->
+  Mix.BClosed s ->
   nam2mix_seq (mix2nam_seq s) = s.
 Proof.
- unfold Mix.closed.
+ unfold Mix.BClosed.
  destruct s; cbn. intros CL.
  apply max_0 in CL. destruct CL as (CL,CL').
  f_equal.
@@ -238,10 +242,10 @@ Proof.
 Qed.
 
 Lemma mix_nam_mix_deriv (d:Mix.derivation) :
-  Mix.closed d ->
+  Mix.BClosed d ->
   nam2mix_deriv (mix2nam_deriv d) = d.
 Proof.
- unfold Mix.closed.
+ unfold Mix.BClosed.
  induction d as [r s l IH] using Mix.derivation_ind'.
  cbn; intros CL.
  rewrite !max_0 in CL. destruct CL as (CL & CL' & CL'').
@@ -255,7 +259,7 @@ Proof.
 Qed.
 
 Lemma mix2nam_valid_deriv logic (d:Mix.derivation) :
-  Mix.closed d ->
+  Mix.BClosed d ->
   Nam.valid_deriv logic (mix2nam_deriv d) =
   Mix.valid_deriv logic d.
 Proof.
@@ -263,31 +267,32 @@ Proof.
  now rewrite <- nam2mix_valid_deriv, mix_nam_mix_deriv.
 Qed.
 
-(** nam2mix and closeness *)
+(** nam2mix and BClosed *)
 
-Lemma nam2mix_ctx_closed c : Mix.closed (nam2mix_ctx c).
+Lemma nam2mix_ctx_bclosed c : Mix.BClosed (nam2mix_ctx c).
 Proof.
- unfold Mix.closed.
- induction c; cbn; auto. rewrite nam2mix_closed. auto.
+ unfold Mix.BClosed.
+ induction c; cbn; auto. rewrite nam2mix_bclosed. auto.
 Qed.
 
-Lemma nam2mix_seq_closed s : Mix.closed (nam2mix_seq s).
+Lemma nam2mix_seq_bclosed s : Mix.BClosed (nam2mix_seq s).
 Proof.
- unfold Mix.closed.
- destruct s; cbn. now rewrite nam2mix_closed, nam2mix_ctx_closed.
+ unfold Mix.BClosed.
+ destruct s; cbn. now rewrite nam2mix_bclosed, nam2mix_ctx_bclosed.
 Qed.
 
-Lemma nam2mix_rule_closed r : Mix.closed (nam2mix_rule r).
+Lemma nam2mix_rule_bclosed r : Mix.BClosed (nam2mix_rule r).
 Proof.
- unfold Mix.closed.
- destruct r; cbn; auto; apply nam2mix_term_closed.
+ unfold Mix.BClosed.
+ destruct r; cbn; auto; apply nam2mix_term_bclosed.
 Qed.
 
-Lemma nam2mix_deriv_closed d : Mix.level (nam2mix_deriv d) = 0.
+Lemma nam2mix_deriv_bclosed d : Mix.BClosed (nam2mix_deriv d).
 Proof.
+ unfold Mix.BClosed.
  revert d.
  fix IH 1. destruct d as (r,s,l); cbn.
- rewrite nam2mix_rule_closed, nam2mix_seq_closed. simpl.
+ rewrite nam2mix_rule_bclosed, nam2mix_seq_bclosed. simpl.
  revert l.
  fix IH' 1. destruct l as [|d l]; cbn; trivial.
  rewrite IH. simpl. apply IH'.
@@ -424,23 +429,23 @@ Qed.
 
 Lemma nam_mix_nam_ctx c : AlphaEq_ctx (mix2nam_ctx (nam2mix_ctx c)) c.
 Proof.
- apply nam2mix_ctx_canonical, mix_nam_mix_ctx, nam2mix_ctx_closed.
+ apply nam2mix_ctx_canonical, mix_nam_mix_ctx, nam2mix_ctx_bclosed.
 Qed.
 
 Lemma nam_mix_nam_seq s : AlphaEq_seq (mix2nam_seq (nam2mix_seq s)) s.
 Proof.
- apply nam2mix_seq_canonical, mix_nam_mix_seq, nam2mix_seq_closed.
+ apply nam2mix_seq_canonical, mix_nam_mix_seq, nam2mix_seq_bclosed.
 Qed.
 
 Lemma nam_mix_nam_rule r : AlphaEq_rule (mix2nam_rule (nam2mix_rule r)) r.
 Proof.
- apply nam2mix_rule_canonical, mix_nam_mix_rule, nam2mix_rule_closed.
+ apply nam2mix_rule_canonical, mix_nam_mix_rule, nam2mix_rule_bclosed.
 Qed.
 
 Lemma nam_mix_nam_deriv d :
   AlphaEq_deriv (mix2nam_deriv (nam2mix_deriv d)) d.
 Proof.
- apply nam2mix_deriv_canonical, mix_nam_mix_deriv, nam2mix_deriv_closed.
+ apply nam2mix_deriv_canonical, mix_nam_mix_deriv, nam2mix_deriv_bclosed.
 Qed.
 
 (** [Nam.valid_deriv] is compatible with alpha-equivalence *)

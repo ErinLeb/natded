@@ -14,4 +14,7 @@ General
 
 - Peut-on éviter tous ces "fix IH 1" ??
 
-- Integrer closed dans Valid et valid_deriv ??
+X Integrer closed dans Valid et valid_deriv ??
+
+ToCoq : revoir a se passer de BClosed general,
+        maintenant que Valid impose des temoins BClosed

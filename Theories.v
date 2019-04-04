@@ -7,10 +7,10 @@ Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
 
 Definition ClosedFormulaOn (sign:gen_signature) (A:formula) :=
-  check sign A = true /\ closed A /\ Vars.Empty (fvars A).
+  check sign A = true /\ BClosed A /\ FClosed A.
 
 Definition ValidDerivOn logic (sign:gen_signature) d :=
-  check sign d = true /\ closed d /\ Valid logic d.
+  check sign d = true /\ BClosed d /\ Valid logic d.
 
 Record theory :=
   { sign :> gen_signature;
@@ -41,8 +41,46 @@ Definition IsTheorem th T :=
 Lemma thm_alt th T :
   IsTheorem th T <-> IsTheoremStrict th T.
 Proof.
-(* Cf preuve a finir dans Meta *)
-Admitted.
+ split.
+ - intros (CL & axs & F & PR).
+   split; auto. rewrite Provable_alt in PR. destruct PR as (d & V & C).
+   assert (Hx := fresh_var_ok (fvars d)).
+   set (x := fresh_var (fvars d)) in *.
+   assert (Hy := fresh_var_ok (Vars.add x (fvars d))).
+   set (y := fresh_var (Vars.add x (fvars d))) in *.
+   exists (forcelevel_deriv y (restrict_deriv th x d)).
+   exists axs; repeat split; auto.
+   + rewrite <- restrict_forcelevel_deriv.
+     apply restrict_deriv_check.
+   + apply forcelevel_deriv_bclosed.
+   + apply forcelevel_deriv_valid.
+     * rewrite restrict_deriv_fvars.
+       varsdec.
+     * apply restrict_valid; auto.
+   + rewrite Forall_forall in F.
+     unfold Claim.
+     rewrite claim_forcelevel, claim_restrict, C.
+     cbn. f_equal.
+     * assert (check th axs = true).
+       { unfold check, check_list.
+         apply forallb_forall.
+         intros A HA. apply WfAxiom; auto. }
+       rewrite check_restrict_ctx_id by auto.
+       apply forcelevel_ctx_id.
+       unfold BClosed, level, level_list.
+       apply list_max_map_0.
+       intros A HA. apply (WfAxiom th A); auto.
+     * rewrite check_restrict_id by apply CL.
+       apply forcelevel_id.
+       assert (level T = 0) by apply CL.
+       auto with *.
+ - intros (CL & d & axs & V & F & C).
+   split; auto.
+   exists axs; split; auto.
+   rewrite Provable_alt.
+   exists d; split; auto.
+   apply V.
+Qed.
 
 Lemma ax_thm th A : IsAxiom th A -> IsTheorem th A.
 Proof.
@@ -147,7 +185,7 @@ Definition IsEqualityTheory th :=
  IsTheorem th (∀Pred "=" [#0; #0])%form /\
  forall A z,
    check (th.(sign)) A = true ->
-   closed A ->
+   BClosed A ->
    Vars.Equal (fvars A) (Vars.singleton z) ->
    IsTheorem th (∀∀(Pred "=" [#1;#0] -> fsubst z (#1) A -> fsubst z (#0) A))%form.
 
@@ -173,8 +211,9 @@ Proof.
 Qed.
 
 (** If we only extend the signature, not the axioms, then
-    it's a conservative extension. To prove this, we restrict
-    derivations to the small signature. *)
+    it's a conservative extension.
+    To prove this, normally we restrict a proof to the small
+    signature, but here with [Pr] it's implicit (see thm_alt) *)
 
 Lemma ext_sign_only th1 th2 :
  SignExtend th1 th2 ->
@@ -186,26 +225,8 @@ Proof.
    intros A. rewrite EQ. apply ax_thm.
  - intros T (CL & axs & F & PR) CK. split.
    + split; auto. apply CL.
-   + exists axs. split.
-     * rewrite Forall_forall in *. intros x Hx. rewrite EQ; auto.
-     * auto.
-       (* normally we should adapt the proof to use only
-          th1.(sign), thanks to [restrict] and co.
-          But the Pr relation doesn't care... *)
-       (*
-       rewrite Provable_alt in *. unfold Provable in *.
-       destruct PR as (d & V & C).
-       assert (Hx := fresh_var_ok (fvars d)).
-       set (x := fresh_var (fvars d)) in *. clearbody x.
-       exists (restrict_deriv th1 x d); split.
-       { apply restrict_valid; auto. }
-       { unfold Claim. rewrite claim_restrict, C. cbn; f_equal.
-         - unfold restrict_ctx. apply map_id_iff.
-           intros A HA. apply restrict_check.
-           apply th1.(WfAxiom). rewrite EQ.
-           rewrite Forall_forall in F; auto.
-         - apply restrict_check; auto. }
-        *)
+   + exists axs. split; auto.
+     rewrite Forall_forall in *. intros x Hx. rewrite EQ; auto.
 Qed.
 
 (** Henkin extension : adding a new constant as witness
@@ -245,8 +266,9 @@ Proof.
      { apply level_bsubst; auto.
        assert (level (∃ A)%form = 0) by apply CL.
        cbn in *. omega. }
-     unfold closed; omega.
-   + rewrite bsubst_fvars. cbn - [Vars.union].
+     unfold BClosed; omega.
+   + unfold FClosed.
+     rewrite bsubst_fvars. cbn - [Vars.union].
      intro v. VarsF.set_iff.
      assert (Vars.Empty (fvars (∃ A)%form)) by apply CL.
      varsdec.
@@ -288,18 +310,13 @@ Proof.
        rewrite negb_true_iff, eqb_neq.
        intros [(IN,NE)|IN]; auto. apply F in IN. cbn in IN.
        unfold Henkin_axiom in IN; intuition.
-     * (* TODO: restrict ? *)
-       assert (Pr logic (newAx::axs' ⊢ T)).
+     * assert (Pr logic (newAx::axs' ⊢ T)).
        { eapply Pr_weakening; eauto.
          constructor. unfold axs'.
          intros v. simpl. rewrite filter_In.
          rewrite negb_true_iff, eqb_neq.
          destruct (eqbspec v newAx); intuition. }
-       apply R_Ex_e with "x"%string A.
-       { admit. }
-       { apply Pr_weakening with (axsA ⊢ (∃ A)); auto.
-         constructor. intros a. rewrite in_app_iff; auto. }
-       { admit. }
+       (* Todo : restrict sur H pour en faire du A(x) ... |- T *)
 Admitted.
 
 (** Completeness of a theory *)

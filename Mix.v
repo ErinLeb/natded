@@ -85,7 +85,7 @@ Compute print_term peano_term_example.
     with instances for terms, formulas, context, sequent, ... *)
 
 (** Check for known function/predicate symbols + correct arity *)
-Class Check (A : Type) := check : gen_signature -> A -> bool.
+Class Check (A : Type) := check : signature -> A -> bool.
 Arguments check {_} {_} _ !_.
 
 (** Replace a bound variable with a term *)
@@ -123,7 +123,7 @@ Definition fsubst {A}`{VMap A} (v:variable)(u:term) :=
 (** Some structural extensions of these generic functions *)
 
 Instance check_list {A}`{Check A} : Check (list A) :=
- fun (sign : gen_signature) => List.forallb (check sign).
+ fun (sign : signature) => List.forallb (check sign).
 
 Instance bsubst_list {A}`{BSubst A} : BSubst (list A) :=
  fun n t => List.map (bsubst n t).
@@ -138,7 +138,7 @@ Instance vmap_list {A}`{VMap A} : VMap (list A) :=
  fun h => List.map (vmap h).
 
 Instance check_pair {A B}`{Check A}`{Check B} : Check (A*B) :=
- fun (sign : gen_signature) '(a,b) => check sign a &&& check sign b.
+ fun (sign : signature) '(a,b) => check sign a &&& check sign b.
 
 Instance bsubst_pair {A B}`{BSubst A}`{BSubst B} : BSubst (A*B) :=
  fun n t '(a,b) => (bsubst n t a, bsubst n t b).
@@ -158,19 +158,19 @@ Instance vmap_pair {A B}`{VMap A}`{VMap B} : VMap (A*B) :=
     with the correct arity. *)
 
 Instance check_term : Check term :=
- fun (sign : gen_signature) =>
+ fun (sign : signature) =>
  fix check_term t :=
  match t with
   | FVar _ | BVar _ => true
   | Fun f args =>
-     match sign.(gen_fun_symbs) f with
+     match sign.(funsymbs) f with
      | None => false
      | Some ar =>
        (List.length args =? ar) &&& (List.forallb check_term args)
      end
  end.
 
-Compute check (generalize_signature peano_sign) peano_term_example.
+Compute check (Finite.to_infinite peano_sign) peano_term_example.
 
 Instance term_fvars : FVars term :=
  fix term_fvars t :=
@@ -291,7 +291,7 @@ Definition test_form := (∃ (True <-> Pred "p" [#0;#0]))%form.
 (** Utilities about formula *)
 
 Instance check_formula : Check formula :=
- fun (sign : gen_signature) =>
+ fun (sign : signature) =>
  fix check_formula f :=
   match f with
   | True | False => true
@@ -299,7 +299,7 @@ Instance check_formula : Check formula :=
   | Op _ f f' => check_formula f &&& check_formula f'
   | Quant _ f => check_formula f
   | Pred p args =>
-     match sign.(gen_pred_symbs) p with
+     match sign.(predsymbs) p with
      | None => false
      | Some ar =>
        (List.length args =? ar) &&& (List.forallb (check sign) args)

@@ -15,7 +15,7 @@ Lemma check_bsubst_term sign n (u t:term) :
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto.
  - case eqbspec; auto.
- - destruct gen_fun_symbs; auto.
+ - destruct funsymbs; auto.
    rewrite !lazy_andb_iff, map_length.
    intros Hu (Hl,Hl'); split; auto.
    rewrite forallb_forall in *. intros t Ht.
@@ -28,7 +28,7 @@ Lemma check_bsubst sign n u (f:formula) :
 Proof.
  revert n.
  induction f; cbn; intros n Hu Hf; auto.
- - destruct gen_pred_symbs; auto.
+ - destruct predsymbs; auto.
    rewrite !lazy_andb_iff in *. rewrite map_length.
    destruct Hf as (Hl,Hl'); split; auto.
    rewrite forallb_forall in *. intros t Ht.
@@ -1118,7 +1118,7 @@ Qed.
 Fixpoint restrict_term sign x t :=
  match t with
  | Fun f l =>
-   match sign.(gen_fun_symbs) f with
+   match sign.(funsymbs) f with
    | None => FVar x
    | Some ar =>
      if length l =? ar then Fun f (map (restrict_term sign x) l)
@@ -1132,7 +1132,7 @@ Fixpoint restrict sign x f :=
  | True => True
  | False => False
  | Pred p l =>
-   match sign.(gen_pred_symbs) p with
+   match sign.(predsymbs) p with
    | None => False
    | Some ar =>
      if length l =? ar then Pred p (map (restrict_term sign x) l)
@@ -1174,7 +1174,7 @@ Lemma restrict_term_level sign x t :
 Proof.
  revert t.
  fix IH 1. destruct t as [ | | f l]; cbn; auto with *.
- destruct gen_fun_symbs; cbn; auto with *.
+ destruct funsymbs; cbn; auto with *.
  case eqbspec; cbn; auto with *.
  intros _. clear f a.
  revert l.
@@ -1191,7 +1191,7 @@ Lemma restrict_level sign x f :
   level (restrict sign x f) <= level f.
 Proof.
  induction f; cbn; auto using Nat.max_le_compat with *.
- destruct gen_pred_symbs; cbn; auto with *.
+ destruct predsymbs; cbn; auto with *.
  case eqbspec; cbn; auto with *.
  intros _. clear p a.
  induction l as [|t l IH]; cbn;
@@ -1209,7 +1209,7 @@ Lemma restrict_term_fvars sign x t :
              (Vars.add x (fvars t)).
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
- destruct gen_fun_symbs; cbn; auto with *.
+ destruct funsymbs; cbn; auto with *.
  case eqbspec; cbn; auto with *.
  intros _. clear f a.
  intros v. rewrite Vars.add_spec, !vars_unionmap_in.
@@ -1226,7 +1226,7 @@ Lemma restrict_form_fvars sign x f :
              (Vars.add x (fvars f)).
 Proof.
  induction f; cbn; auto with *.
- destruct gen_pred_symbs; cbn; auto with *.
+ destruct predsymbs; cbn; auto with *.
  case eqbspec; cbn; auto with *.
  intros _. clear p a.
  intros v. rewrite Vars.add_spec, !vars_unionmap_in.
@@ -1291,7 +1291,7 @@ Lemma restrict_term_bsubst sign x n (t u:term) :
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn; auto.
  - case eqbspec; auto.
- - destruct gen_fun_symbs; cbn; auto with *.
+ - destruct funsymbs; cbn; auto with *.
    rewrite map_length.
    case eqbspec; cbn; auto.
    intros _.
@@ -1304,7 +1304,7 @@ Lemma restrict_bsubst sign x n t f :
 Proof.
  revert n.
  induction f; cbn; intros; f_equal; auto.
- destruct gen_pred_symbs; cbn; auto with *.
+ destruct predsymbs; cbn; auto with *.
  rewrite map_length.
  case eqbspec; cbn; auto.
  intros _.
@@ -1355,7 +1355,7 @@ Lemma check_restrict_term_id sign x (t:term) :
  check sign t = true -> restrict_term sign x t = t.
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto.
- destruct gen_fun_symbs; try easy.
+ destruct funsymbs; try easy.
  rewrite lazy_andb_iff. intros (->,H). f_equal.
  rewrite forallb_forall in H.
  apply map_id_iff; auto.
@@ -1365,7 +1365,7 @@ Lemma check_restrict_id sign x (f:formula) :
  check sign f = true -> restrict sign x f = f.
 Proof.
  induction f; cbn; intros; f_equal; auto.
- - destruct gen_pred_symbs; try easy.
+ - destruct predsymbs; try easy.
    rewrite lazy_andb_iff in H. destruct H as (->,H). f_equal.
    rewrite forallb_forall in H.
    apply map_id_iff; auto using check_restrict_term_id.
@@ -1386,7 +1386,7 @@ Lemma restrict_term_check sign x (t:term) :
  check sign (restrict_term sign x t) = true.
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto.
- destruct gen_fun_symbs eqn:E; try easy.
+ destruct funsymbs eqn:E; try easy.
  case eqbspec; cbn; auto.
  intros <-.
  rewrite E.
@@ -1399,7 +1399,7 @@ Lemma restrict_form_check sign x (f:formula) :
  check sign (restrict sign x f) = true.
 Proof.
  induction f; cbn; auto.
- - destruct gen_pred_symbs eqn:E; try easy.
+ - destruct predsymbs eqn:E; try easy.
    case eqbspec; cbn; auto.
    intros <-.
    rewrite E.
@@ -1740,7 +1740,7 @@ Proof.
  induction t as [ | | f l IH] using term_ind';
   cbn - [Nat.ltb]; auto.
  - case Nat.ltb_spec; auto.
- - destruct gen_fun_symbs as [ar|] eqn:E; auto.
+ - destruct funsymbs as [ar|] eqn:E; auto.
    rewrite map_length.
    case eqbspec; cbn; auto.
    intros _. f_equal.
@@ -1754,7 +1754,7 @@ Lemma restrict_forcelevel sign x n y f :
 Proof.
  revert n.
  induction f; cbn; intros; f_equal; auto.
- destruct gen_pred_symbs as [ar|] eqn:E; auto.
+ destruct predsymbs as [ar|] eqn:E; auto.
  rewrite map_length.
  case eqbspec; cbn; auto.
  intros _. f_equal.

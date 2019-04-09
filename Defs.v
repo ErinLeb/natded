@@ -18,19 +18,26 @@ Definition arity := nat.
 Bind Scope string_scope with function_symbol.
 Bind Scope string_scope with predicate_symbol.
 
-Record gen_signature :=
-  { gen_fun_symbs : function_symbol -> option arity;
-    gen_pred_symbs : predicate_symbol -> option arity }.
+Record signature :=
+  make_infinite_sign
+  { funsymbs : function_symbol -> option arity;
+    predsymbs : predicate_symbol -> option arity }.
 
 (** A finite version *)
 
-Record signature :=
-  { fun_symbs : list (function_symbol * arity);
-    pred_symbs : list (predicate_symbol * arity) }.
+Module Finite.
 
-Definition generalize_signature sign :=
-  {| gen_fun_symbs := fun s => list_assoc s sign.(fun_symbs);
-     gen_pred_symbs := fun s => list_assoc s sign.(pred_symbs) |}.
+Record signature :=
+  make_finite_sign
+  { funsymbs : list (function_symbol * arity);
+    predsymbs : list (predicate_symbol * arity) }.
+
+Definition to_infinite sign :=
+  make_infinite_sign
+    (fun s => list_assoc s sign.(funsymbs))
+    (fun s => list_assoc s sign.(predsymbs)).
+
+End Finite.
 
 
 (** In pratice, the symbols could be special characters as "+", or
@@ -38,12 +45,12 @@ Definition generalize_signature sign :=
     the parenthesis characters or the comma. *)
 
 Definition peano_sign :=
-  {| fun_symbs := [("O",0);("S",1);("+",2);("*",2)];
-     pred_symbs := [("=",2)] |}.
+  {| Finite.funsymbs := [("O",0);("S",1);("+",2);("*",2)];
+     Finite.predsymbs := [("=",2)] |}.
 
 Definition zf_sign :=
-  {| fun_symbs := [];
-     pred_symbs := [("=",2);("∈",2)] |}.
+  {| Finite.funsymbs := [];
+     Finite.predsymbs := [("=",2);("∈",2)] |}.
 
 
 (** Variables *)

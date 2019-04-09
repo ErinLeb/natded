@@ -12,7 +12,7 @@ Local Open Scope eqb_scope.
     - with bounded variables that are indeed bounded
     - without free variables *)
 
-Definition Wf (sign:gen_signature) (A:formula) :=
+Definition Wf (sign:signature) (A:formula) :=
   check sign A = true /\ BClosed A /\ FClosed A.
 
 Hint Unfold Wf.
@@ -46,7 +46,7 @@ Proof.
 Qed.
 
 Lemma bsubst_cst_wf sign c A :
- sign.(gen_fun_symbs) c = Some 0 ->
+ sign.(funsymbs) c = Some 0 ->
  Wf sign (∃A) -> Wf sign (bsubst 0 (Cst c) A).
 Proof.
  intros E (CK & BC & FC).
@@ -56,11 +56,11 @@ Proof.
  - rewrite bsubst_fvars. cbn - [Vars.union]. varsdec.
 Qed.
 
-Definition ValidDerivOn logic (sign:gen_signature) d :=
+Definition ValidDerivOn logic (sign:signature) d :=
   check sign d = true /\ BClosed d /\ Valid logic d.
 
 Record theory :=
-  { sign :> gen_signature;
+  { sign :> signature;
     IsAxiom : formula -> Prop;
     WfAxiom : forall A, IsAxiom A -> Wf sign A }.
 
@@ -155,8 +155,8 @@ Definition optfun_finer {A B} (f f' : A -> option B) :=
  forall a, opt_finer (f a) (f' a).
 
 Definition SignExtend sign sign' :=
-  optfun_finer (sign.(gen_fun_symbs)) (sign'.(gen_fun_symbs)) /\
-  optfun_finer (sign.(gen_pred_symbs)) (sign'.(gen_pred_symbs)).
+  optfun_finer (sign.(funsymbs)) (sign'.(funsymbs)) /\
+  optfun_finer (sign.(predsymbs)) (sign'.(predsymbs)).
 
 Lemma signext_refl sign : SignExtend sign sign.
 Proof.
@@ -179,7 +179,7 @@ Proof.
  intros (SE,_).
  induction t using term_ind'; cbn; auto.
  destruct (SE f) as [->|<-]; try easy.
- destruct gen_fun_symbs; auto.
+ destruct funsymbs; auto.
  destruct (length args =? a); auto.
  rewrite !forallb_forall; auto.
 Qed.
@@ -190,7 +190,7 @@ Proof.
  intros SE.
  induction f; cbn; auto.
  destruct (proj2 SE p) as [->|<-]; try easy.
- destruct gen_pred_symbs; auto.
+ destruct predsymbs; auto.
  destruct (length l =? a); auto.
  rewrite !forallb_forall; eauto using signext_check_term.
  rewrite !lazy_andb_iff; intuition.
@@ -264,7 +264,7 @@ Proof.
 Qed.
 
 Definition IsEqualityTheory th :=
- th.(gen_pred_symbs) "=" = Some 2 /\
+ th.(predsymbs) "=" = Some 2 /\
  IsTheorem th (∀Pred "=" [#0; #0])%form /\
  forall A z,
    check th A = true ->
@@ -343,8 +343,8 @@ Qed.
 (** Tweaking the function symbols of a signature *)
 
 Definition modify_funsymbs sign modif :=
- {| gen_fun_symbs := modif (sign.(gen_fun_symbs));
-    gen_pred_symbs := sign.(gen_pred_symbs) |}.
+ {| funsymbs := modif (sign.(funsymbs));
+    predsymbs := sign.(predsymbs) |}.
 
 (** Henkin extension : from an existential theorem [∃A],
     adding a new constant [c] as witness and the new axiom [A(c)].
@@ -358,7 +358,7 @@ Definition Henkin_axiom Ax (A:formula) c :=
   fun f => Ax f \/ f = bsubst 0 (Cst c) A.
 
 Lemma Henkin_signext sign c :
- sign.(gen_fun_symbs) c = None ->
+ sign.(funsymbs) c = None ->
  SignExtend sign (Henkin_sign sign c).
 Proof.
  intros Hc.
@@ -367,7 +367,7 @@ Proof.
 Qed.
 
 Lemma Henkin_ax_wf th A c :
- th.(gen_fun_symbs) c = None ->
+ th.(funsymbs) c = None ->
  IsTheorem th (∃A) ->
  forall B, Henkin_axiom th.(IsAxiom) A c B ->
            Wf (Henkin_sign th c) B.
@@ -380,7 +380,7 @@ Proof.
 Qed.
 
 Definition Henkin_ext th A c
- (E:th.(gen_fun_symbs) c = None)
+ (E:th.(funsymbs) c = None)
  (Thm:IsTheorem th (∃A)) :=
  {| sign := Henkin_sign th c;
     IsAxiom := Henkin_axiom th.(IsAxiom) A c;
@@ -388,7 +388,7 @@ Definition Henkin_ext th A c
  |}.
 
 Lemma Henkin_consext th A c
- (E:th.(gen_fun_symbs) c = None)
+ (E:th.(funsymbs) c = None)
  (Thm:IsTheorem th (∃A)) :
  ConservativeExt th (Henkin_ext th A c E Thm).
 Proof.
@@ -496,7 +496,7 @@ Proof.
 Qed.
 
 Lemma Henkin_ax_wf' th A c :
- th.(gen_fun_symbs) c = Some 0 ->
+ th.(funsymbs) c = Some 0 ->
  IsTheorem th (∃A) ->
  forall B, Henkin_axiom th.(IsAxiom) A c B -> Wf th B.
 Proof.
@@ -506,7 +506,7 @@ Proof.
 Qed.
 
 Definition Henkin_halfext th A c
- (E : th.(gen_fun_symbs) c = Some 0)
+ (E : th.(funsymbs) c = Some 0)
  (Thm : IsTheorem th (∃A))
  :=
  {| sign := th;
@@ -521,7 +521,7 @@ Definition Henkin_halfext th A c
     of [th]. *)
 
 Lemma Henkin_halfext_consext th A c
- (E : th.(gen_fun_symbs) c = Some 0)
+ (E : th.(funsymbs) c = Some 0)
  (Thm : IsTheorem th (∃A))
  (AW : AxiomsWithout th c)
  (CK : check (delcst th c) A = true) :
@@ -536,7 +536,7 @@ Proof.
      split; cbn; auto using signext_refl.
      intros B HB. apply ax_thm. cbn. now left.
  - intros T.
-   assert (E' : gen_fun_symbs (delcst_th th c AW) c = None).
+   assert (E' : funsymbs (delcst_th th c AW) c = None).
    { cbn. now rewrite eqb_refl. }
    assert (Thm' : IsTheorem (delcst_th th c AW) (∃A)).
    { apply delcst_consext; split; auto. cbn.
@@ -555,7 +555,7 @@ Qed.
 (** At least we preserve consistency *)
 
 Lemma Henkin_halfext_consistent th A c
- (E : th.(gen_fun_symbs) c = Some 0)
+ (E : th.(funsymbs) c = Some 0)
  (Thm : IsTheorem th (∃A))
  (AW : AxiomsWithout th c)
  (CK : check (delcst th c) A = true) :
@@ -576,7 +576,7 @@ Qed.
 Definition WitnessSaturated th :=
  forall A, IsTheorem th (∃ A) ->
            exists c,
-             th.(gen_fun_symbs) c = Some 0 /\
+             th.(funsymbs) c = Some 0 /\
              IsTheorem th (bsubst 0 (Cst c) A).
 
 (** Actually, we won't bother considering only existential
@@ -593,7 +593,7 @@ Definition WitnessSaturated th :=
 Definition WitnessSuperSaturated th :=
  forall A, Wf th (∃ A) ->
            exists c,
-             th.(gen_fun_symbs) c = Some 0 /\
+             th.(funsymbs) c = Some 0 /\
              IsTheorem th ((∃ A) -> bsubst 0 (Cst c) A).
 
 (** Super-saturated implies saturated *)
@@ -624,10 +624,10 @@ Qed.
     Moreover, we should be able to recognize these names
     (for building the new signature). *)
 
-Record NewCsts (sign : gen_signature) :=
+Record NewCsts (sign : signature) :=
   { csts :> nat -> string;
     csts_inj : forall n m, csts n = csts m -> n = m;
-    csts_ok : forall n, sign.(gen_fun_symbs) (csts n) = None;
+    csts_ok : forall n, sign.(funsymbs) (csts n) = None;
     test : string -> bool;
     test_ok : forall s, test s = true <-> exists n, csts n = s }.
 
@@ -715,7 +715,7 @@ Proof.
  fix IH 1. destruct t as [ | | f l]; cbn; auto.
  intros NI.
  case eqbspec; [varsdec|].
- intros _. destruct gen_fun_symbs; auto.
+ intros _. destruct funsymbs; auto.
  case eqb; auto.
  revert l NI.
  fix IH' 1. destruct l as [ |t l]; cbn; auto.
@@ -728,7 +728,7 @@ Lemma form_funs_ok sign f c :
  check (delcst sign c) f = check sign f.
 Proof.
  induction f; cbn; auto.
- - intros NI. destruct gen_pred_symbs; auto.
+ - intros NI. destruct predsymbs; auto.
    case eqb; auto.
    revert l NI.
    induction l as [|t l]; cbn; auto.
@@ -925,7 +925,7 @@ Proof.
    destruct (fresh_cst_in_cands used nc) as (m,Hm).
    assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
    set (c := fresh_cst used nc) in *.
-   assert (E : (HenkinSeq th nc n).(gen_fun_symbs) c = Some 0).
+   assert (E : (HenkinSeq th nc n).(funsymbs) c = Some 0).
    { simpl. replace (test th nc c) with true; auto.
      symmetry. rewrite Hm, test_ok. now exists m. }
    assert (Thm : IsTheorem (HenkinSeq th nc n)

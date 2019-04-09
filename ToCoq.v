@@ -21,12 +21,12 @@ Definition get_arity {A B} (o : option { n:nat & arity_fun A n B}) :=
 Definition modfuns M := string -> option { n:nat & arity_fun M n M }.
 Definition modpreds M := string -> option { n:nat & arity_fun M n Prop }.
 
-Record PreModel (M:Type)(sign:gen_signature) :=
+Record PreModel (M:Type)(sign:signature) :=
   { someone : M; (* M is non-empty *)
     funs : modfuns M;
     preds : modpreds M;
-    funsOk : forall s, sign.(gen_fun_symbs) s = get_arity (funs s);
-    predsOk : forall s, sign.(gen_pred_symbs) s = get_arity (preds s)
+    funsOk : forall s, sign.(funsymbs) s = get_arity (funs s);
+    predsOk : forall s, sign.(predsymbs) s = get_arity (preds s)
   }.
 
 (** A premodel is also called a Σ-structure. For a complete model
@@ -37,7 +37,7 @@ Record PreModel (M:Type)(sign:gen_signature) :=
     anywhere in this file (yet?) !! *)
 
 Section PREMODEL.
- Variable sign : gen_signature.
+ Variable sign : signature.
  Variable M:Type.
  Variable Mo : PreModel M sign.
 

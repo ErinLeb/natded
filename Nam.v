@@ -104,18 +104,18 @@ Compute Term.print peano_term_example.
     iff it only refer to known function symbols and use them
     with the correct arity. *)
 
-Fixpoint check (sign : gen_signature) t :=
+Fixpoint check (sign : signature) t :=
  match t with
   | Var _ => true
   | Fun f args =>
-     match sign.(gen_fun_symbs) f with
+     match sign.(funsymbs) f with
      | None => false
      | Some ar =>
        (List.length args =? ar) &&& (List.forallb (check sign) args)
      end
  end.
 
-Compute Term.check (generalize_signature peano_sign) peano_term_example.
+Compute Term.check (Finite.to_infinite peano_sign) peano_term_example.
 
 (** The set of variables occurring in a term *)
 
@@ -239,14 +239,14 @@ Compute Form.print (Iff True False).
 
 (** Utilities about formula *)
 
-Fixpoint check (sign : gen_signature) f :=
+Fixpoint check (sign : signature) f :=
   match f with
   | True | False => true
   | Not f => check sign f
   | Op _ f f' => check sign f &&& check sign f'
   | Quant _ v f => check sign f
   | Pred p args =>
-     match sign.(gen_pred_symbs) p with
+     match sign.(predsymbs) p with
      | None => false
      | Some ar =>
        (List.length args =? ar) &&& (List.forallb (Term.check sign) args)

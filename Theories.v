@@ -2,12 +2,59 @@
 (** Notion of 1st order theories *)
 
 Require Import Arith Omega Defs Proofs Mix Meta Countable.
+Require Import Coq.Program.Equality.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
 
-Definition ClosedFormulaOn (sign:gen_signature) (A:formula) :=
+(** Well-formed formulas over a particular signature,
+    that are moreover :
+    - with bounded variables that are indeed bounded
+    - without free variables *)
+
+Definition Wf (sign:gen_signature) (A:formula) :=
   check sign A = true /\ BClosed A /\ FClosed A.
+
+Hint Unfold Wf.
+
+Lemma Wf_dec sign A :
+  { Wf sign A }+{ ~Wf sign A}.
+Proof.
+ destruct (check sign A) eqn:C.
+ - destruct (level A =? 0) eqn:L.
+   + destruct (Vars.is_empty (fvars A)) eqn:E.
+     * left. repeat split; auto.
+       now apply eqb_eq.
+       now apply Vars.is_empty_spec.
+     * right; intros (_ & _ & E').
+       apply Vars.is_empty_spec in E'. congruence.
+   + right; intros (_ & L' & _).
+     apply eqb_eq in L'. congruence.
+ - right; intros (C' & _ & _). congruence.
+Qed.
+
+Lemma False_wf sign : Wf sign False.
+Proof.
+ repeat split. red. cbn. varsdec.
+Qed.
+
+Lemma Op_wf sign o A B :
+ Wf sign (Op o A B) <-> Wf sign A /\ Wf sign B.
+Proof.
+ unfold Wf, BClosed, FClosed. cbn.
+ rewrite lazy_andb_iff. rewrite max_0. intuition.
+Qed.
+
+Lemma bsubst_cst_wf sign c A :
+ sign.(gen_fun_symbs) c = Some 0 ->
+ Wf sign (∃A) -> Wf sign (bsubst 0 (Cst c) A).
+Proof.
+ intros E (CK & BC & FC).
+ repeat split; unfold BClosed, FClosed in *; cbn in *.
+ - rewrite check_bsubst; auto. cbn. now rewrite E, eqb_refl.
+ - apply Nat.le_0_r, level_bsubst; auto with *.
+ - rewrite bsubst_fvars. cbn - [Vars.union]. varsdec.
+Qed.
 
 Definition ValidDerivOn logic (sign:gen_signature) d :=
   check sign d = true /\ BClosed d /\ Valid logic d.
@@ -15,25 +62,27 @@ Definition ValidDerivOn logic (sign:gen_signature) d :=
 Record theory :=
   { sign :> gen_signature;
     IsAxiom : formula -> Prop;
-    WfAxiom : forall A, IsAxiom A -> ClosedFormulaOn sign A }.
+    WfAxiom : forall A, IsAxiom A -> Wf sign A }.
 
 Implicit Type th : theory.
 
 Section SomeLogic.
 Variable logic : Defs.logic.
 
-Definition IsTheoremStrict th T :=
-  ClosedFormulaOn th T /\
+Definition IsTheoremStrict th (T:formula) :=
+  Wf th T /\
   exists d axs,
     ValidDerivOn logic th d /\
     Forall th.(IsAxiom) axs /\
     Claim d (axs ⊢ T).
 
 Definition IsTheorem th T :=
-  ClosedFormulaOn th T /\
+  Wf th T /\
   exists axs,
     Forall th.(IsAxiom) axs /\
     Pr logic (axs ⊢ T).
+
+Hint Unfold IsTheorem IsTheoremStrict.
 
 (** We can "fix" a proof made with things not in the signature,
     or a signature badly used, or with remaining bounded vars. *)
@@ -42,8 +91,9 @@ Lemma thm_alt th T :
   IsTheorem th T <-> IsTheoremStrict th T.
 Proof.
  split.
- - intros (CL & axs & F & PR).
-   split; auto. rewrite Provable_alt in PR. destruct PR as (d & V & C).
+ - intros (WF & axs & F & PR).
+   split; auto. rewrite Provable_alt in PR.
+   destruct PR as (d & V & C).
    assert (Hx := fresh_var_ok (fvars d)).
    set (x := fresh_var (fvars d)) in *.
    assert (Hy := fresh_var_ok (Vars.add x (fvars d))).
@@ -70,9 +120,9 @@ Proof.
        unfold BClosed, level, level_list.
        apply list_max_map_0.
        intros A HA. apply (WfAxiom th A); auto.
-     * rewrite check_restrict_id by apply CL.
+     * rewrite check_restrict_id by apply WF.
        apply forcelevel_id.
-       assert (level T = 0) by apply CL.
+       assert (level T = 0) by apply WF.
        auto with *.
  - intros (CL & d & axs & V & F & C).
    split; auto.
@@ -108,6 +158,21 @@ Definition SignExtend sign sign' :=
   optfun_finer (sign.(gen_fun_symbs)) (sign'.(gen_fun_symbs)) /\
   optfun_finer (sign.(gen_pred_symbs)) (sign'.(gen_pred_symbs)).
 
+Lemma signext_refl sign : SignExtend sign sign.
+Proof.
+ red; unfold optfun_finer, opt_finer. intuition.
+Qed.
+
+Lemma signext_trans sign1 sign2 sign3 :
+ SignExtend sign1 sign2 -> SignExtend sign2 sign3 ->
+ SignExtend sign1 sign3.
+Proof.
+ intros (F12,P12) (F23,P23).
+ split; unfold optfun_finer, opt_finer in *; intros a.
+ - destruct (F12 a) as [? | ->]; auto.
+ - destruct (P12 a) as [? | ->]; auto.
+Qed.
+
 Lemma signext_check_term sign sign' (t:term) :
  SignExtend sign sign' -> check sign t = true -> check sign' t = true.
 Proof.
@@ -131,9 +196,27 @@ Proof.
  rewrite !lazy_andb_iff; intuition.
 Qed.
 
+Lemma signext_wf sign sign' (f:formula) :
+  SignExtend sign sign' -> Wf sign f -> Wf sign' f.
+Proof.
+ intros SE (CK & H). split; eauto using signext_check.
+Qed.
+
 Definition Extend th1 th2 :=
  SignExtend th1 th2 /\
  forall T, IsTheorem th1 T -> IsTheorem th2 T.
+
+Lemma extend_refl th : Extend th th.
+Proof.
+ split; auto using signext_refl.
+Qed.
+
+Lemma extend_trans th1 th2 th3 :
+ Extend th1 th2 -> Extend th2 th3 -> Extend th1 th3.
+Proof.
+ intros (SE12,TH12) (SE23,TH23).
+ split; eauto using signext_trans.
+Qed.
 
 Lemma Pr_relay c c' f :
   Pr logic (c ⊢ f) ->
@@ -157,12 +240,12 @@ Proof.
  - intros (SE,TT); split; auto.
    intros A HA. apply ax_thm in HA. auto.
  - intros (SE,AT); split; auto.
-   intros T ((CK & CL & EM) & axs & Haxs & PR).
-   repeat split; auto.
-   + eapply signext_check; eauto.
+   intros T (CL & axs & Haxs & PR).
+   split.
+   + eapply signext_wf; eauto.
    + assert (exists axs2, Forall (IsAxiom th2) axs2 /\
                           forall A, In A axs -> Pr logic (axs2 ⊢ A)).
-     { clear SE CK CL  EM PR.
+     { clear SE CL PR.
        induction axs.
        - exists []; split; auto.
        - inversion_clear Haxs.
@@ -184,7 +267,7 @@ Definition IsEqualityTheory th :=
  th.(gen_pred_symbs) "=" = Some 2 /\
  IsTheorem th (∀Pred "=" [#0; #0])%form /\
  forall A z,
-   check (th.(sign)) A = true ->
+   check th A = true ->
    BClosed A ->
    Vars.Equal (fvars A) (Vars.singleton z) ->
    IsTheorem th (∀∀(Pred "=" [#1;#0] -> fsubst z (#1) A -> fsubst z (#0) A))%form.
@@ -193,21 +276,49 @@ Definition IsEqualityTheory th :=
 
 Definition ConservativeExt th1 th2 :=
  Extend th1 th2 /\
- forall T, IsTheorem th2 T -> check th1 T = true -> IsTheorem th1 T.
+ forall T, IsTheorem th2 T /\ Wf th1 T <-> IsTheorem th1 T.
+
+Lemma consext_alt th1 th2 :
+ ConservativeExt th1 th2 <->
+ (Extend th1 th2 /\
+  forall T, IsTheorem th2 T -> check th1 T = true -> IsTheorem th1 T).
+Proof.
+ split; intros (U,V); split; auto.
+ - intros T HT CK. apply V. do 2 (split; auto). apply HT.
+ - intros T. split.
+   + intros (W,X). apply V; auto. apply X.
+   + split. now apply U. apply H.
+Qed.
 
 Lemma consext_inconsistency th1 th2 :
- ConservativeExt th1 th2 -> Inconsistent th2 -> Inconsistent th1.
+ ConservativeExt th1 th2 -> Inconsistent th2 <-> Inconsistent th1.
 Proof.
- unfold Inconsistent. intros (U,V).
- intros H2.
- apply V; auto.
+ unfold Inconsistent. intros (_,<-). intuition.
 Qed.
 
 Lemma consext_consistency th1 th2 :
- ConservativeExt th1 th2 -> Consistent th1 -> Consistent th2.
+ ConservativeExt th1 th2 -> Consistent th1 <-> Consistent th2.
 Proof.
- unfold Consistent in *. intros U V W. apply V.
- eapply consext_inconsistency; eauto.
+ unfold Consistent. intros (_,<-). intuition.
+Qed.
+
+Lemma consext_refl th : ConservativeExt th th.
+Proof.
+ rewrite consext_alt.
+ split; auto using extend_refl.
+Qed.
+
+Lemma consext_trans th1 th2 th3 :
+  ConservativeExt th1 th2 -> ConservativeExt th2 th3 ->
+  ConservativeExt th1 th3.
+Proof.
+ rewrite !consext_alt.
+ intros (E12,T12) (E23,T23).
+ split; eauto using extend_trans.
+ intros T HT C.
+ apply T12; auto.
+ apply T23; auto.
+ eapply signext_check; eauto. apply E12.
 Qed.
 
 (** If we only extend the signature, not the axioms, then
@@ -220,7 +331,7 @@ Lemma ext_sign_only th1 th2 :
  (forall A, IsAxiom th1 A <-> IsAxiom th2 A) ->
  ConservativeExt th1 th2.
 Proof.
- intros SE EQ. split.
+ intros SE EQ. rewrite consext_alt. split.
  - apply extend_alt. split; auto.
    intros A. rewrite EQ. apply ax_thm.
  - intros T (CL & axs & F & PR) CK. split.
@@ -229,18 +340,24 @@ Proof.
      rewrite Forall_forall in *. intros x Hx. rewrite EQ; auto.
 Qed.
 
-(** Henkin extension : adding a new constant as witness
-    for an existential statement. *)
+(** Tweaking the function symbols of a signature *)
+
+Definition modify_funsymbs sign modif :=
+ {| gen_fun_symbs := modif (sign.(gen_fun_symbs));
+    gen_pred_symbs := sign.(gen_pred_symbs) |}.
+
+(** Henkin extension : from an existential theorem [∃A],
+    adding a new constant [c] as witness and the new axiom [A(c)].
+*)
 
 Definition Henkin_sign sign c :=
-  {| gen_fun_symbs := fun f => if f =? c then Some 0 else
-                                  sign.(gen_fun_symbs) f;
-     gen_pred_symbs := sign.(gen_pred_symbs) |}.
+  modify_funsymbs sign
+   (fun funs f => if f =? c then Some 0 else funs f).
 
 Definition Henkin_axiom Ax (A:formula) c :=
-  fun f => f = (bsubst 0 (Cst c) A) \/ Ax f.
+  fun f => Ax f \/ f = bsubst 0 (Cst c) A.
 
-Lemma Henkin_SignExtend sign c :
+Lemma Henkin_signext sign c :
  sign.(gen_fun_symbs) c = None ->
  SignExtend sign (Henkin_sign sign c).
 Proof.
@@ -253,36 +370,19 @@ Lemma Henkin_ax_wf th A c :
  th.(gen_fun_symbs) c = None ->
  IsTheorem th (∃A) ->
  forall B, Henkin_axiom th.(IsAxiom) A c B ->
-           ClosedFormulaOn (Henkin_sign th.(sign) c) B.
+           Wf (Henkin_sign th c) B.
 Proof.
- intros Hc (CL & _) B [->|HB].
- - repeat split.
-   + apply check_bsubst.
-     * cbn. now rewrite eqb_refl.
-     * apply signext_check with th.
-       apply Henkin_SignExtend; auto.
-       apply CL.
-   + assert (level (bsubst 0 (Cst c) A) <= 0).
-     { apply level_bsubst; auto.
-       assert (level (∃ A)%form = 0) by apply CL.
-       cbn in *. omega. }
-     unfold BClosed; omega.
-   + unfold FClosed.
-     rewrite bsubst_fvars. cbn - [Vars.union].
-     intro v. VarsF.set_iff.
-     assert (Vars.Empty (fvars (∃ A)%form)) by apply CL.
-     varsdec.
- - apply th.(WfAxiom) in HB.
-   split; [|apply HB].
-   apply signext_check with th.
-   apply Henkin_SignExtend; auto.
-   apply HB.
+ intros Hc (CL & _) B [HB| -> ].
+ - eauto using signext_wf, Henkin_signext, WfAxiom.
+ - apply bsubst_cst_wf.
+   + simpl. now rewrite eqb_refl.
+   + eauto using signext_wf, Henkin_signext.
 Qed.
 
 Definition Henkin_ext th A c
  (E:th.(gen_fun_symbs) c = None)
  (Thm:IsTheorem th (∃A)) :=
- {| sign := Henkin_sign th.(sign) c;
+ {| sign := Henkin_sign th c;
     IsAxiom := Henkin_axiom th.(IsAxiom) A c;
     WfAxiom := Henkin_ax_wf th A c E Thm
  |}.
@@ -292,11 +392,12 @@ Lemma Henkin_consext th A c
  (Thm:IsTheorem th (∃A)) :
  ConservativeExt th (Henkin_ext th A c E Thm).
 Proof.
+ rewrite consext_alt.
  split.
  - apply extend_alt. split.
-   + now apply Henkin_SignExtend.
+   + now apply Henkin_signext.
    + intros A0 HA0.
-     apply ax_thm; simpl; right; auto.
+     apply ax_thm; simpl; left; auto.
  - intros T (CL & axs & F & PR) CK; simpl in *.
    split.
    + split; auto. apply CL.
@@ -304,25 +405,668 @@ Proof.
      set (axs' := filter (fun f => negb (f =? newAx)) axs).
      simpl in *.
      destruct Thm as (CLA & axsA & FA & PRA).
+     assert (F' : Forall (IsAxiom th) axs').
+     { rewrite Forall_forall in *.
+       intros x. unfold axs'. rewrite filter_In.
+       rewrite negb_true_iff, eqb_neq.
+       intros (IN,NE); auto. apply F in IN.
+       unfold Henkin_axiom in IN; intuition. }
      exists (axs' ++ axsA); split.
      * rewrite Forall_forall in *.
-       intros x. unfold axs'. rewrite in_app_iff, filter_In.
-       rewrite negb_true_iff, eqb_neq.
-       intros [(IN,NE)|IN]; auto. apply F in IN. cbn in IN.
-       unfold Henkin_axiom in IN; intuition.
-     * assert (Pr logic (newAx::axs' ⊢ T)).
+       intros x. rewrite in_app_iff; intuition.
+     * assert (PR' : Pr logic (newAx::axs' ⊢ T)).
        { eapply Pr_weakening; eauto.
          constructor. unfold axs'.
          intros v. simpl. rewrite filter_In.
          rewrite negb_true_iff, eqb_neq.
          destruct (eqbspec v newAx); intuition. }
-       (* Todo : restrict sur H pour en faire du A(x) ... |- T *)
-Admitted.
+       apply Provable_alt in PR'.
+       destruct PR' as (d & V & C).
+       assert (Vars.Empty (fvars (axs' ++ axsA))).
+       { intros v. unfold fvars, fvars_list.
+         rewrite vars_unionmap_in.
+         intros (a & Hv & Ha).
+         rewrite in_app_iff in Ha.
+         revert v Hv. apply (WfAxiom th).
+         rewrite Forall_forall in F', FA; intuition. }
+       apply VarsP.empty_is_empty_1 in H.
+       set (vars := Vars.union (fvars A) (fvars d)).
+       assert (Hx := fresh_var_ok vars).
+       set (x := fresh_var vars) in *.
+       apply (restrict_valid logic th x) in V; auto with set.
+       assert (C' := claim_restrict th x d).
+       rewrite C in C'. cbn in C'.
+       rewrite (check_restrict_id th x T) in C'; auto.
+       assert (map (restrict th x) axs' = axs').
+       { apply map_id_iff. intros a Ha.
+         apply check_restrict_id.
+         apply WfAxiom. rewrite Forall_forall in F'; auto. }
+       rewrite H0 in C'; clear H0.
+       assert (restrict th x newAx = bsubst 0 (FVar x) A).
+       { unfold newAx.
+         rewrite restrict_bsubst. f_equal.
+         - cbn. now rewrite E.
+         - apply check_restrict_id. apply CLA. }
+       rewrite H0 in C'; clear H0.
+       apply Valid_Pr in V. rewrite C' in V.
+       apply (R_Ex_e logic x _ A).
+       { cbn. rewrite H. destruct d.
+         unfold vars in Hx. cbn in C. subst s.
+         cbn in Hx. varsdec. }
+       { clear PR V.
+         eapply Pr_weakening; eauto.
+         constructor. intros v. rewrite in_app_iff; auto. }
+       { clear PR PRA.
+         eapply Pr_weakening; eauto.
+         constructor. intros v. simpl.
+         rewrite in_app_iff; intuition. }
+Qed.
+
+(** A variant of Henkin where the constant is already
+    in the signature (but not used in the axioms nor in the
+    existential theorem we consider). Not a conservative
+    extension stricto sensu, but at least this preserves
+    consistency. *)
+
+Definition delcst sign c :=
+  modify_funsymbs sign
+   (fun funs f => if f =? c then None else funs f).
+
+Lemma delcst_signext sign c :
+ SignExtend (delcst sign c) sign.
+Proof.
+ split; unfold optfun_finer, opt_finer; cbn; auto.
+ intros a. case eqbspec; intros; subst; auto.
+Qed.
+
+Definition AxiomsWithout th c :=
+ forall A, IsAxiom th A -> Wf (delcst th c) A.
+
+Definition delcst_th th c (AW : AxiomsWithout th c) :=
+ {| sign := delcst th c;
+    IsAxiom := IsAxiom th;
+    WfAxiom := AW
+ |}.
+
+Lemma delcst_consext th c (AW : AxiomsWithout th c) :
+ ConservativeExt (delcst_th th c AW) th.
+Proof.
+ apply ext_sign_only. now apply delcst_signext.
+ intuition.
+Qed.
+
+Lemma Henkin_ax_wf' th A c :
+ th.(gen_fun_symbs) c = Some 0 ->
+ IsTheorem th (∃A) ->
+ forall B, Henkin_axiom th.(IsAxiom) A c B -> Wf th B.
+Proof.
+ intros E Thm B [HB| -> ].
+ - now apply WfAxiom.
+ - apply bsubst_cst_wf; auto. apply Thm.
+Qed.
+
+Definition Henkin_halfext th A c
+ (E : th.(gen_fun_symbs) c = Some 0)
+ (Thm : IsTheorem th (∃A))
+ :=
+ {| sign := th;
+    IsAxiom := Henkin_axiom th.(IsAxiom) A c;
+    WfAxiom := Henkin_ax_wf' th A c E Thm
+ |}.
+
+(** The extension from [th - c] to [Henkin_halfext] is
+    conservative, but not the one from [th] to [Henkin_halfext].
+    For instance, [A(c)] is a theorem of the extension, and is
+    in the language of [th], but it has no reason to be a theorem
+    of [th]. *)
+
+Lemma Henkin_halfext_consext th A c
+ (E : th.(gen_fun_symbs) c = Some 0)
+ (Thm : IsTheorem th (∃A))
+ (AW : AxiomsWithout th c)
+ (CK : check (delcst th c) A = true) :
+ ConservativeExt (delcst_th th c AW)
+                 (Henkin_halfext th A c E Thm).
+Proof.
+ rewrite consext_alt.
+ split.
+ - apply extend_trans with th.
+   + apply delcst_consext.
+   + rewrite extend_alt.
+     split; cbn; auto using signext_refl.
+     intros B HB. apply ax_thm. cbn. now left.
+ - intros T.
+   assert (E' : gen_fun_symbs (delcst_th th c AW) c = None).
+   { cbn. now rewrite eqb_refl. }
+   assert (Thm' : IsTheorem (delcst_th th c AW) (∃A)).
+   { apply delcst_consext; split; auto. cbn.
+     split. now cbn. apply Thm. }
+   assert (HC := Henkin_consext _ _ _ E' Thm').
+   rewrite consext_alt in HC.
+   intros HT CKT.
+   apply HC; auto.
+   split.
+   + eapply signext_wf.
+     * apply Henkin_signext. cbn. now rewrite eqb_refl.
+     * split. apply CKT. apply HT.
+   + cbn. apply HT.
+Qed.
+
+(** At least we preserve consistency *)
+
+Lemma Henkin_halfext_consistent th A c
+ (E : th.(gen_fun_symbs) c = Some 0)
+ (Thm : IsTheorem th (∃A))
+ (AW : AxiomsWithout th c)
+ (CK : check (delcst th c) A = true) :
+ Consistent th <-> Consistent (Henkin_halfext th A c E Thm).
+Proof.
+ rewrite <- (consext_consistency (delcst_th th c AW) th)
+  by apply delcst_consext.
+ apply consext_consistency. now apply Henkin_halfext_consext.
+Qed.
+
+
+(** Henkin extensions over *all* existential formulas. *)
+
+
+(** The ultimate goal : building a theory that is saturated
+    of Henkin witnesses. *)
+
+Definition WitnessSaturated th :=
+ forall A, IsTheorem th (∃ A) ->
+           exists c,
+             th.(gen_fun_symbs) c = Some 0 /\
+             IsTheorem th (bsubst 0 (Cst c) A).
+
+(** Actually, we won't bother considering only existential
+    *theorems* (since anyway we'll have additionnal theorems
+    later).
+    Instead, for all [∃A] formula, we obtain "conditional"
+    statements [∃A -> A(c)] for some constant [c].
+    This is done by an Henkin extension based on the
+    (classical) tautology [∃y((∃xA(x))->A(y))]. *)
+
+(** So the intermediate goal is to build a theory which is
+    "super-saturated" of Henkin witnesses : *)
+
+Definition WitnessSuperSaturated th :=
+ forall A, Wf th (∃ A) ->
+           exists c,
+             th.(gen_fun_symbs) c = Some 0 /\
+             IsTheorem th ((∃ A) -> bsubst 0 (Cst c) A).
+
+(** Super-saturated implies saturated *)
+
+Lemma supersaturated_saturated th :
+ WitnessSuperSaturated th -> WitnessSaturated th.
+Proof.
+ intros WSS A Thm.
+ destruct (WSS A (proj1 Thm)) as (c & Hc & Thm').
+ exists c; split; auto.
+ split.
+ - destruct Thm' as (WF', _). now apply Op_wf in WF'.
+ - destruct Thm as (_ & axs & F & V).
+   destruct Thm' as (_ & axs' & F' & V').
+   exists (axs ++ axs'); split.
+   + rewrite Forall_forall in *.
+     intros f. rewrite in_app_iff; intuition.
+   + apply R_Imp_e with (∃ A)%form.
+     * eapply Pr_weakening; eauto. constructor.
+       intros a. rewrite in_app_iff; now right.
+     * clear V'.
+       eapply Pr_weakening; eauto. constructor.
+       intros a. rewrite in_app_iff; now left.
+Qed.
+
+(** We'll need an infinite pool of fresh constant names
+    (axiomatized as an injective function from nat to string).
+    Moreover, we should be able to recognize these names
+    (for building the new signature). *)
+
+Record NewCsts (sign : gen_signature) :=
+  { csts :> nat -> string;
+    csts_inj : forall n m, csts n = csts m -> n = m;
+    csts_ok : forall n, sign.(gen_fun_symbs) (csts n) = None;
+    test : string -> bool;
+    test_ok : forall s, test s = true <-> exists n, csts n = s }.
+
+(** An important technical note : we cannot just iterate on
+    formulas of the initial theory, otherwise, we'll end up
+    with some final existential formulas not handled (the one
+    using the constants we've added in the process). So we add
+    all these "fresh" constants at first, and then do Henkin
+    "half-extensions" (see above). *)
+
+Definition HenkinAll_sign sign (nc : NewCsts sign) :=
+  modify_funsymbs sign
+   (fun funs f => if test _ nc f then Some 0 else funs f).
+
+Lemma HenkinAll_signext sign (nc : NewCsts sign) :
+ SignExtend sign (HenkinAll_sign sign nc).
+Proof.
+ split; unfold optfun_finer, opt_finer; cbn; auto.
+ intros a. destruct test eqn:E; intros; subst; auto.
+ left. apply test_ok in E. destruct E as (n & <-). apply csts_ok.
+Qed.
+
+Lemma exex_tauto A :
+ level A <= 1 ->
+ Pr Classic ([] ⊢ ∃ ((∃ A) -> A)).
+Proof.
+ intros HA.
+ apply R_Or_e with (∃ A)%form (~(∃ A))%form.
+ apply Excluded_Middle.
+ - assert (Hx := fresh_var_ok (fvars A)).
+   set (x := fresh_var (fvars A)) in *.
+   apply R'_Ex_e with x.
+   cbn. varsdec.
+   apply R_Ex_i with (FVar x); auto.
+   cbn.
+   apply R_Imp_i. apply R_Ax. simpl; auto.
+ - assert (Hx := fresh_var_ok (fvars A)).
+   set (x := fresh_var (fvars A)) in *.
+   apply R_Ex_i with (FVar x); auto.
+   cbn.
+   rewrite form_level_bsubst_id; auto.
+   apply R_Imp_i.
+   apply R_Fa_e.
+   apply R_Not_e with (∃ A)%form; apply R_Ax; simpl; auto.
+Qed.
+
+Lemma exex_thm th A :
+ logic = Classic ->
+ Wf th (∃A) -> IsTheorem th (∃ ((∃ A) -> A)).
+Proof.
+ intros LG CL.
+ split.
+ - destruct CL as (CK & BC & FC). repeat split.
+   + cbn in *. now rewrite CK.
+   + red. cbn. rewrite BC. cbn. apply BC.
+   + red; red in FC. cbn in *. varsdec.
+ - exists []; split; auto.
+   subst logic. apply exex_tauto.
+   assert (Nat.pred (level A) = 0) by apply CL. omega.
+Qed.
+
+(* TODO use a different module name than Vars for constant
+   names. A generic Names ? *)
+
+Fixpoint term_funs t :=
+  match t with
+  | FVar _ | BVar _ => Vars.empty
+  | Fun f l => Vars.add f (vars_unionmap term_funs l)
+  end.
+
+Fixpoint form_funs f :=
+  match f with
+  | True | False => Vars.empty
+  | Pred p l => vars_unionmap term_funs l
+  | Not f => form_funs f
+  | Op _ f1 f2 => Vars.union (form_funs f1) (form_funs f2)
+  | Quant _ f => form_funs f
+  end.
+
+Lemma term_funs_ok sign t c :
+ ~Vars.In c (term_funs t) ->
+ check (delcst sign c) t = check sign t.
+Proof.
+ revert t.
+ fix IH 1. destruct t as [ | | f l]; cbn; auto.
+ intros NI.
+ case eqbspec; [varsdec|].
+ intros _. destruct gen_fun_symbs; auto.
+ case eqb; auto.
+ revert l NI.
+ fix IH' 1. destruct l as [ |t l]; cbn; auto.
+ intros NI'.
+ rewrite IH by varsdec. f_equal. apply IH'. varsdec.
+Qed.
+
+Lemma form_funs_ok sign f c :
+ ~Vars.In c (form_funs f) ->
+ check (delcst sign c) f = check sign f.
+Proof.
+ induction f; cbn; auto.
+ - intros NI. destruct gen_pred_symbs; auto.
+   case eqb; auto.
+   revert l NI.
+   induction l as [|t l]; cbn; auto.
+   intros NI'.
+   rewrite term_funs_ok by varsdec. f_equal. apply IHl. varsdec.
+ - intros NI.
+   now rewrite IHf1, IHf2 by varsdec.
+Qed.
+
+Lemma form_funs_wf sign f c :
+ ~Vars.In c (form_funs f) ->
+ Wf (delcst sign c) f <-> Wf sign f.
+Proof.
+ intros NI.
+ split; intros (CK,H); split; try apply H.
+ rewrite <- CK. symmetry. now apply form_funs_ok.
+ rewrite <- CK. now apply form_funs_ok.
+Qed.
+
+
+Fixpoint fresh_cst_loop n used candidates :=
+ match n with
+ | 0 => candidates 0
+ | S n =>
+   let c := candidates 0 in
+   if Vars.mem c used then
+     let candidates' := fun n => candidates (S n) in
+     fresh_cst_loop n (Vars.remove c used) candidates'
+   else c
+ end.
+
+Definition fresh_cst used candidates :=
+  fresh_cst_loop (Vars.cardinal used) used candidates.
+
+Lemma fresh_cst_loop_in_cands n used candidates :
+ Vars.cardinal used = n ->
+ exists m, fresh_cst_loop n used candidates = candidates m.
+Proof.
+ revert used candidates.
+ induction n; simpl; intros used cs E; auto.
+ - now exists 0.
+ - destruct Vars.mem eqn:M.
+   + rewrite Vars.mem_spec in M.
+     destruct (IHn (Vars.remove (cs 0) used)
+                   (fun n : nat => cs (S n))) as (m,Hm).
+     rewrite <- (@VarsP.remove_cardinal_1 used (cs 0)) in E; auto.
+     now exists (S m).
+   + now exists 0.
+Qed.
+
+Lemma fresh_cst_in_cands used candidates :
+ exists m, fresh_cst used candidates = candidates m.
+Proof.
+ now apply fresh_cst_loop_in_cands.
+Qed.
+
+Lemma fresh_cst_loop_ok n used candidates :
+ Vars.cardinal used = n ->
+ (forall n m, candidates n = candidates m -> n = m) ->
+ ~Vars.In (fresh_cst_loop n used candidates) used.
+Proof.
+ revert used candidates.
+ induction n as [|n IH]; intros used cs E INJ.
+ - apply VarsP.cardinal_inv_1 in E. varsdec.
+ - simpl. destruct Vars.mem eqn:M.
+   + set (used' := Vars.remove (cs 0) used).
+     set (cs' := fun n : nat => cs (S n)).
+     specialize (IH used' cs').
+     unfold used' in IH at 3. rewrite Vars.remove_spec in IH.
+     assert (Vars.cardinal used' = n).
+     { unfold used'.
+       rewrite Vars.mem_spec in M.
+       rewrite <- (@VarsP.remove_cardinal_1 used (cs 0)) in E; auto. }
+     intros IN. apply IH; auto.
+     * unfold cs'. intros m p E'. apply INJ in E'; auto.
+     * split; auto.
+       destruct (fresh_cst_loop_in_cands n used' cs') as (m,->); auto.
+       unfold cs'. intros E'. now apply INJ in E'.
+   + rewrite <-Vars.mem_spec. now rewrite M.
+Qed.
+
+Lemma fresh_cst_ok used candidates :
+ (forall n m, candidates n = candidates m -> n = m) ->
+ ~Vars.In (fresh_cst used candidates) used.
+Proof.
+ now apply fresh_cst_loop_ok.
+Qed.
+
+Fixpoint HenkinAxList th (nc : NewCsts th) n :=
+ match n with
+ | 0 => []
+ | S n =>
+   let axs := HenkinAxList th nc n in
+   let A := decode_form n in
+   match Wf_dec (HenkinAll_sign th nc) (∃A) with
+   | left CL =>
+     let used := Vars.union (form_funs A)
+                            (vars_unionmap form_funs axs) in
+     let c := fresh_cst used nc in
+     ((∃A)-> bsubst 0 (Cst c) A)%form :: axs
+   | right _ => axs
+   end
+ end.
+
+Lemma equivtheories_thm th th' :
+ sign th = sign th' ->
+ (forall A, IsAxiom th A <-> IsAxiom th' A) ->
+ forall T, IsTheorem th T -> IsTheorem th' T.
+Proof.
+ intros E AX T (WF & axs & F & V).
+ split.
+ - now rewrite <- E.
+ - exists axs; split; auto.
+   rewrite Forall_forall in *. intros B HB. rewrite <- AX; auto.
+Qed.
+
+Lemma equivtheories_consistency th th' :
+ sign th = sign th' ->
+ (forall A, IsAxiom th A <-> IsAxiom th' A) ->
+ Consistent th <-> Consistent th'.
+Proof.
+ intros E AX.
+ split; intros H Thm.
+ - apply (equivtheories_thm th' th) in Thm; auto.
+   intros A. now symmetry.
+ - apply (equivtheories_thm th th') in Thm; auto.
+Qed.
+
+Lemma delcst_HenkinAll_signext th (nc : NewCsts th) n :
+ SignExtend th (delcst (HenkinAll_sign th nc) (nc n)).
+Proof.
+ split; cbn; unfold optfun_finer, opt_finer; auto.
+ intros a. case eqbspec.
+ - intros ->. left. apply csts_ok.
+ - intros _. destruct (test th nc a) eqn:E; auto.
+   left. apply test_ok in E. destruct E as (m, <-).
+   apply csts_ok.
+Qed.
+
+Lemma HenkinAxList_wf th (nc : NewCsts th) n :
+ forall A, IsAxiom th A \/ In A (HenkinAxList th nc n) ->
+           Wf (HenkinAll_sign th nc) A.
+Proof.
+ induction n as [|n IH].
+ - simpl.
+   intros A [HA|Fa]; [|easy].
+   eauto using signext_wf, HenkinAll_signext, WfAxiom.
+ - intros A [HA|IN]; auto.
+   simpl in IN.
+   set (f := decode_form n) in *.
+   destruct Wf_dec as [CL|_]; auto.
+   set (used := Vars.union _ _) in *.
+   destruct (fresh_cst_in_cands used nc) as (m,Hm).
+   assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
+   set (c := fresh_cst used nc) in *.
+   destruct IN as [<-|IN]; auto.
+   apply Op_wf; auto. split; auto.
+   apply bsubst_cst_wf; auto.
+   simpl.
+   replace (test _ nc c) with true; auto.
+   symmetry. rewrite Hm, test_ok. now exists m.
+Qed.
+
+Definition HenkinSeq th (nc : NewCsts th) n :=
+ {| sign := HenkinAll_sign th nc;
+    IsAxiom := fun A => IsAxiom th A \/ In A (HenkinAxList th nc n);
+    WfAxiom := HenkinAxList_wf th nc n
+ |}.
+
+Lemma HenkinSeq_extend th nc n :
+ Extend th (HenkinSeq th nc n).
+Proof.
+ apply extend_alt. split.
+ apply HenkinAll_signext.
+ intros.
+ apply ax_thm. simpl. now left.
+Qed.
+
+Lemma HenkinSeq_consistent th nc n :
+ logic = Classic ->
+ Consistent th <-> Consistent (HenkinSeq th nc n).
+Proof.
+ intros LG.
+ induction n; simpl.
+ - apply consext_consistency.
+   apply ext_sign_only; cbn.
+   + apply HenkinAll_signext.
+   + intuition.
+ - rewrite IHn.
+   unfold Consistent, IsTheorem. simpl.
+   set (f := decode_form n) in *.
+   destruct Wf_dec as [WF|WF] eqn:Ew; [|reflexivity].
+   set (used := Vars.union _ _) in *.
+   destruct (fresh_cst_in_cands used nc) as (m,Hm).
+   assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
+   set (c := fresh_cst used nc) in *.
+   assert (E : (HenkinSeq th nc n).(gen_fun_symbs) c = Some 0).
+   { simpl. replace (test th nc c) with true; auto.
+     symmetry. rewrite Hm, test_ok. now exists m. }
+   assert (Thm : IsTheorem (HenkinSeq th nc n)
+                           (∃ ((∃ f) -> f))%form).
+   { apply exex_thm; auto. }
+   rewrite (Henkin_halfext_consistent _ ((∃ f) -> f)%form c E Thm).
+   rewrite (equivtheories_consistency
+              (Henkin_halfext (HenkinSeq th nc n) ((∃ f) -> f) c E Thm)
+              (HenkinSeq th nc (S n))).
+   + unfold Consistent, IsTheorem. simpl.
+     fold f. rewrite Ew. reflexivity.
+   + simpl; auto.
+   + intros A. cbn - [decode_form].
+     fold f. rewrite Ew. fold used. fold c. clearbody f.
+     clearbody c.
+     unfold Henkin_axiom. simpl.
+     split.
+     * intros [[H|H]|H]; auto.
+       right; left. rewrite H.
+       cbn. f_equal. f_equal. symmetry.
+       apply form_level_bsubst_id.
+       assert (pred (level f) = 0) by apply WF. omega.
+     * intros [H|[H|H]]; auto.
+       right. rewrite <- H.
+       cbn. f_equal. f_equal. symmetry.
+       apply form_level_bsubst_id.
+       assert (pred (level f) = 0) by apply WF. omega.
+   + intros A [HA|HA].
+     * cbn. apply signext_wf with th; auto using WfAxiom.
+       rewrite Hm.
+       apply delcst_HenkinAll_signext.
+     * rewrite form_funs_wf. apply WfAxiom. simpl. now right.
+       intros IN.
+       assert (Vars.In c (vars_unionmap form_funs (HenkinAxList th nc n))).
+       { rewrite vars_unionmap_in. now exists A. }
+       varsdec.
+   + clearbody f. clear Ew. rewrite form_funs_ok. cbn.
+     destruct WF as (CK,?). cbn in CK. now rewrite CK.
+     cbn. varsdec.
+Qed.
+
+Lemma HenkinSeq_ax_grows th (nc : NewCsts th) n m A :
+ n <= m ->
+ IsAxiom (HenkinSeq th nc n) A ->
+ IsAxiom (HenkinSeq th nc m) A.
+Proof.
+ induction 1; auto.
+ intros Hn. specialize (IHle Hn). clear Hn.
+ simpl.
+ destruct Wf_dec; [|auto].
+ simpl.
+ cbn in IHle. intuition.
+Qed.
+
+Definition HenkinAll_axioms th (nc : NewCsts th) :=
+ fun f => exists n, IsAxiom (HenkinSeq th nc n) f.
+
+Lemma HenkinAll_ax_wf th (nc : NewCsts th) :
+ forall B, HenkinAll_axioms th nc B ->
+           Wf (HenkinAll_sign th nc) B.
+Proof.
+ intros B (n & Hn).
+ now apply WfAxiom in Hn.
+Qed.
+
+Definition HenkinAll_ext th (nc : NewCsts th) :=
+ {| sign := HenkinAll_sign th nc;
+    IsAxiom := HenkinAll_axioms th nc;
+    WfAxiom := HenkinAll_ax_wf th nc
+ |}.
+
+Lemma HenkinAll_extend th (nc : NewCsts th) :
+ Extend th (HenkinAll_ext th nc).
+Proof.
+ apply extend_alt.
+ split.
+ - apply HenkinAll_signext.
+ - intros A HA. apply ax_thm. exists 0. now left.
+Qed.
+
+Lemma HenkinAll_Forall_max th (nc : NewCsts th) axs :
+ Forall (HenkinAll_axioms th nc) axs ->
+ exists n, Forall (IsAxiom (HenkinSeq th nc n)) axs.
+Proof.
+ induction axs.
+ - intros _. now exists 0.
+ - inversion_clear 1. destruct IHaxs as (n & F); auto.
+   destruct H0 as (n' & H').
+   exists (Nat.max n' n).
+   constructor.
+   apply HenkinSeq_ax_grows with n'; auto with *.
+   rewrite Forall_forall in *.
+   intros f Hf.
+   apply HenkinSeq_ax_grows with n; auto with *.
+Qed.
+
+(** TODO: conservative extention over th. Not that useful... *)
+
+Lemma HenkinAll_consistent th (nc : NewCsts th) :
+ logic = Classic ->
+ Consistent th -> Consistent (HenkinAll_ext th nc).
+Proof.
+ intros LG C (_ & axs & F & V).
+ apply HenkinAll_Forall_max in F.
+ destruct F as (n & F).
+ rewrite (HenkinSeq_consistent th nc n) in C; auto. apply C.
+ split.
+ - apply False_wf.
+ - exists axs; auto.
+Qed.
+
+Lemma HenkinAll_ext_supersaturated th (nc : NewCsts th) :
+ logic = Classic ->
+ WitnessSuperSaturated (HenkinAll_ext th nc).
+Proof.
+ red. intros LG A CL.
+ set (n := code_form A).
+ assert (Ax : forall A, In A (HenkinAxList th nc (S n)) ->
+                   IsAxiom (HenkinAll_ext th nc) A).
+ { intros B HB. exists (S n). now right. }
+ cbn - [decode_form code_form] in Ax.
+ assert (HA : decode_form n = A) by apply decode_code_form.
+ rewrite HA in Ax.
+ cbn in CL.
+ destruct Wf_dec; [|easy].
+ set (used := Vars.union _ _) in *.
+ destruct (fresh_cst_in_cands used nc) as (m,Hm).
+ assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
+ set (c := fresh_cst used nc) in *.
+ exists c; split.
+ - rewrite Hm. cbn.
+   replace (test th nc (nc m)) with true; auto.
+   symmetry. apply test_ok. now exists m.
+ - apply ax_thm. apply Ax. now left.
+Qed.
+
 
 (** Completeness of a theory *)
 
 Definition Complete th :=
- forall A, ClosedFormulaOn th A ->
+ forall A, Wf th A ->
            IsTheorem th A \/ IsTheorem th (~A)%form.
 
 Definition DecidedBy (Ax:formula->Prop) f :=
@@ -335,14 +1079,14 @@ Fixpoint ax_completion th n : formula -> Prop :=
     let prev := ax_completion th n in
     fun f =>
       prev f \/
-      (f = decode_form n /\ ClosedFormulaOn th f /\ ~DecidedBy prev f)
+      (f = decode_form n /\ Wf th f /\ ~DecidedBy prev f)
   end.
 
 Definition ax_infinite_completion th :=
  fun f => exists n, ax_completion th n f.
 
 Lemma completion_wf th n :
-  forall A, ax_completion th n A -> ClosedFormulaOn th A.
+  forall A, ax_completion th n A -> Wf th A.
 Proof.
  induction n; simpl.
  - apply WfAxiom.
@@ -350,19 +1094,19 @@ Proof.
 Qed.
 
 Lemma infcompletion_wf th :
-  forall A, ax_infinite_completion th A -> ClosedFormulaOn th A.
+  forall A, ax_infinite_completion th A -> Wf th A.
 Proof.
  intros A (n,HA). eapply completion_wf; eauto.
 Qed.
 
 Definition th_completion th n :=
- {| sign := th.(sign);
+ {| sign := th;
     IsAxiom := ax_completion th n;
     WfAxiom := completion_wf th n
  |}.
 
 Definition th_infcompletion th :=
- {| sign := th.(sign);
+ {| sign := th;
     IsAxiom := ax_infinite_completion th;
     WfAxiom := infcompletion_wf th
  |}.
@@ -372,7 +1116,7 @@ Lemma ax_completion_carac th n A :
  IsAxiom th A \/
   (exists m, m < n /\
              A = decode_form m /\
-             ClosedFormulaOn th A /\
+             Wf th A /\
              ~DecidedBy (ax_completion th m) A).
 Proof.
  induction n; simpl.
@@ -383,7 +1127,7 @@ Proof.
      right; exists m; auto with *.
    + right. exists n; auto with *.
    + left. apply IHn. now left.
-   + inversion Hm; subst; auto.
+   + inversion Hm; try subst; auto.
      left. apply IHn. right. exists m. split; auto with *.
 Qed.
 
@@ -468,17 +1212,20 @@ Proof.
  now exists axs.
 Qed.
 
-Axiom MyExcludedMiddle : forall Ax A, DecidedBy Ax A \/ ~DecidedBy Ax A.
+Definition MyExcludedMiddle :=
+ forall Ax A, DecidedBy Ax A \/ ~DecidedBy Ax A.
 
 Lemma th_completion_decides_fn th n :
- ClosedFormulaOn th (decode_form n) ->
+ MyExcludedMiddle ->
+ Wf th (decode_form n) ->
  DecidedBy (ax_completion th (S n)) (decode_form n).
 Proof.
+ intros EM.
  set (fn := decode_form n).
  intros CL.
  unfold DecidedBy.
  simpl.
- destruct (MyExcludedMiddle (ax_completion th n) fn) as [(axs & F & OR)|N].
+ destruct (EM (ax_completion th n) fn) as [(axs & F & OR)|N].
  - exists axs; split; auto.
    rewrite Forall_forall in *; intuition.
  - exists [fn]; split; auto.
@@ -497,9 +1244,10 @@ Proof.
 Qed.
 
 Lemma th_infcompletion_complete th :
+ MyExcludedMiddle ->
  Complete (th_infcompletion th).
 Proof.
- intros A CL.
+ intros EM A CL.
  destruct (th_completion_decides_fn th (code_form A)) as (axs & F & OR);
   rewrite ?decode_code_form in *; auto.
  set (n := code_form A) in *. clearbody n.
@@ -510,15 +1258,80 @@ Proof.
 Qed.
 
 Theorem completion th :
+ MyExcludedMiddle ->
  Consistent th ->
  exists th', Extend th th' /\ Consistent th' /\ Complete th'.
 Proof.
- intros C.
+ intros EM C.
  exists (th_infcompletion th); split; [|split].
  - apply th_infcompletion_extend.
  - now apply th_infcompletion_consistent.
- - apply th_infcompletion_complete.
+ - apply th_infcompletion_complete; auto.
 Qed.
 
+(** Combining both saturation and completion *)
+
+Definition supercomplete th (nc : NewCsts th) :=
+ th_infcompletion (HenkinAll_ext th nc).
+
+Lemma supercomplete_extend th nc :
+ Extend th (supercomplete th nc).
+Proof.
+ eapply extend_trans; [|eapply th_infcompletion_extend].
+ apply HenkinAll_extend.
+Qed.
+
+Lemma supercomplete_consistent th nc :
+ logic = Classic ->
+ Consistent th -> Consistent (supercomplete th nc).
+Proof.
+ intros LG C.
+ apply th_infcompletion_consistent.
+ apply HenkinAll_consistent; auto.
+Qed.
+
+Lemma supercomplete_supersaturated th nc :
+ logic = Classic ->
+ WitnessSuperSaturated (supercomplete th nc).
+Proof.
+ intros LG.
+ intros A WF. cbn in WF.
+ destruct (HenkinAll_ext_supersaturated th nc LG A WF) as (c & Hc & Thm).
+ exists c. split; auto.
+ unfold supercomplete.
+ now apply th_infcompletion_extend.
+Qed.
+
+Lemma supercomplete_saturated th nc :
+ logic = Classic ->
+ WitnessSaturated (supercomplete th nc).
+Proof.
+ intros LG.
+ now apply supersaturated_saturated, supercomplete_supersaturated.
+Qed.
+
+Lemma supercomplete_complete th nc :
+ MyExcludedMiddle ->
+ Complete (supercomplete th nc).
+Proof.
+ apply th_infcompletion_complete.
+Qed.
+
+Lemma supercompletion :
+ logic = Classic ->
+ MyExcludedMiddle ->
+ forall th (nc : NewCsts th),
+  Consistent th ->
+  exists th',
+   Extend th th' /\ Consistent th' /\
+   WitnessSaturated th' /\ Complete th'.
+Proof.
+ intros LG EM th nc C.
+ exists (supercomplete th nc). split;[|split;[|split]].
+ - now apply supercomplete_extend.
+ - now apply supercomplete_consistent.
+ - now apply supercomplete_saturated.
+ - now apply supercomplete_complete.
+Qed.
 
 End SomeLogic.

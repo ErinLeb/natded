@@ -18,3 +18,9 @@ X Integrer closed dans Valid et valid_deriv ??
 
 ToCoq : revoir a se passer de BClosed general,
         maintenant que Valid impose des temoins BClosed
+
+gen_fun_symbs ---> funsymbs
+et mettre un autre long (plus long) dans le cas d'une signature par liste
+
+Related works
+https://www.isa-afp.org/entries/Completeness-paper.pdf

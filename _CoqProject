@@ -14,6 +14,7 @@ Equiv.v
 Alpha2.v
 Equiv2.v
 Meta.v
-ToCoq.v
 Countable.v
 Theories.v
+PreModels.v
+Models.v

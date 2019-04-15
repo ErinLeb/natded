@@ -181,21 +181,6 @@ Proof.
  destruct (build_args _); simpl in *. f_equal; auto.
 Qed.
 
-(*
-Definition rich_funs f :
-  { o : option { n:nat & arity_fun M n M } |
-    th.(funsymbs) f = get_arity o }.
-Proof.
- destruct (th.(funsymbs) f) as [n|] eqn:E.
- - assert (r : arity_fun M n M).
-   { generalize (mk_args n).
-     apply map_arity. intros (l & Hl & WF).
-     exists (Fun f l). apply Fun_wf; subst; auto. }
-   now exists (Some (existT _ n r)).
- - now exists None.
-Defined.
-*)
-
 Definition fun_core f n :
   (th.(funsymbs) f = Some n) -> arity_fun M n M.
 Proof.
@@ -364,13 +349,61 @@ Proof.
    + split; auto. exists axs; split; auto.
    + split; auto. exists axs; split; auto.
  - intros (_ & axs & F & PR); rewrite Op_wf in WF.
-   destruct (complete A); try easy. now left.
-   destruct (complete B); try easy. now right.
+   destruct (complete A) as [HA|HA]; [easy|now left|].
+   destruct HA as (WfA & axsA & FA & PRA).
+   destruct (complete B) as [HB|HB]; [easy|now right|].
+   destruct HB as (WfB & axsB & FB & PRB).
    destruct consistent.
-(* ... *)
-Admitted.
+   split. apply False_wf.
+   exists (axs++axsA++axsB). split.
+   rewrite Forall_forall in *; intros x; rewrite !in_app_iff;
+     intros [|[ | ]]; auto.
+   apply R_Or_e with A B.
+   + clear PRA PRB; eapply Pr_weakening; eauto. constructor.
+     intros a. rewrite in_app_iff; auto.
+   + apply R_Not_e with A.
+     * apply R'_Ax.
+     * clear PR PRB; eapply Pr_weakening; eauto. constructor.
+       intros a. simpl. rewrite !in_app_iff; auto.
+   + apply R_Not_e with B.
+     * apply R'_Ax.
+     * clear PR PRA; eapply Pr_weakening; eauto. constructor.
+       intros a. simpl. rewrite !in_app_iff; auto.
+Qed.
 
 
+Lemma thm_impl A B : Wf th (A->B) ->
+  (IsTheorem Classic th A -> IsTheorem Classic th B) <->
+  IsTheorem Classic th (A -> B).
+Proof.
+ intros WF.
+ split.
+ - intros IM.
+   destruct (complete A) as [HA|HA]; [rewrite Op_wf in WF; easy | | ].
+   + specialize (IM HA).
+     destruct IM as (WfB & axsB & FB & PRB).
+     split; auto.
+     exists axsB; split; auto.
+     apply R_Imp_i.
+     eapply Pr_weakening; eauto. constructor. intros a; simpl; auto.
+   + destruct HA as (WfA & axsA & FA & PRA).
+     split; auto.
+     exists axsA; split; auto.
+     apply R_Imp_i.
+     apply R_Fa_e.
+     apply R_Not_e with A. apply R'_Ax.
+     eapply Pr_weakening; eauto. constructor. intros a; simpl; auto.
+ - intros (_ & axsAB & FAB & PRAB) (_ & axsA & FA & PRA).
+   split. now rewrite Op_wf in WF.
+   exists (axsAB++axsA). split.
+   rewrite Forall_forall in *; intros x; rewrite !in_app_iff;
+     intros [|]; auto.
+   apply R_Imp_e with A.
+   + clear PRA; eapply Pr_weakening; eauto. constructor.
+       intros a. simpl. rewrite !in_app_iff; auto.
+   + clear PRAB; eapply Pr_weakening; eauto. constructor.
+       intros a. simpl. rewrite !in_app_iff; auto.
+Qed.
 
 Lemma term_closure_check t (genv:variable->M) :
   check th (term_closure genv t) = check th t.
@@ -468,19 +501,40 @@ Proof.
  - apply closure_fclosed.
 Qed.
 
+Fixpoint height f :=
+  match f with
+  | True | False | Pred _ _ => 0
+  | Not f => S (height f)
+  | Op _ f1 f2 => S (Nat.max (height f1) (height f2))
+  | Quant _ f => S (height f)
+  end.
+
+Lemma height_ind (P : formula -> Prop) :
+ (forall h, (forall f, height f < h -> P f) ->
+            (forall f, height f < S h -> P f)) ->
+ forall f, P f.
+Proof.
+ intros IH f.
+ set (h := S (height f)).
+ assert (LT : height f < h) by (cbn; auto with * ).
+ clearbody h. revert f LT.
+ induction h as [|h IHh]; [inversion 1|eauto].
+Qed.
+
 Lemma light_interp_carac f : check th f = true -> BClosed f ->
  forall genv,
    interp_form mo genv [] f <->
      IsTheorem Classic th (closure genv f).
 Proof.
- induction f; intros CK BC genv.
- - cbn.
+ induction f as [h IH f Hf] using height_ind. destruct f; intros CK BC genv.
+ - clear IH Hf. cbn.
    unfold IsTheorem. intuition.
    now exists [].
- - cbn.
+ - clear IH Hf. cbn.
    unfold IsTheorem. intuition.
    + apply consistent; split; auto.
- - rewrite interp_pred; auto. simpl.
+ - clear IH Hf.
+   rewrite interp_pred; auto. simpl.
    unfold vmap, vmap_list.
    assert (forall t, In t l ->
             proj1_sig (interp_term mo genv [] t) =
@@ -491,16 +545,29 @@ Proof.
      rewrite forallb_forall in CK; auto.
      red in BC. cbn in BC. rewrite list_max_map_0 in BC; auto. }
    apply map_ext_iff in H. rewrite H. reflexivity.
- - simpl. rewrite IHf; auto.
+ - simpl. rewrite IH; auto with arith.
    symmetry. apply complete'.
    apply closure_wf; auto.
- - cbn in CK. rewrite lazy_andb_iff in CK. destruct CK as (CK1,CK2).
+ - cbn in *. rewrite lazy_andb_iff in CK. destruct CK as (CK1,CK2).
    red in BC. cbn in BC. apply max_0 in BC. destruct BC as (BC1,BC2).
-   destruct o; simpl; rewrite IHf1, IHf2; auto.
-   + admit.
-   + admit.
-   + admit.
+   destruct o; simpl; rewrite !IH; auto; try omega with *.
+   + apply thm_and.
+   + apply thm_or. apply Op_wf. split; apply (closure_wf _ genv); auto.
+   + apply thm_impl. apply Op_wf. split; apply (closure_wf _ genv); auto.
  - simpl.
+   destruct q; split.
+   + intros H.
+     destruct (complete (closure genv (∃~f))); [apply closure_wf; auto| | ].
+     * destruct (witsat (closure genv (~f)) H0) as (c & Hc & Thm).
+       assert (bsubst 0 (Cst c) (closure genv (~ f)) =
+               closure genv (bsubst 0 (Cst c) (~f)%form)).
+       { admit. }
+       rewrite H1 in Thm.
+       rewrite <- IH in Thm. (* TODO: height bsubst, check bsubst, BClosed bsubst *)
+       rewrite <- interp_form_bsubst0 in Thm; auto.
+       change (~interp_form mo genv [interp_term mo genv [] (Cst c)] f) in Thm.
+       destruct Thm. apply H.
+       cbn. red in BC; cbn in BC. omega.
 Admitted.
 
 (* Overkill ?

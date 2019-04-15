@@ -63,6 +63,73 @@ Proof.
    now rewrite Vars.is_empty_spec in H.
 Qed.
 
+Lemma Fun_wf sign f l :
+  Wf_term sign (Fun f l) <->
+   sign.(funsymbs) f = Some (length l) /\ Forall (Wf_term sign) l.
+Proof.
+ split.
+ - intros (CK & BC & FC); cbn in *.
+   destruct (funsymbs _ f); [|easy].
+   rewrite lazy_andb_iff, eqb_eq in CK.
+   destruct CK as (->,CK). split; auto.
+   rewrite forallb_forall in CK.
+   apply Forall_forall. intros t Ht.
+   repeat split; auto.
+   + unfold BClosed in *. cbn in BC.
+     rewrite list_max_map_0 in BC; auto.
+   + unfold FClosed in *. cbn in FC.
+     intros v. specialize (FC v). contradict FC.
+     rewrite vars_unionmap_in. now exists t.
+ - intros (E,F).
+   rewrite Forall_forall in F.
+   repeat split; cbn.
+   + rewrite E, eqb_refl. apply forallb_forall.
+     intros u Hu. now apply F.
+   + red; cbn. apply list_max_map_0. intros u Hu. now apply F.
+   + red; cbn. intro v. rewrite vars_unionmap_in.
+     intros (a & IN & IN'). apply F in IN'. now apply IN' in IN.
+Qed.
+
+Lemma Pred_wf sign p l :
+  Wf sign (Pred p l) <->
+   sign.(predsymbs) p = Some (length l) /\ Forall (Wf_term sign) l.
+Proof.
+ split.
+ - intros (CK & BC & FC); cbn in *.
+   destruct (predsymbs _ p); [|easy].
+   rewrite lazy_andb_iff, eqb_eq in CK.
+   destruct CK as (->,CK). split; auto.
+   rewrite forallb_forall in CK.
+   apply Forall_forall. intros t Ht.
+   repeat split; auto.
+   + unfold BClosed in *. cbn in BC.
+     rewrite list_max_map_0 in BC; auto.
+   + unfold FClosed in *. cbn in FC.
+     intros v. specialize (FC v). contradict FC.
+     rewrite vars_unionmap_in. now exists t.
+ - intros (E,F).
+   rewrite Forall_forall in F.
+   repeat split; cbn.
+   + rewrite E, eqb_refl. apply forallb_forall.
+     intros u Hu. now apply F.
+   + red; cbn. apply list_max_map_0. intros u Hu. now apply F.
+   + red; cbn. intro v. rewrite vars_unionmap_in.
+     intros (a & IN & IN'). apply F in IN'. now apply IN' in IN.
+Qed.
+
+Lemma Cst_wf sign c :
+  sign.(funsymbs) c = Some 0 -> Wf_term sign (Cst c).
+Proof.
+ intros. now apply Fun_wf.
+Qed.
+
+Lemma Cst_wf' sign c :
+  sign.(funsymbs) c = Some 0 -> wf_term sign (Cst c) = true.
+Proof.
+ intros. now apply Wf_term_alt, Fun_wf.
+Qed.
+
+
 Definition closed_term sign :=
  { t : term | wf_term sign t = true }.
 
@@ -91,7 +158,6 @@ Lemma build_map_arity {A B B'} n (l : list A)(f:B->B')(any:B)(any':B') :
 Proof.
  intros <-. induction l; simpl; auto.
 Qed.
-
 
 Section SyntacticPreModel.
 Variable logic : Defs.logic.
@@ -123,72 +189,6 @@ Fixpoint mk_args n : arity_fun M n (sized_wf_listterm n) :=
                        exist _ (t::l) (cons_ok t l n Ht Hl))
                     n (mk_args n)
  end.
-
-Lemma Fun_wf f l :
-  Wf_term th (Fun f l) <->
-   th.(funsymbs) f = Some (length l) /\ Forall (Wf_term th) l.
-Proof.
- split.
- - intros (CK & BC & FC); cbn in *.
-   destruct (funsymbs th f); [|easy].
-   rewrite lazy_andb_iff, eqb_eq in CK.
-   destruct CK as (->,CK). split; auto.
-   rewrite forallb_forall in CK.
-   apply Forall_forall. intros t Ht.
-   repeat split; auto.
-   + unfold BClosed in *. cbn in BC.
-     rewrite list_max_map_0 in BC; auto.
-   + unfold FClosed in *. cbn in FC.
-     intros v. specialize (FC v). contradict FC.
-     rewrite vars_unionmap_in. now exists t.
- - intros (E,F).
-   rewrite Forall_forall in F.
-   repeat split; cbn.
-   + rewrite E, eqb_refl. apply forallb_forall.
-     intros u Hu. now apply F.
-   + red; cbn. apply list_max_map_0. intros u Hu. now apply F.
-   + red; cbn. intro v. rewrite vars_unionmap_in.
-     intros (a & IN & IN'). apply F in IN'. now apply IN' in IN.
-Qed.
-
-Lemma Pred_wf p l :
-  Wf th (Pred p l) <->
-   th.(predsymbs) p = Some (length l) /\ Forall (Wf_term th) l.
-Proof.
- split.
- - intros (CK & BC & FC); cbn in *.
-   destruct (predsymbs th p); [|easy].
-   rewrite lazy_andb_iff, eqb_eq in CK.
-   destruct CK as (->,CK). split; auto.
-   rewrite forallb_forall in CK.
-   apply Forall_forall. intros t Ht.
-   repeat split; auto.
-   + unfold BClosed in *. cbn in BC.
-     rewrite list_max_map_0 in BC; auto.
-   + unfold FClosed in *. cbn in FC.
-     intros v. specialize (FC v). contradict FC.
-     rewrite vars_unionmap_in. now exists t.
- - intros (E,F).
-   rewrite Forall_forall in F.
-   repeat split; cbn.
-   + rewrite E, eqb_refl. apply forallb_forall.
-     intros u Hu. now apply F.
-   + red; cbn. apply list_max_map_0. intros u Hu. now apply F.
-   + red; cbn. intro v. rewrite vars_unionmap_in.
-     intros (a & IN & IN'). apply F in IN'. now apply IN' in IN.
-Qed.
-
-Lemma Cst_wf c :
-  th.(funsymbs) c = Some 0 -> Wf_term th (Cst c).
-Proof.
- intros. now apply Fun_wf.
-Qed.
-
-Lemma Cst_wf' c :
-  th.(funsymbs) c = Some 0 -> wf_term th (Cst c) = true.
-Proof.
- intros. now apply Wf_term_alt, Fun_wf.
-Qed.
 
 Definition one_listterm n : sized_wf_listterm n.
 Proof.
@@ -268,7 +268,7 @@ Proof.
 Qed.
 
 Definition SyntacticPreModel : PreModel M th :=
- {| someone := exist _ (Cst oneconst) (Cst_wf' _ Honeconst);
+ {| someone := exist _ (Cst oneconst) (Cst_wf' _ _ Honeconst);
     funs := mk_funs;
     preds := mk_preds;
     funsOk := mk_funs_ok;
@@ -830,27 +830,69 @@ Proof.
    destruct (predsymbs sign' p); auto.
 Defined.
 
+Lemma interp_term_restrict sign sign' M
+ (mo:PreModel M sign')(SE:SignExtend sign sign') :
+ forall genv lenv t, check sign t = true ->
+  interp_term (premodel_restrict sign sign' M SE mo) genv lenv t =
+  interp_term mo genv lenv t.
+Proof.
+ induction t as [ | | f args IH ] using term_ind'; cbn; auto.
+ destruct (funsymbs sign f); [|easy].
+ case eqbspec; [|easy]. intros _ F.
+ destruct (funs mo f) as [(n,ar)|]; auto.
+ f_equal. apply map_ext_iff. intros t Ht.
+ apply IH; auto. rewrite forallb_forall in F; auto.
+Qed.
+
+Lemma interp_form_restrict sign sign' M
+ (mo:PreModel M sign')(SE:SignExtend sign sign') :
+ forall genv lenv f, check sign f = true ->
+  interp_form (premodel_restrict sign sign' M SE mo) genv lenv f <->
+  interp_form mo genv lenv f.
+Proof.
+ intros genv lenv f; revert genv lenv.
+ induction f; cbn; intros genv lenv Hf; f_equal;
+ try (rewrite lazy_andb_iff in Hf; destruct Hf); try reflexivity.
+ - destruct (predsymbs sign p); [|easy].
+   rewrite lazy_andb_iff in Hf. destruct Hf as (_,Hf).
+   destruct (preds mo p) as [(n,ar)|]; [|reflexivity].
+   f_equiv. apply map_ext_iff. intros t Ht.
+   apply interp_term_restrict. rewrite forallb_forall in Hf; auto.
+ - now rewrite IHf.
+ - destruct o; simpl; rewrite IHf1, IHf2; intuition.
+ - destruct q; simpl; split.
+   + intros H m. apply IHf; auto.
+   + intros H m. apply IHf; auto.
+   + intros (m,H). exists m. apply IHf; auto.
+   + intros (m,H). exists m. apply IHf; auto.
+Qed.
+
 Lemma model_restrict logic th th' M :
+ CoqRequirements logic ->
  Extend logic th th' -> Model M th' -> Model M th.
 Proof.
- intros (SE,EX) (mo,AxOk).
+ intros CR (SE,EX) mo.
  apply Build_Model with (premodel_restrict th th' M SE mo).
  intros A HA genv.
-Admitted.
+ rewrite interp_form_restrict by (apply WfAxiom; auto).
+ assert (Thm : IsTheorem logic th' A).
+ { apply EX, ax_thm; auto. }
+ apply (validity_theorem logic th' CR A Thm M mo).
+Defined.
 
 Lemma consistent_has_model (th:theory) (nc : NewCsts th) :
- MyExcludedMiddle Classic ->
+ (forall A, A\/~A) ->
  Consistent Classic th ->
  { M & Model M th }.
 Proof.
  intros EM C.
  set (th' := supercomplete Classic th nc).
  exists (closed_term th').
- apply (model_restrict Classic th th').
+ apply (model_restrict Classic th th'). red; intros; apply EM.
  apply supercomplete_extend.
  apply SyntacticModel with (oneconst := nc 0).
  - apply supercomplete_consistent; auto.
- - apply supercomplete_complete; auto.
+ - apply supercomplete_complete; auto. red; intros; apply EM.
  - apply supercomplete_saturated; auto.
  - unfold th'. cbn.
    replace (test th nc (nc 0)) with true; auto.
@@ -887,10 +929,14 @@ Proof.
      (* soit ~T dans axs et donc on prouve T contradiction
         soit pas et on infirme la consistence de th *)
      admit. }
-   destruct (consistent_has_model th' nc') as (M,mo); auto.
-   + red; intros. apply EM.
-   + (* model interprete T as 0 (car ~T axiome de th' *)
-     apply (model_restrict Classic th) in mo.
+   destruct (consistent_has_model th' nc' EM) as (M,mo); auto.
+   assert (EX : Extend Classic th th').
+   { apply extend_alt. split.
+     - cbn. apply signext_refl.
+     - intros B HB. apply ax_thm. cbn. now right. }
+   set (mo' := model_restrict Classic th th' M EM EX mo).
+   (* ~interp_form mo' T car ~T axiome de th' mais idem dans mo (extend)
+      or HT dit le contraire... *)
 Admitted.
 
 

@@ -1322,9 +1322,9 @@ Lemma supercompletion :
  MyExcludedMiddle ->
  forall th (nc : NewCsts th),
   Consistent th ->
-  exists th',
+  { th' |
    Extend th th' /\ Consistent th' /\
-   WitnessSaturated th' /\ Complete th'.
+   WitnessSaturated th' /\ Complete th' }.
 Proof.
  intros LG EM th nc C.
  exists (supercomplete th nc). split;[|split;[|split]].

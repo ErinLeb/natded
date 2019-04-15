@@ -1,4 +1,5 @@
-Require Import Defs Mix Proofs Meta Omega Setoid Morphisms Theories PreModels.
+Require Import Defs Mix Proofs Meta Omega Setoid Morphisms
+  Eqdep_dec Theories PreModels.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
@@ -9,7 +10,7 @@ Record Model (M:Type)(th : theory) :=
    AxOk : forall A, IsAxiom th A ->
                     forall genv, interp_form pre genv [] A }.
 
-Lemma validity logic th :
+Lemma validity_theorem logic th :
  CoqRequirements logic ->
  forall T, IsTheorem logic th T ->
  forall M (mo : Model M th) genv, interp_form mo genv [] T.
@@ -27,7 +28,7 @@ Lemma consistency_by_model logic th :
  { M & Model M th } -> Consistent logic th.
 Proof.
  intros CR (M,mo) Thm.
- apply (validity _ _ CR _ Thm M mo (fun _ => mo.(someone))).
+ apply (validity_theorem _ _ CR _ Thm M mo (fun _ => mo.(someone))).
 Qed.
 
 Lemma Thm_Not_e th A :
@@ -49,8 +50,31 @@ Qed.
 Definition Wf_term (sign:signature) (t:term) :=
   check sign t = true /\ BClosed t /\ FClosed t.
 
+Definition wf_term (sign:signature) (t:term) :=
+ check sign t && (level t =? 0) && Vars.is_empty (fvars t).
+
+Lemma Wf_term_alt sign t : Wf_term sign t <-> wf_term sign t = true.
+Proof.
+ unfold Wf_term, wf_term.
+ split.
+ - intros (-> & -> & H). cbn. now rewrite Vars.is_empty_spec.
+ - rewrite !andb_true_iff, !eqb_eq. unfold BClosed.
+   intros ((->,->),H); repeat split; auto.
+   now rewrite Vars.is_empty_spec in H.
+Qed.
+
 Definition closed_term sign :=
- { t : term | Wf_term sign t }.
+ { t : term | wf_term sign t = true }.
+
+Lemma proof_irr sign (s s' : closed_term sign) :
+ s = s' <-> proj1_sig s = proj1_sig s'.
+Proof.
+ destruct s, s'. cbn. split.
+ - now injection 1.
+ - intros <-. f_equal.
+   destruct (wf_term sign x); [|easy].
+   rewrite UIP_refl_bool. apply UIP_refl_bool.
+Qed.
 
 Fixpoint map_arity {A B B'}(f:B->B') n
  : arity_fun A n B -> arity_fun A n B' :=
@@ -78,11 +102,12 @@ Hypothesis Honeconst : th.(funsymbs) oneconst = Some 0.
 Let M := closed_term th.
 
 Lemma cons_ok (t : term) (l : list term) n :
- Wf_term th t ->
+ wf_term th t = true ->
  length l = n /\ Forall (Wf_term th) l ->
  length (t::l) = S n /\ Forall (Wf_term th) (t::l).
 Proof.
  intros WF (L,F).
+ apply Wf_term_alt in WF.
  split; simpl; auto.
 Qed.
 
@@ -153,11 +178,16 @@ Proof.
      intros (a & IN & IN'). apply F in IN'. now apply IN' in IN.
 Qed.
 
-
 Lemma Cst_wf c :
   th.(funsymbs) c = Some 0 -> Wf_term th (Cst c).
 Proof.
  intros. now apply Fun_wf.
+Qed.
+
+Lemma Cst_wf' c :
+  th.(funsymbs) c = Some 0 -> wf_term th (Cst c) = true.
+Proof.
+ intros. now apply Wf_term_alt, Fun_wf.
 Qed.
 
 Definition one_listterm n : sized_wf_listterm n.
@@ -187,7 +217,7 @@ Proof.
  intros E.
  generalize (mk_args n).
  apply map_arity. intros (l & Hl).
- exists (Fun f l). apply Fun_wf; destruct Hl; subst; auto.
+ exists (Fun f l). apply Wf_term_alt, Fun_wf; destruct Hl; subst; auto.
 Defined.
 
 Definition rich_funs f :
@@ -238,7 +268,7 @@ Proof.
 Qed.
 
 Definition SyntacticPreModel : PreModel M th :=
- {| someone := exist _ (Cst oneconst) (Cst_wf _ Honeconst);
+ {| someone := exist _ (Cst oneconst) (Cst_wf' _ Honeconst);
     funs := mk_funs;
     preds := mk_preds;
     funsOk := mk_funs_ok;
@@ -263,6 +293,126 @@ Let term_closure (genv:variable -> M) (t:term) :=
 
 Let closure (genv:variable -> M) (f:formula) :=
   vmap (fun v:variable => proj1_sig (genv v)) f.
+
+Lemma term_closure_check t (genv:variable->M) :
+  check th (term_closure genv t) = check th t.
+Proof.
+ revert t.
+ fix IH 1. destruct t as [ | | f l]; cbn; auto.
+ - destruct (genv v) as (t,Ht); cbn; auto.
+   apply Wf_term_alt in Ht. apply Ht.
+ - rewrite map_length.
+   destruct (funsymbs th f); [|easy].
+   case eqb; [|easy].
+   revert l. fix IH' 1. destruct l as [|t l]; cbn; auto.
+   f_equal. apply IH. apply IH'.
+Qed.
+
+Lemma term_closure_level t (genv:variable->M) :
+  level (term_closure genv t) = level t.
+Proof.
+ revert t.
+ fix IH 1. destruct t as [ | | f l]; cbn; auto.
+ - destruct (genv v) as (t,Ht); cbn; auto.
+   apply Wf_term_alt in Ht. apply Ht.
+ - revert l. fix IH' 1. destruct l as [|t l]; cbn; auto.
+   f_equal. apply IH. apply IH'.
+Qed.
+
+Lemma empty_union s s' : Vars.Empty (Vars.union s s') <->
+ Vars.Empty s /\ Vars.Empty s'.
+Proof.
+ split. split; varsdec. varsdec.
+Qed.
+
+Lemma term_closure_fclosed t (genv:variable->M) :
+  FClosed (term_closure genv t).
+Proof.
+ revert t.
+ fix IH 1. destruct t as [ | | f l]; cbn; auto.
+ - destruct (genv v) as (t,Ht); cbn; auto.
+   apply Wf_term_alt in Ht. apply Ht.
+ - unfold FClosed in *. cbn.
+   revert l. fix IH' 1. destruct l as [|t l]; cbn; auto.
+   unfold term_closure in *.
+   apply empty_union; auto.
+Qed.
+
+Lemma closure_check f genv :
+ check th (closure genv f) = check th f.
+Proof.
+ induction f; cbn; auto.
+ - rewrite map_length.
+   destruct predsymbs; [|easy].
+   case eqb; [|easy].
+   revert l.
+   induction l as [|t l]; cbn; auto. f_equal; auto.
+   change (check th (term_closure genv t) = check th t). (* TODO *)
+   apply term_closure_check.
+ - unfold closure in *. now rewrite IHf1, IHf2.
+Qed.
+
+Lemma closure_level f (genv:variable->M) :
+  level (closure genv f) = level f.
+Proof.
+ induction f; cbn; auto.
+ revert l. induction l as [|t l IH]; cbn; auto.
+ f_equal; auto.
+ apply (term_closure_level t genv). (* TODO *)
+Qed.
+
+Lemma closure_fclosed f (genv:variable->M) :
+  FClosed (closure genv f).
+Proof.
+ induction f; cbn; auto.
+ - unfold FClosed in *. cbn.
+   revert l. induction l as [|t l IH]; cbn; auto.
+   apply empty_union; split; auto.
+   apply (term_closure_fclosed t genv).
+ - unfold FClosed in *. cbn.
+   apply empty_union; split; auto.
+Qed.
+
+Lemma term_closure_wf t genv :
+  check th t = true -> BClosed t ->
+  Wf_term th (term_closure genv t).
+Proof.
+ repeat split.
+ - now rewrite term_closure_check.
+ - red. now rewrite term_closure_level.
+ - apply term_closure_fclosed.
+Qed.
+
+Lemma term_closure_wf' t genv :
+  check th t = true -> BClosed t ->
+  wf_term th (term_closure genv t) = true.
+Proof.
+ intros CK BC. apply Wf_term_alt. now apply term_closure_wf.
+Qed.
+
+Lemma closure_wf f genv :
+  check th f = true -> BClosed f ->
+  Wf th (closure genv f).
+Proof.
+ repeat split.
+ - now rewrite closure_check.
+ - red. now rewrite closure_level.
+ - apply closure_fclosed.
+Qed.
+
+Lemma closure_bsubst n t f genv :
+ FClosed t ->
+ closure genv (bsubst n t f) = bsubst n t (closure genv f).
+Proof.
+ unfold closure.
+ intros FC.
+ rewrite form_vmap_bsubst.
+ f_equal.
+ rewrite term_vmap_id; auto.
+ intros v. red in FC. intuition.
+ intros v. destruct (genv v) as (u,Hu); simpl.
+ apply Wf_term_alt in Hu. apply Hu.
+Qed.
 
 Lemma interp_pred p l :
  check th (Pred p l) = true ->
@@ -304,6 +454,14 @@ Proof.
    intros t Ht. apply IH; auto.
    + rewrite forallb_forall in CK; auto.
    + red in BC. cbn in BC. rewrite list_max_map_0 in BC; auto.
+Qed.
+
+Lemma interp_term_carac' (t:term) genv
+  (CK : check th t = true) (BC : BClosed t) :
+  interp_term mo genv [] t =
+  exist _ (term_closure genv t) (term_closure_wf' t genv CK BC).
+Proof.
+ apply proof_irr. cbn. now apply interp_term_carac.
 Qed.
 
 Lemma complete' A : Wf th A ->
@@ -405,101 +563,90 @@ Proof.
        intros a. simpl. rewrite !in_app_iff; auto.
 Qed.
 
-Lemma term_closure_check t (genv:variable->M) :
-  check th (term_closure genv t) = check th t.
+Lemma pr_notex_allnot logic c A :
+ Pr logic (c ⊢ ~∃A) <-> Pr logic (c ⊢ ∀~A).
 Proof.
- revert t.
- fix IH 1. destruct t as [ | | f l]; cbn; auto.
- - destruct (genv v) as (t,Ht); cbn; auto. apply Ht.
- - rewrite map_length.
-   destruct (funsymbs th f); [|easy].
-   case eqb; [|easy].
-   revert l. fix IH' 1. destruct l as [|t l]; cbn; auto.
-   f_equal. apply IH. apply IH'.
+ split.
+ - intros NE.
+   assert (Hx := fresh_var_ok (fvars (c ⊢ A))).
+   set (x := fresh_var (fvars (c ⊢ A))) in *.
+   apply R_All_i with x; cbn - [Vars.union] in *. varsdec.
+   apply R_Not_i.
+   apply R_Not_e with (∃A)%form.
+   + apply R_Ex_i with (FVar x); auto using R'_Ax.
+   + eapply Pr_weakening; eauto. constructor; red; simpl; auto.
+ - intros AN.
+   apply R_Not_i.
+   assert (Hx := fresh_var_ok (fvars (c ⊢ A))).
+   set (x := fresh_var (fvars (c ⊢ A))) in *.
+   apply R'_Ex_e with x. cbn in *. varsdec.
+   eapply R_Not_e; [apply R'_Ax|].
+   eapply Pr_weakening. eapply R_All_e with (t:=FVar x); eauto.
+   constructor. red; simpl; auto.
 Qed.
 
-Lemma term_closure_level t (genv:variable->M) :
-  level (term_closure genv t) = level t.
+Lemma pr_notexnot c A :
+ Pr Classic (c ⊢ ~∃~A) <-> Pr Classic (c ⊢ ∀A).
 Proof.
- revert t.
- fix IH 1. destruct t as [ | | f l]; cbn; auto.
- - destruct (genv v) as (t,Ht); cbn; auto. apply Ht.
- - revert l. fix IH' 1. destruct l as [|t l]; cbn; auto.
-   f_equal. apply IH. apply IH'.
+ split.
+ - intros NEN.
+   assert (Hx := fresh_var_ok (fvars (c ⊢ A))).
+   set (x := fresh_var (fvars (c ⊢ A))) in *.
+   apply R_All_i with x; cbn - [Vars.union] in *. varsdec.
+   apply R_Absu; auto.
+   apply R_Not_e with (∃~A)%form.
+   apply R_Ex_i with (FVar x); auto using R'_Ax.
+   eapply Pr_weakening; eauto. constructor; red; simpl; auto.
+ - intros ALL.
+   apply R_Not_i.
+   assert (Hx := fresh_var_ok (fvars (c ⊢ A))).
+   set (x := fresh_var (fvars (c ⊢ A))) in *.
+   apply R'_Ex_e with x. cbn in *. varsdec.
+   cbn.
+   eapply R_Not_e; [|eapply R'_Ax].
+   eapply Pr_weakening. eapply R_All_e with (t:=FVar x); eauto.
+   constructor. red; simpl; auto.
 Qed.
 
-Lemma empty_union s s' : Vars.Empty (Vars.union s s') <->
- Vars.Empty s /\ Vars.Empty s'.
+Lemma thm_notexnot A : Wf th (∀A) ->
+  IsTheorem Classic th (~∃~A) <-> IsTheorem Classic th (∀A).
 Proof.
- split. split; varsdec. varsdec.
+ intros WF.
+ split; intros (_ & axs & F & P).
+ - split; auto. exists axs; split; auto. now apply pr_notexnot.
+ - split; auto. exists axs; split; auto. now apply pr_notexnot.
 Qed.
 
-Lemma term_closure_fclosed t (genv:variable->M) :
-  FClosed (term_closure genv t).
+Lemma Wf_bsubst f t :
+ Wf th (∀f) -> Wf_term th t -> Wf th (bsubst 0 t f).
 Proof.
- revert t.
- fix IH 1. destruct t as [ | | f l]; cbn; auto.
- - destruct (genv v) as (t,Ht); cbn; auto. apply Ht.
- - unfold FClosed in *. cbn.
-   revert l. fix IH' 1. destruct l as [|t l]; cbn; auto.
-   unfold term_closure in *.
-   apply empty_union; auto.
-Qed.
-
-Lemma closure_check f genv :
- check th (closure genv f) = check th f.
-Proof.
- induction f; cbn; auto.
- - rewrite map_length.
-   destruct predsymbs; [|easy].
-   case eqb; [|easy].
-   revert l.
-   induction l as [|t l]; cbn; auto. f_equal; auto.
-   change (check th (term_closure genv t) = check th t). (* TODO *)
-   apply term_closure_check.
- - unfold closure in *. now rewrite IHf1, IHf2.
-Qed.
-
-Lemma closure_level f (genv:variable->M) :
-  level (closure genv f) = level f.
-Proof.
- induction f; cbn; auto.
- revert l. induction l as [|t l IH]; cbn; auto.
- f_equal; auto.
- apply (term_closure_level t genv). (* TODO *)
-Qed.
-
-Lemma closure_fclosed f (genv:variable->M) :
-  FClosed (closure genv f).
-Proof.
- induction f; cbn; auto.
- - unfold FClosed in *. cbn.
-   revert l. induction l as [|t l IH]; cbn; auto.
-   apply empty_union; split; auto.
-   apply (term_closure_fclosed t genv).
- - unfold FClosed in *. cbn.
-   apply empty_union; split; auto.
-Qed.
-
-Lemma term_closure_wf t genv :
-  check th t = true -> BClosed t ->
-  Wf_term th (term_closure genv t).
-Proof.
+ intros (CKf & BCf & FCf) (CKt & BCt & FCt).
  repeat split.
- - now rewrite term_closure_check.
- - red. now rewrite term_closure_level.
- - apply term_closure_fclosed.
+ - apply check_bsubst; auto.
+ - apply Nat.le_0_r.
+   apply level_bsubst; red in BCf; red in BCt; cbn in *; omega.
+ - unfold FClosed in *. rewrite bsubst_fvars. varsdec.
 Qed.
 
-Lemma closure_wf f genv :
-  check th f = true -> BClosed f ->
-  Wf th (closure genv f).
+Lemma thm_all_e logic A t : Wf_term th t ->
+ IsTheorem logic th (∀A) -> IsTheorem logic th (bsubst 0 t A).
 Proof.
- repeat split.
- - now rewrite closure_check.
- - red. now rewrite closure_level.
- - apply closure_fclosed.
+ intros WFt (WFA & axs & F & P).
+ split. apply Wf_bsubst; auto.
+ exists axs. split; auto.
+ apply R_All_e; auto. apply WFt.
 Qed.
+
+Lemma thm_ex_i logic A t : Wf th (∃A) -> Wf_term th t ->
+ IsTheorem logic th (bsubst 0 t A) ->
+ IsTheorem logic th (∃A).
+Proof.
+ intros WFA WFt (_ & axs & F & P).
+ split; auto.
+ exists axs. split; auto.
+ apply R_Ex_i with t; auto. apply WFt.
+Qed.
+
 
 Fixpoint height f :=
   match f with
@@ -508,6 +655,13 @@ Fixpoint height f :=
   | Op _ f1 f2 => S (Nat.max (height f1) (height f2))
   | Quant _ f => S (height f)
   end.
+
+Lemma height_bsubst n t f :
+ height (bsubst n t f) = height f.
+Proof.
+ revert n.
+ induction f; cbn; f_equal; auto.
+Qed.
 
 Lemma height_ind (P : formula -> Prop) :
  (forall h, (forall f, height f < h -> P f) ->
@@ -521,7 +675,7 @@ Proof.
  induction h as [|h IHh]; [inversion 1|eauto].
 Qed.
 
-Lemma light_interp_carac f : check th f = true -> BClosed f ->
+Lemma interp_carac f : check th f = true -> BClosed f ->
  forall genv,
    interp_form mo genv [] f <->
      IsTheorem Classic th (closure genv f).
@@ -532,7 +686,7 @@ Proof.
    now exists [].
  - clear IH Hf. cbn.
    unfold IsTheorem. intuition.
-   + apply consistent; split; auto.
+   apply consistent; split; auto.
  - clear IH Hf.
    rewrite interp_pred; auto. simpl.
    unfold vmap, vmap_list.
@@ -559,68 +713,186 @@ Proof.
    + intros H.
      destruct (complete (closure genv (∃~f))); [apply closure_wf; auto| | ].
      * destruct (witsat (closure genv (~f)) H0) as (c & Hc & Thm).
-       assert (bsubst 0 (Cst c) (closure genv (~ f)) =
-               closure genv (bsubst 0 (Cst c) (~f)%form)).
-       { admit. }
-       rewrite H1 in Thm.
-       rewrite <- IH in Thm. (* TODO: height bsubst, check bsubst, BClosed bsubst *)
-       rewrite <- interp_form_bsubst0 in Thm; auto.
-       change (~interp_form mo genv [interp_term mo genv [] (Cst c)] f) in Thm.
-       destruct Thm. apply H.
-       cbn. red in BC; cbn in BC. omega.
-Admitted.
+       rewrite <- closure_bsubst in Thm by auto.
+       change (closure _ _) with (~closure genv (bsubst 0 (Cst c) f))%form in Thm.
+       assert (check th (bsubst 0 (Cst c) f) = true).
+       { apply check_bsubst; cbn; auto. now rewrite Hc, eqb_refl. }
+       assert (BClosed (bsubst 0 (Cst c) f)).
+       { apply Nat.le_0_r, level_bsubst; auto.
+         cbn. red in BC; cbn in BC. omega. }
+       rewrite complete' in Thm by (apply closure_wf; auto).
+       rewrite <- IH in Thm; auto.
+       { rewrite <- interp_form_bsubst0 in Thm; auto.
+         destruct Thm. apply H.
+         cbn. red in BC; cbn in BC. omega. }
+       { rewrite height_bsubst. cbn. cbn in Hf. omega. }
+     * apply thm_notexnot; auto.
+       apply (closure_wf (∀ f) genv); auto.
+   + intros Thm (t,Ht).
+     rewrite interp_form_bsubst0 with (u:=t).
+     2:{ red in BC. cbn in BC. omega. }
+     2:{ apply Wf_term_alt in Ht. apply Ht. }
+     2:{ destruct (proj2 (Wf_term_alt _ _) Ht) as (CKt & BCt & FCt).
+         rewrite (interp_term_carac' t genv CKt BCt).
+         apply proof_irr. cbn. apply term_vmap_id. intros v.
+         red in FCt. intuition. }
+     apply Wf_term_alt in Ht.
+     rewrite IH.
+     { rewrite closure_bsubst by apply Ht.
+       apply thm_all_e; auto. }
+     { rewrite height_bsubst. cbn in Hf. omega. }
+     { rewrite check_bsubst; auto. apply Ht. }
+     { apply Nat.le_0_r. apply level_bsubst. red in BC.
+       cbn in BC. omega. apply Nat.le_0_r, Ht. }
+   + intros ((t,Ht),Int).
+     rewrite interp_form_bsubst0 with (u:=t) in Int.
+     2:{ red in BC. cbn in BC. omega. }
+     2:{ clear Int.
+         apply Wf_term_alt in Ht. apply Ht. }
+     2:{ clear Int.
+         destruct (proj2 (Wf_term_alt _ _) Ht) as (CKt & BCt & FCt).
+         rewrite (interp_term_carac' t genv CKt BCt).
+         apply proof_irr. cbn. apply term_vmap_id. intros v.
+         red in FCt. intuition. }
+     apply Wf_term_alt in Ht.
+     rewrite IH in Int.
+     { rewrite closure_bsubst in Int by apply Ht.
+       apply thm_ex_i with t; auto.
+       apply (closure_wf (∃f) genv); auto. }
+     { rewrite height_bsubst. cbn in Hf. omega. }
+     { rewrite check_bsubst; auto. apply Ht. }
+     { apply Nat.le_0_r. apply level_bsubst. red in BC.
+       cbn in BC. omega. apply Nat.le_0_r, Ht. }
+   + intros Thm.
+     destruct (witsat (closure genv f) Thm) as (c & Hc & Thm').
+     rewrite <- closure_bsubst in Thm' by auto.
+     rewrite <- IH in Thm'.
+     2:{ rewrite height_bsubst. cbn in Hf. omega. }
+     2:{ rewrite check_bsubst; auto. cbn. now rewrite Hc, eqb_refl. }
+     2:{ apply Nat.le_0_r. apply level_bsubst. red in BC.
+         cbn in BC. omega. auto. }
+     exists (exist _ (Cst c) (Cst_wf' th c Hc)).
+     rewrite interp_form_bsubst0; eauto.
+     { red in BC. cbn in BC. omega. }
+     { apply proof_irr. rewrite interp_term_carac; auto.
+       cbn. now rewrite Hc, eqb_refl. }
+Qed.
 
-(* Overkill ?
-
-Lemma interp_carac f : check th f = true -> BClosed f ->
- forall genv,
-   (interp_form mo genv [] f <->
-     IsTheorem Classic th (closure genv f)) /\
-   (interp_form mo genv [] (~f) <->
-     IsTheorem Classic th (~(closure genv f))).
+Lemma interp_carac_closed f genv : Wf th f ->
+ interp_form mo genv [] f <-> IsTheorem Classic th f.
 Proof.
- induction f; intros CK BC genv.
- - cbn.
-   unfold IsTheorem. intuition.
-   + now exists [].
-   + destruct H3 as (axs & F & PR).
-     apply consistent. split. apply False_wf.
-     exists axs. split; auto.
-     apply R_Not_e with True; auto.
- - cbn.
-   unfold IsTheorem. intuition.
-   + apply consistent; split; auto.
-   + exists []. split; auto.
-     apply R_Not_i. apply R_Ax; simpl; auto.
- - change (interp_form mo genv [] (~ Pred p l))
-   with (~interp_form mo genv [] (Pred p l)).
-   rewrite interp_pred; auto. simpl.
-   unfold vmap, vmap_list.
-   assert (forall t, In t l ->
-            proj1_sig (interp_term mo genv [] t) =
-            term_vmap (fun v : variable => proj1_sig (genv v)) t).
-   { intros t Ht. apply interp_term_carac.
-     cbn in CK.
-     destruct predsymbs; [|easy]. destruct eqb; [|easy].
-     rewrite forallb_forall in CK; auto.
-     red in BC. cbn in BC. rewrite list_max_map_0 in BC; auto. }
-   apply map_ext_iff in H. rewrite H.
-   split. reflexivity. clear H.
-   symmetry. apply complete'.
-   change (Wf th (Pred p (map (term_closure genv) l))).
-   apply Pred_wf'; auto.
- - destruct (IHf CK BC genv) as (IH,IH').
-   split. apply IH'. simpl. rewrite IH.
-
-   cbn in CK.
-   destruct (predsymbs th p) as [n|] eqn:E; [|easy].
-   rewrite lazy_andb_iff in CK. destruct CK as (CK,CKl).
-   unfold mk_preds; rewrite E.
-*)
+ intros WF.
+ replace f with (closure genv f) at 2.
+ apply interp_carac; apply WF.
+ apply form_vmap_id. intros v. destruct WF as (_ & _ & FC).
+ red in FC. intuition.
+Qed.
 
 Lemma axioms_ok A :
   IsAxiom th A ->
-  forall genv, interp_form mo genv [] A .
-Admitted.
+  forall genv, interp_form mo genv [] A.
+Proof.
+ intros HA genv. apply interp_carac_closed.
+ apply WfAxiom; auto.
+ apply ax_thm; auto.
+Qed.
+
+Definition SyntacticModel : Model M th :=
+ {| pre := mo;
+    AxOk := axioms_ok |}.
 
 End SyntacticModel.
+
+Lemma premodel_restrict sign sign' M :
+ SignExtend sign sign' ->
+ PreModel M sign' -> PreModel M sign.
+Proof.
+ intros SE mo.
+ set (fs := fun f => match sign.(funsymbs) f with
+                     | None => None
+                     | _ => mo.(funs) f
+                     end).
+ set (ps := fun f => match sign.(predsymbs) f with
+                     | None => None
+                     | _ => mo.(preds) f
+                     end).
+ apply Build_PreModel with fs ps.
+ - exact mo.(someone).
+ - intros f. unfold fs.
+   generalize (mo.(funsOk) f).
+   destruct SE as (SE,_). unfold optfun_finer,opt_finer in SE.
+   destruct (SE f) as [-> | ->]; auto.
+   destruct (funsymbs sign' f); auto.
+ - intros p. unfold ps.
+   generalize (mo.(predsOk) p).
+   destruct SE as (_,SE). unfold optfun_finer,opt_finer in SE.
+   destruct (SE p) as [-> | ->]; auto.
+   destruct (predsymbs sign' p); auto.
+Defined.
+
+Lemma model_restrict logic th th' M :
+ Extend logic th th' -> Model M th' -> Model M th.
+Proof.
+ intros (SE,EX) (mo,AxOk).
+ apply Build_Model with (premodel_restrict th th' M SE mo).
+ intros A HA genv.
+Admitted.
+
+Lemma consistent_has_model (th:theory) (nc : NewCsts th) :
+ MyExcludedMiddle Classic ->
+ Consistent Classic th ->
+ { M & Model M th }.
+Proof.
+ intros EM C.
+ set (th' := supercomplete Classic th nc).
+ exists (closed_term th').
+ apply (model_restrict Classic th th').
+ apply supercomplete_extend.
+ apply SyntacticModel with (oneconst := nc 0).
+ - apply supercomplete_consistent; auto.
+ - apply supercomplete_complete; auto.
+ - apply supercomplete_saturated; auto.
+ - unfold th'. cbn.
+   replace (test th nc (nc 0)) with true; auto.
+   symmetry. apply test_ok. now exists 0.
+Qed.
+
+Lemma completeness_theorem (th:theory) (nc : NewCsts th) :
+ (forall A, A\/~A) ->
+ forall T,
+   Wf th T ->
+   (forall M (mo : Model M th) genv, interp_form mo genv [] T)
+   -> IsTheorem Classic th T.
+Proof.
+ intros EM T WF HT.
+ destruct (EM (IsTheorem Classic th False))
+   as [(_ & axs & F & P)|C].
+ - split; auto. exists axs; auto.
+ - change (Consistent Classic th) in C.
+   destruct (EM (IsTheorem Classic th T)) as [Thm|NT]; auto.
+   exfalso.
+   assert (WF' : forall A, A = (~T)%form \/ IsAxiom th A -> Wf th A).
+   { intros A [->|HA]; auto using WfAxiom. }
+   set (th' := {| sign := th;
+                 IsAxiom := fun f => f = (~T)%form \/ IsAxiom th f;
+                 WfAxiom := WF' |}).
+   assert (nc' : NewCsts th').
+   { apply (Build_NewCsts th')
+      with (csts:=csts _ nc) (test:=test _ nc).
+     - apply csts_inj.
+     - intros. cbn. apply csts_ok.
+     - apply test_ok. }
+   assert (Consistent Classic th').
+   { intros (_ & axs & F & P).
+     (* soit ~T dans axs et donc on prouve T contradiction
+        soit pas et on infirme la consistence de th *)
+     admit. }
+   destruct (consistent_has_model th' nc') as (M,mo); auto.
+   + red; intros. apply EM.
+   + (* model interprete T as 0 (car ~T axiome de th' *)
+     apply (model_restrict Classic th) in mo.
+Admitted.
+
+
+
+

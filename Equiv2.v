@@ -1,7 +1,8 @@
 
 (** Conversion from Named derivations to Locally Nameless derivations *)
 
-Require Import RelationClasses Arith Omega Defs Proofs Equiv Alpha Alpha2 Meta.
+Require Import RelationClasses Arith Omega.
+Require Import Defs NameProofs Equiv Alpha Alpha2 Meta.
 Require Nam Mix.
 Import ListNotations.
 Import Nam Nam.Form.
@@ -26,11 +27,11 @@ Proof.
 Qed.
 
 Lemma nam2mix_ctx_fvars (c : Nam.context) :
- Vars.Equal (Mix.fvars (nam2mix_ctx c)) (Ctx.freevars c).
+ Names.Equal (Mix.fvars (nam2mix_ctx c)) (Ctx.freevars c).
 Proof.
  induction c as [|f c IH]; cbn; auto.
- - varsdec.
- - rewrite nam2mix_fvars, IH. simpl. varsdec.
+ - namedec.
+ - rewrite nam2mix_fvars, IH. simpl. namedec.
 Qed.
 
 (** Sequents *)
@@ -145,20 +146,20 @@ Proof.
    apply eq_true_iff_eq.
    rewrite !andb_true_iff.
    rewrite !negb_true_iff, <- !not_true_iff_false.
-   rewrite !Vars.mem_spec.
+   rewrite !Names.mem_spec.
    rewrite !eqb_eq.
    split; intros ((U,V),W); split; try split; auto.
    + change (Mix.FVar x) with (nam2mix_term [] (Var x)) in V.
      rewrite <- nam2mix_altsubst_bsubst0 in V.
      apply nam2mix_rename_iff3; auto.
-     rewrite nam2mix_fvars in W. simpl in W. varsdec.
-   + rewrite <- nam2mix_ctx_fvars. rewrite <- U. varsdec.
+     rewrite nam2mix_fvars in W. simpl in W. namedec.
+   + rewrite <- nam2mix_ctx_fvars. rewrite <- U. namedec.
    + rewrite V.
      change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
      rewrite <- nam2mix_altsubst_bsubst0.
      symmetry. apply nam2mix_altsubst_nop.
    + rewrite U, V, nam2mix_ctx_fvars.
-     rewrite nam2mix_fvars. simpl. varsdec.
+     rewrite nam2mix_fvars. simpl. namedec.
  - rewrite nam2mix_subst_alt, nam2mix_altsubst_bsubst0.
    rewrite nam2mix_term_bclosed, eqb_refl.
    apply andb_true_r.
@@ -169,7 +170,7 @@ Proof.
    apply eq_true_iff_eq.
    rewrite !andb_true_iff.
    rewrite !negb_true_iff, <- !not_true_iff_false.
-   rewrite !Vars.mem_spec.
+   rewrite !Names.mem_spec.
    rewrite !eqb_eq.
    split.
    + intros (((U,V),W),X); repeat split; auto.
@@ -177,10 +178,10 @@ Proof.
      * change (Mix.FVar x) with (nam2mix_term [] (Var x)) in W.
        rewrite <- nam2mix_altsubst_bsubst0 in W.
        apply nam2mix_rename_iff3; auto.
-       rewrite nam2mix_fvars in X. simpl in X. varsdec.
+       rewrite nam2mix_fvars in X. simpl in X. namedec.
      * revert X. destruct s. cbn in *. injection U as <- <-.
        rewrite <-!nam2mix_ctx_fvars, !nam2mix_fvars. simpl.
-       clear. varsdec.
+       clear. namedec.
    + intros ((U,(V,W)),Z); repeat split; auto.
      * rewrite U. f_equal; auto.
      * rewrite W.
@@ -190,7 +191,7 @@ Proof.
      * revert Z. destruct s. cbn in *.
        rewrite V, W. injection U as <- <-.
        rewrite <-!nam2mix_ctx_fvars, !nam2mix_fvars.
-       simpl. clear. varsdec.
+       simpl. clear. namedec.
 Qed.
 
 Lemma nam2mix_valid_deriv logic (d:Nam.derivation) :

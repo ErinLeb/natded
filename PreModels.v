@@ -1,4 +1,4 @@
-Require Import Defs Mix Proofs Meta Omega Setoid Morphisms.
+Require Import Defs Mix NameProofs Meta Omega Setoid Morphisms.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
@@ -103,7 +103,7 @@ Definition interp_seq genv lenv '(Γ⊢C) :=
   interp_form genv lenv C.
 
 Lemma interp_term_ext genv genv' lenv t :
- (forall v, Vars.In v (fvars t) -> genv v = genv' v) ->
+ (forall v, Names.In v (fvars t) -> genv v = genv' v) ->
  interp_term genv lenv t = interp_term genv' lenv t.
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn;
@@ -113,7 +113,7 @@ Proof.
 Qed.
 
 Lemma interp_form_ext genv genv' lenv f :
- (forall v, Vars.In v (fvars f) -> genv v = genv' v) ->
+ (forall v, Names.In v (fvars f) -> genv v = genv' v) ->
  interp_form genv lenv f <-> interp_form genv' lenv f.
 Proof.
  revert lenv.
@@ -131,7 +131,7 @@ Proof.
 Qed.
 
 Lemma interp_ctx_ext genv genv' lenv c :
- (forall v, Vars.In v (fvars c) -> genv v = genv' v) ->
+ (forall v, Names.In v (fvars c) -> genv v = genv' v) ->
  interp_ctx genv lenv c <-> interp_ctx genv' lenv c.
 Proof.
  intros E.
@@ -139,10 +139,10 @@ Proof.
  split; intros H f Hf.
  rewrite <- (interp_form_ext genv); auto with set.
  intros v Hv. apply E. unfold fvars, fvars_list.
- rewrite vars_unionmap_in. exists f. now split.
+ rewrite unionmap_in. exists f. now split.
  rewrite (interp_form_ext genv); auto with set.
  intros v Hv. apply E. unfold fvars, fvars_list.
- rewrite vars_unionmap_in. exists f. now split.
+ rewrite unionmap_in. exists f. now split.
 Qed.
 
 Lemma interp_term_more_lenv genv lenv lenv' t :
@@ -222,11 +222,11 @@ Proof.
  intros. apply (@interp_form_bsubst genv [] u m 0 f); auto.
 Qed.
 
-Ltac prove_ext := intros ? ?; cbn; case eqbspec; auto; varsdec.
+Ltac prove_ext := intros ? ?; cbn; case eqbspec; auto; namedec.
 
 Lemma interp_form_bsubst_adhoc genv m x f :
  level f <= 1 ->
- ~Vars.In x (fvars f) ->
+ ~Names.In x (fvars f) ->
  interp_form genv [m] f <->
  interp_form (fun v => if v =? x then m else genv v) []
   (bsubst 0 (FVar x) f).
@@ -298,7 +298,7 @@ Proof.
  - exists (interp_term genv [] t).
    rewrite interp_form_bsubst0 with (u:=t); auto with *.
  - destruct (IHValid1 genv) as (m & Hm); auto.
-   rewrite interp_form_bsubst_adhoc with (x:=x) in Hm; [ | | varsdec].
+   rewrite interp_form_bsubst_adhoc with (x:=x) in Hm; [ | | namedec].
    erewrite interp_form_ext.
    eapply IHValid2; eauto.
    apply interp_ctx_cons. apply Hm.

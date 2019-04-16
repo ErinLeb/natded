@@ -1,7 +1,7 @@
 
 (** Alternative definitions of substs and alpha for named formulas *)
 
-Require Import RelationClasses Arith Omega Defs Proofs Nam.
+Require Import RelationClasses Arith Omega Defs NameProofs Nam.
 Import ListNotations.
 Import Nam.Form.
 Import Nam.Form.Alt.
@@ -47,7 +47,7 @@ Lemma hsubst_indep v t f h h' :
 Proof.
  revert h' v t f.
  induction h; [inversion 1|]; destruct h';[inversion 2|].
- destruct f; cbn -[fresh_var]; intros; simpl_height; f_equal; auto.
+ destruct f; cbn -[fresh]; intros; simpl_height; f_equal; auto.
  case eqbspec; intros; auto.
  destruct negb eqn:E; f_equal; auto.
  rewrite (IHh h' v0) by auto.
@@ -73,10 +73,10 @@ Lemma subst_eqn x t f :
     if x =? v then f
     else
       let out_vars := Term.vars t in
-      if negb (Vars.mem v out_vars) then
+      if negb (Names.mem v out_vars) then
         Quant q v (subst x t f')
       else
-        let z := fresh_var (vars_unions [allvars f; out_vars; Vars.singleton x])
+        let z := fresh (Names.unions [allvars f; out_vars; Names.singleton x])
       in
         Quant q z (subst x t (subst v z f'))
  end.
@@ -117,7 +117,7 @@ Fixpoint IsSimple v t f :=
   | True | False | Pred _ _ => Logic.True
   | Not f => IsSimple v t f
   | Op _ f f' => IsSimple v t f /\ IsSimple v t f'
-  | Quant _ x f => v = x \/ (~Vars.In x (Term.vars t)
+  | Quant _ x f => v = x \/ (~Names.In x (Term.vars t)
                              /\ IsSimple v t f)
   end.
 
@@ -137,7 +137,7 @@ Inductive SimpleSubst (v:variable)(t:term)
     SimpleSubst v t f2 f2' ->
     SimpleSubst v t (Op o f1 f2) (Op o f1' f2')
 | SubQu1 q f : SimpleSubst v t (Quant q v f) (Quant q v f)
-| SubQu2 q f f' x : x<>v -> ~Vars.In x (Term.vars t) ->
+| SubQu2 q f f' x : x<>v -> ~Names.In x (Term.vars t) ->
     SimpleSubst v t f f' ->
     SimpleSubst v t (Quant q x f) (Quant q x f').
 
@@ -158,14 +158,14 @@ Proof.
  revert f.
  induction h.
  - inversion 1.
- - destruct f; cbn -[fresh_var];
+ - destruct f; cbn -[fresh];
    intros Hf IS; simpl_height; auto.
    + intuition.
    + case eqbspec.
      * intros ->; auto.
      * intros NE.
        destruct IS as [->|(NI,SI)]; [easy|].
-       rewrite vars_mem_false; cbn; auto.
+       rewrite mem_false; cbn; auto.
 Qed.
 
 Lemma SimpleSubst_subst x t f :
@@ -189,7 +189,7 @@ Proof.
  - intuition.
  - case eqbspec; cbn; intros Hxv IS; subst; auto.
    destruct IS as [->|(NI,IS)]; [easy|].
-   rewrite vars_mem_false; auto.
+   rewrite mem_false; auto.
 Qed.
 
 Lemma partialsubst_subst x t f :
@@ -226,22 +226,22 @@ Qed.
 (** A sufficient condition for simplicity: *)
 
 Lemma noninter_IsSimple x t f :
-  Vars.Empty (Vars.inter (allvars f) (Term.vars t)) -> IsSimple x t f.
+  Names.Empty (Names.inter (allvars f) (Term.vars t)) -> IsSimple x t f.
 Proof.
  induction f; cbn in *; auto.
- intros E; split; (apply IHf1 || apply IHf2); varsdec.
+ intros E; split; (apply IHf1 || apply IHf2); namedec.
  intros E.
  case (eqbspec v x).
  - now left.
- - intros NE. right; split; try apply IHf; varsdec.
+ - intros NE. right; split; try apply IHf; namedec.
 Qed.
 
 (** Same, when t is a variable *)
 
 Lemma notin_IsSimple (x z:variable) f :
-  ~Vars.In z (allvars f) -> IsSimple x z f.
+  ~Names.In z (allvars f) -> IsSimple x z f.
 Proof.
- intros. apply noninter_IsSimple. cbn. varsdec.
+ intros. apply noninter_IsSimple. cbn. namedec.
 Qed.
 
 Hint Resolve notin_IsSimple.
@@ -249,183 +249,183 @@ Hint Resolve notin_IsSimple.
 (** No-op substitutions *)
 
 Lemma term_subst_notin x u t :
- ~Vars.In x (Term.vars t) ->
+ ~Names.In x (Term.vars t) ->
  Term.subst x u t = t.
 Proof.
  induction t as [v|f a IH] using term_ind'; cbn.
- - case eqbspec; auto. varsdec.
+ - case eqbspec; auto. namedec.
  - intros NI. f_equal. apply map_id_iff.
-   intros t Ht. apply IH; auto. rewrite vars_unionmap_in in NI.
+   intros t Ht. apply IH; auto. rewrite unionmap_in in NI.
    contradict NI. now exists t.
 Qed.
 
 Lemma partialsubst_notin x t f :
- ~Vars.In x (freevars f) ->
+ ~Names.In x (freevars f) ->
  partialsubst x t f = f.
 Proof.
  induction f; cbn; intros NI; f_equal; auto with set.
  - apply map_id_iff. intros a Ha. apply term_subst_notin.
-   rewrite vars_unionmap_in in NI. contradict NI. now exists a.
+   rewrite unionmap_in in NI. contradict NI. now exists a.
  - case eqbspec; cbn; auto.
-   intros NE. case Vars.mem; f_equal; auto with set.
+   intros NE. case Names.mem; f_equal; auto with set.
 Qed.
 
 (** Free variables and substitutions *)
 
-Lemma freevars_allvars f : Vars.Subset (freevars f) (allvars f).
+Lemma freevars_allvars f : Names.Subset (freevars f) (allvars f).
 Proof.
  induction f; cbn; auto with set.
 Qed.
 
 Lemma term_vars_subst x u t :
- Vars.Subset (Term.vars (Term.subst x u t))
-             (Vars.union (Vars.remove x (Term.vars t)) (Term.vars u)).
+ Names.Subset (Term.vars (Term.subst x u t))
+              (Names.union (Names.remove x (Term.vars t)) (Term.vars u)).
 Proof.
  induction t using term_ind'; cbn.
  - case eqbspec; cbn; auto with set.
- - intros v. rewrite vars_unionmap_in.
+ - intros v. rewrite unionmap_in.
    intros (a & IN & IN'). rewrite in_map_iff in IN'.
    destruct IN' as (b & <- & IN').
    apply H in IN; trivial.
    revert IN.
-   VarsF.set_iff. rewrite vars_unionmap_in in *.
+   nameiff. rewrite unionmap_in in *.
    intros [(U,V)|W].
    + left. split; auto. now exists b.
    + now right.
 Qed.
 
 Lemma term_vars_subst_in x u t :
- Vars.In x (Term.vars t) ->
- Vars.Equal (Term.vars (Term.subst x u t))
-            (Vars.union (Vars.remove x (Term.vars t)) (Term.vars u)).
+ Names.In x (Term.vars t) ->
+ Names.Equal (Term.vars (Term.subst x u t))
+             (Names.union (Names.remove x (Term.vars t)) (Term.vars u)).
 Proof.
  revert t.
  fix IH 1; destruct t; cbn.
  - case eqbspec; cbn; auto with set.
  - revert l.
    fix IH' 1; destruct l; cbn.
-   + varsdec.
-   + destruct (VarsP.In_dec x (Term.vars t)) as [E|E];
-     destruct (VarsP.In_dec x (vars_unionmap Term.vars l)) as [E'|E'].
+   + namedec.
+   + destruct (NamesP.In_dec x (Term.vars t)) as [E|E];
+     destruct (NamesP.In_dec x (Names.unionmap Term.vars l)) as [E'|E'].
      * intros _.
        fold (Term.subst x u t). rewrite (IH t E).
-       rewrite (IH' l E'). varsdec.
+       rewrite (IH' l E'). namedec.
      * intros _.
        assert (E'' : map (Term.substs [(x, u)]) l = l).
        { apply map_id_iff. intros a Ha.
          apply term_subst_notin. contradict E'.
-         rewrite vars_unionmap_in. now exists a. }
-       change Vars.elt with variable in *.
+         rewrite unionmap_in. now exists a. }
+       change Names.elt with variable in *.
        rewrite E''.
        fold (Term.subst x u t). rewrite (IH t E).
-       varsdec.
+       namedec.
      * intros _.
        fold (Term.subst x u t).
        rewrite (term_subst_notin x u t) by trivial.
-       rewrite (IH' l E'). varsdec.
-     * VarsF.set_iff. tauto.
+       rewrite (IH' l E'). namedec.
+     * nameiff. tauto.
 Qed.
 
 Lemma term_vars_subst_in' x u t :
- Vars.In x (Term.vars t) ->
- Vars.Subset (Term.vars u) (Term.vars (Term.subst x u t)).
+ Names.In x (Term.vars t) ->
+ Names.Subset (Term.vars u) (Term.vars (Term.subst x u t)).
 Proof.
  induction t using term_ind'; cbn.
  - case eqbspec; cbn; auto with set.
- - intros IN v Hv. rewrite vars_unionmap_in in *.
+ - intros IN v Hv. rewrite unionmap_in in *.
    destruct IN as (a & Ha & IN).
    exists (Term.subst x u a); split; auto using in_map.
    now apply (H a IN Ha).
 Qed.
 
 Lemma allvars_partialsubst x t f :
- Vars.Subset (allvars (partialsubst x t f))
-             (Vars.union (allvars f) (Term.vars t)).
+ Names.Subset (allvars (partialsubst x t f))
+              (Names.union (allvars f) (Term.vars t)).
 Proof.
- induction f; cbn; try varsdec.
- - generalize (term_vars_subst x t (Fun "" l)). cbn. varsdec.
- - destruct orb; cbn; varsdec.
+ induction f; cbn; try namedec.
+ - generalize (term_vars_subst x t (Fun "" l)). cbn. namedec.
+ - destruct orb; cbn; namedec.
 Qed.
 
 Lemma allvars_partialsubst_2 x t f :
  IsSimple x t f ->
- Vars.In x (freevars f) ->
- Vars.Subset (Term.vars t) (allvars (partialsubst x t f)).
+ Names.In x (freevars f) ->
+ Names.Subset (Term.vars t) (allvars (partialsubst x t f)).
 Proof.
- induction f; cbn; intros IS; try varsdec.
+ induction f; cbn; intros IS; try namedec.
  - apply (term_vars_subst_in' x t (Fun "" l)).
  - auto.
- - VarsF.set_iff. destruct IS as (IS1,IS2).
+ - nameiff. destruct IS as (IS1,IS2).
    intros [IN|IN].
-   rewrite (IHf1 IS1 IN). varsdec.
-   rewrite (IHf2 IS2 IN). varsdec.
- - case eqbspec; cbn. varsdec.
-   VarsF.set_iff. intros NE (IN,_).
+   rewrite (IHf1 IS1 IN). namedec.
+   rewrite (IHf2 IS2 IN). namedec.
+ - case eqbspec; cbn. namedec.
+   nameiff. intros NE (IN,_).
    destruct IS as [->|(NI,IS)]; [easy|].
    specialize (IHf IS IN).
-   rewrite vars_mem_false by trivial. cbn. varsdec.
+   rewrite mem_false by trivial. cbn. namedec.
 Qed.
 
 Lemma freevars_partialsubst_in x t f :
  IsSimple x t f ->
- Vars.In x (freevars f) ->
- Vars.Equal (freevars (partialsubst x t f))
-            (Vars.union (Vars.remove x (freevars f)) (Term.vars t)).
+ Names.In x (freevars f) ->
+ Names.Equal (freevars (partialsubst x t f))
+             (Names.union (Names.remove x (freevars f)) (Term.vars t)).
 Proof.
  induction f; cbn; intros IS IN.
- - varsdec.
- - varsdec.
+ - namedec.
+ - namedec.
  - apply (term_vars_subst_in x t (Fun "" l)); auto.
  - auto.
  - destruct IS as (IS1,IS2).
-   rewrite Vars.union_spec in IN.
-   destruct (VarsP.In_dec x (freevars f1)) as [IN1|IN1];
-    destruct (VarsP.In_dec x (freevars f2)) as [IN2|IN2];
+   rewrite Names.union_spec in IN.
+   destruct (NamesP.In_dec x (freevars f1)) as [IN1|IN1];
+    destruct (NamesP.In_dec x (freevars f2)) as [IN2|IN2];
     try rewrite (IHf1 IS1 IN1); try rewrite (IHf2 IS2 IN2);
     try rewrite (partialsubst_notin x t f2) by trivial;
     try rewrite (partialsubst_notin x t f1) by trivial;
-    varsdec.
- - case eqbspec; cbn. varsdec.
+    namedec.
+ - case eqbspec; cbn. namedec.
    intros. destruct IS as [->|(NI,IS)]; [easy|].
-   rewrite vars_mem_false by trivial.
-   rewrite (IHf IS); varsdec.
+   rewrite mem_false by trivial.
+   rewrite (IHf IS); namedec.
 Qed.
 
 
 Lemma freevars_partialsubst_subset x t f :
  IsSimple x t f ->
- Vars.Subset (freevars (partialsubst x t f))
-             (Vars.union (Vars.remove x (freevars f)) (Term.vars t)).
+ Names.Subset (freevars (partialsubst x t f))
+              (Names.union (Names.remove x (freevars f)) (Term.vars t)).
 Proof.
  induction f; cbn; intros IS.
- - varsdec.
- - varsdec.
+ - namedec.
+ - namedec.
  - apply (term_vars_subst x t (Fun "" l)).
  - auto.
  - destruct IS as (IS1,IS2).
-   specialize (IHf1 IS1). specialize (IHf2 IS2). varsdec.
- - case eqbspec; cbn. varsdec.
+   specialize (IHf1 IS1). specialize (IHf2 IS2). namedec.
+ - case eqbspec; cbn. namedec.
    intros. destruct IS as [->|(NI,IS)]; [easy|].
    specialize (IHf IS).
-   rewrite vars_mem_false by trivial.
-   cbn. varsdec.
+   rewrite mem_false by trivial.
+   cbn. namedec.
 Qed.
 
 Lemma freevars_partialsubst_subset2 x t f :
   IsSimple x t f ->
-  Vars.Subset (freevars f)
-              (Vars.add x (freevars (partialsubst x t f))).
+  Names.Subset (freevars f)
+               (Names.add x (freevars (partialsubst x t f))).
 Proof.
  intros NE.
- destruct (VarsP.In_dec x (freevars f)).
+ destruct (NamesP.In_dec x (freevars f)).
  - rewrite freevars_partialsubst_in; auto with set.
  - rewrite partialsubst_notin; auto with set.
 Qed.
 
 Lemma freevars_partialsubst_subset3 x t f :
   IsSimple x t f ->
-  Vars.Subset (Vars.remove x (freevars f))
-              (freevars (partialsubst x t f)).
+  Names.Subset (Names.remove x (freevars f))
+               (freevars (partialsubst x t f)).
 Proof.
  intros NE.
  rewrite (freevars_partialsubst_subset2 x t f); auto with set.
@@ -434,14 +434,14 @@ Qed.
 (** Swapping substitutions *)
 
 Lemma term_subst_subst x u y v t :
- x<>y -> ~Vars.In x (Term.vars v) ->
+ x<>y -> ~Names.In x (Term.vars v) ->
   Term.subst y v (Term.subst x u t) =
   Term.subst x (Term.subst y v u) (Term.subst y v t).
 Proof.
  intros NE NI.
  induction t using term_ind'; cbn.
  - case eqbspec; [intros ->|intros NE'].
-   + change Vars.elt with variable in *.
+   + change Names.elt with variable in *.
      rewrite <- eqb_neq in NE. rewrite NE. cbn.
      now rewrite eqb_refl.
    + case eqbspec; [intros ->|intros NE''].
@@ -455,7 +455,7 @@ Proof.
 Qed.
 
 Lemma partialsubst_partialsubst x y u v f :
- x<>y -> ~Vars.In x (Term.vars v) ->
+ x<>y -> ~Names.In x (Term.vars v) ->
  IsSimple x u f ->
  IsSimple y v f ->
  partialsubst y v (partialsubst x u f) =
@@ -473,9 +473,9 @@ Proof.
      rewrite term_subst_notin; auto.
    + destruct IS1 as [->|(NI1,IS1)]; [easy|].
      destruct IS2 as [->|(NI2,IS2)]; [easy|].
-     assert (~Vars.In v0 (Term.vars (Term.subst y v u))).
-     { rewrite term_vars_subst. varsdec. }
-     repeat (rewrite vars_mem_false by trivial).
+     assert (~Names.In v0 (Term.vars (Term.subst y v u))).
+     { rewrite term_vars_subst. namedec. }
+     repeat (rewrite mem_false by trivial).
      auto.
 Qed.
 
@@ -496,7 +496,7 @@ Inductive AlphaEq : formula -> formula -> Prop :=
   AlphaEq f1 f1' -> AlphaEq f2 f2' ->
   AlphaEq (Op o f1 f2) (Op o f1' f2')
 | AEqQu q v v' f f' (z:variable) :
-  ~Vars.In z (Vars.union (allvars f) (allvars f')) ->
+  ~Names.In z (Names.union (allvars f) (allvars f')) ->
   AlphaEq (partialsubst v z f) (partialsubst v' z f') ->
   AlphaEq (Quant q v f) (Quant q v' f').
 
@@ -504,16 +504,16 @@ End Ind.
 Import Ind.
 Hint Constructors AlphaEq.
 
-(** A weaker but faster version of varsdec *)
+(** A weaker but faster version of namedec *)
 
-Ltac varsdec0 :=
-  repeat (rewrite ?Vars.add_spec, ?Vars.union_spec,
-                  ?Vars.remove_spec, ?Vars.singleton_spec in *);
+Ltac namedec0 :=
+  repeat (rewrite ?Names.add_spec, ?Names.union_spec,
+                  ?Names.remove_spec, ?Names.singleton_spec in *);
   intuition auto.
 
 Ltac simpl_fresh vars H :=
  unfold vars in H; cbn in H;
- rewrite ?Vars.add_spec, ?Vars.union_spec in H;
+ rewrite ?Names.add_spec, ?Names.union_spec in H;
  repeat (apply Decidable.not_or in H; destruct H as (?,H));
  clear vars H.
 
@@ -534,7 +534,7 @@ Lemma AEq_refl f :
 Proof.
  induction f as [h IH f LT] using height_ind.
  destruct f; cbn in *; simpl_height; auto.
- destruct (get_fresh_var (allvars f)) as (z,Hz).
+ destruct (exist_fresh (allvars f)) as (z,Hz).
  apply AEqQu with (z:=z); auto with set.
 Qed.
 
@@ -549,65 +549,65 @@ Proof.
 Qed.
 
 Lemma AEq_freevars f f' :
-  AlphaEq f f' -> Vars.Equal (freevars f) (freevars f').
+  AlphaEq f f' -> Names.Equal (freevars f) (freevars f').
 Proof.
  induction 1; cbn; auto with set.
  revert IHAlphaEq.
- destruct (VarsP.In_dec v (freevars f)) as [E|E];
-  destruct (VarsP.In_dec v' (freevars f')) as [E'|E'];
+ destruct (NamesP.In_dec v (freevars f)) as [E|E];
+  destruct (NamesP.In_dec v' (freevars f')) as [E'|E'];
   try (rewrite (partialsubst_notin v z f E));
   try (rewrite (partialsubst_notin v' z f' E'));
   repeat (rewrite freevars_partialsubst_in by auto with set);
   cbn;
   rewrite <-!freevars_allvars in H.
- - (* varsdec should suffice but take ages ?! *)
-   intros EQ x. specialize (EQ x). varsdec.
- - intros EQ x. specialize (EQ x). varsdec.
- - intros EQ x. specialize (EQ x). varsdec.
- - varsdec.
+ - (* namedec should suffice but take ages ?! *)
+   intros EQ x. specialize (EQ x). namedec.
+ - intros EQ x. specialize (EQ x). namedec.
+ - intros EQ x. specialize (EQ x). namedec.
+ - namedec.
 Qed.
 
 Lemma term_subst_rename (x x' z z' : variable) t t':
-  ~Vars.In z (Vars.union (Term.vars t) (Term.vars t')) ->
-  ~Vars.In z' (Vars.union (Term.vars t) (Term.vars t')) ->
+  ~Names.In z (Names.union (Term.vars t) (Term.vars t')) ->
+  ~Names.In z' (Names.union (Term.vars t) (Term.vars t')) ->
   Term.subst x z t = Term.subst x' z t'  ->
   Term.subst x z' t = Term.subst x' z' t'.
 Proof.
  revert t t'.
  fix IH 1. destruct t, t'; intros Hz Hz'; cbn in *; try easy.
- - do 2 case eqbspec; intros H H'; subst; intros [=]; varsdec.
+ - do 2 case eqbspec; intros H H'; subst; intros [=]; namedec.
  - case eqbspec; intros _ [=].
  - case eqbspec; intros _ [=].
  - intros [= <- E]. f_equal. clear f.
    revert l l0 Hz Hz' E.
    fix IH' 1. destruct l, l0; intros Hz Hz'; cbn in *; try easy.
    intros [= E E']. f_equal.
-   + apply IH; auto. varsdec. varsdec.
-   + apply IH'; auto. varsdec. varsdec.
+   + apply IH; auto. namedec. namedec.
+   + apply IH'; auto. namedec. namedec.
 Qed.
 
 (** An adhoc helper lemma for the next one. *)
 
 Lemma AEq_rename_aux f f' (x x' v z z0 : variable) :
-  ~Vars.In z (Vars.union (Vars.add x (allvars f))
-                         (Vars.add v (allvars f'))) ->
-  ~Vars.In z0 (Vars.union (allvars f)
+  ~Names.In z (Names.union (Names.add x (allvars f))
+                         (Names.add v (allvars f'))) ->
+  ~Names.In z0 (Names.union (allvars f)
                           (allvars (partialsubst x' z f'))) ->
   AlphaEq (partialsubst x z0 f)
           (partialsubst v z0 (partialsubst x' z f')) ->
-  ~Vars.In x' (freevars f').
+  ~Names.In x' (freevars f').
 Proof.
  intros Hz Hz0 EQ IN.
  assert (IsSimple x z0 f) by auto with set.
  assert (IsSimple x' z f') by auto with set.
  assert (z0 <> z).
  { contradict Hz0. subst z0.
-   VarsF.set_iff. right.
+   nameiff. right.
    rewrite <- freevars_allvars.
-   rewrite freevars_partialsubst_in; auto. cbn. varsdec. }
- assert (NI : ~Vars.In z (freevars (partialsubst x z0 f))).
+   rewrite freevars_partialsubst_in; auto. cbn. namedec. }
+ assert (NI : ~Names.In z (freevars (partialsubst x z0 f))).
  { rewrite freevars_partialsubst_subset; auto. cbn.
-   rewrite freevars_allvars. varsdec. }
+   rewrite freevars_allvars. namedec. }
  apply AEq_freevars in EQ.
  rewrite EQ in NI.
  contradict NI.
@@ -618,8 +618,8 @@ Qed.
 (* The crucial lemma, utterly technical for something so obvious *)
 
 Lemma AEq_rename_any f f' (x x' z z' : variable) :
-  ~Vars.In z (Vars.union (allvars f) (allvars f')) ->
-  ~Vars.In z' (Vars.union (allvars f) (allvars f')) ->
+  ~Names.In z (Names.union (allvars f) (allvars f')) ->
+  ~Names.In z' (Names.union (allvars f) (allvars f')) ->
   AlphaEq (partialsubst x z f) (partialsubst x' z f') ->
   AlphaEq (partialsubst x z' f) (partialsubst x' z' f').
 Proof.
@@ -631,22 +631,22 @@ Proof.
    assert (E : map (Term.subst x z') l =
                 map (Term.subst x' z') l0).
    { injection (term_subst_rename x x' z z' (Fun "" l) (Fun "" l0)).
-     auto. varsdec0. varsdec0. cbn; f_equal; auto. }
+     auto. namedec0. namedec0. cbn; f_equal; auto. }
    now rewrite E.
  - inversion 1; eauto.
- - inversion 1; subst; constructor; eapply IH; eauto; varsdec0.
- - rewrite !vars_mem_false by varsdec0.
+ - inversion 1; subst; constructor; eapply IH; eauto; namedec0.
+ - rewrite !mem_false by namedec0.
    repeat (case eqbspec; cbn).
    + trivial.
    + intros NE <-. inversion_clear 1.
-     assert (~Vars.In x' (freevars f')).
+     assert (~Names.In x' (freevars f')).
      { eapply AEq_rename_aux; eauto. }
      rewrite !(partialsubst_notin x') in * by trivial.
      apply AEqQu with z0; auto.
    + intros <- NE. inversion_clear 1.
-     assert (~Vars.In x (freevars f)).
+     assert (~Names.In x (freevars f)).
      { apply AEq_sym in H1.
-       eapply AEq_rename_aux; eauto; varsdec0. }
+       eapply AEq_rename_aux; eauto; namedec0. }
      rewrite !(partialsubst_notin x) in * by trivial.
      apply AEqQu with z0; auto.
    + intros NE NE'. inversion_clear 1.
@@ -654,23 +654,23 @@ Proof.
      (* Let's pick a suitably fresh variable z1 *)
 
      set (vars :=
-            Vars.add x (Vars.add x' (Vars.add z (Vars.add z'
-             (vars_unions
+            Names.add x (Names.add x' (Names.add z (Names.add z'
+             (Names.unions
                [ allvars (partialsubst x z f);
                 allvars (partialsubst x' z f');
                 allvars f; allvars f']))))).
-     destruct (get_fresh_var vars) as (z1,Hz1).
+     destruct (exist_fresh vars) as (z1,Hz1).
      simpl_fresh vars Hz1.
 
      (* Let's use z1 instead of z0 in the main hyp *)
 
-     apply IH with (z':=z1) in H1; [ | auto | auto | varsdec0].
+     apply IH with (z':=z1) in H1; [ | auto | auto | namedec0].
      clear H0 z0.
 
      (* Let's use z1 in the conclusion. *)
 
      apply AEqQu with z1; auto.
-     rewrite !allvars_partialsubst; cbn; varsdec0.
+     rewrite !allvars_partialsubst; cbn; namedec0.
      revert H1.
 
      (* We now need to swap the substitutions to
@@ -679,11 +679,11 @@ Proof.
      rewrite !(partialsubst_partialsubst x),
              !(partialsubst_partialsubst x'); auto;
      rewrite ?term_subst_notin; cbn;
-     rewrite ?Vars.singleton_spec; auto;
-     try apply notin_IsSimple; try (varsdec0;fail).
+     rewrite ?Names.singleton_spec; auto;
+     try apply notin_IsSimple; try (namedec0;fail).
 
      apply IH; auto;
-     rewrite !allvars_partialsubst; cbn; varsdec0.
+     rewrite !allvars_partialsubst; cbn; namedec0.
 Qed.
 
 Lemma AEq_trans f1 f2 f3 :
@@ -694,11 +694,11 @@ Proof.
  destruct f1, f2, f3; cbn in *; simpl_height;
   inversion_clear 1; inversion_clear 1; eauto.
  set (vars :=
-        vars_unions [ (allvars f1); (allvars f2); (allvars f3) ]).
- destruct (get_fresh_var vars) as (z1,Hz1). simpl_fresh vars Hz1.
- apply AEq_rename_any with (z':=z1) in H1; [ |varsdec|varsdec].
- apply AEq_rename_any with (z':=z1) in H3; [ |varsdec|varsdec].
- apply AEqQu with z1; eauto. varsdec.
+        Names.unions [ (allvars f1); (allvars f2); (allvars f3) ]).
+ destruct (exist_fresh vars) as (z1,Hz1). simpl_fresh vars Hz1.
+ apply AEq_rename_any with (z':=z1) in H1; [ |namedec|namedec].
+ apply AEq_rename_any with (z':=z1) in H3; [ |namedec|namedec].
+ apply AEqQu with z1; eauto. namedec.
 Qed.
 
 Instance AEq_equiv : Equivalence AlphaEq.
@@ -727,49 +727,49 @@ Proof.
      apply AEqQu with z; auto.
    + subst v. clear IS1.
      destruct IS2 as [->|(NI,IS2)]; [easy|].
-     rewrite vars_mem_false by trivial.
-     assert (~Vars.In x (freevars f')).
+     rewrite mem_false by trivial.
+     assert (~Names.In x (freevars f')).
      { case (eqbspec x z).
-       - intros ->; rewrite freevars_allvars; varsdec.
+       - intros ->; rewrite freevars_allvars; namedec.
        - intros NE.
          apply AEq_freevars in EQ.
          rewrite (freevars_partialsubst_subset2 v' z) by auto.
          rewrite <- EQ.
          rewrite freevars_partialsubst_subset by auto.
-         cbn. clear EQ H. varsdec. }
+         cbn. clear EQ H. namedec. }
      rewrite partialsubst_notin; auto.
      apply AEqQu with z; auto.
    + subst v'. clear IS2.
      destruct IS1 as [->|(NI,IS1)]; [easy|].
-     rewrite vars_mem_false by trivial.
-     assert (~Vars.In x (freevars f)).
+     rewrite mem_false by trivial.
+     assert (~Names.In x (freevars f)).
      { case (eqbspec x z).
-       - intros ->; rewrite freevars_allvars; varsdec.
+       - intros ->; rewrite freevars_allvars; namedec.
        - intros NE.
          apply AEq_freevars in EQ.
          rewrite (freevars_partialsubst_subset2 v z) by auto.
          rewrite EQ.
          rewrite freevars_partialsubst_subset by auto.
-         cbn. clear EQ H. varsdec. }
+         cbn. clear EQ H. namedec. }
      rewrite partialsubst_notin; auto.
      apply AEqQu with z; auto.
    + destruct IS1 as [->|(NI1,IS1)]; [easy|].
      destruct IS2 as [->|(NI2,IS2)]; [easy|].
-     rewrite !vars_mem_false by trivial.
+     rewrite !mem_false by trivial.
      set (vars :=
-            Vars.add x (Vars.add v (Vars.add v'
-              (vars_unions
+            Names.add x (Names.add v (Names.add v'
+              (Names.unions
                  [ Term.vars t; allvars f; allvars f'])))).
-     destruct (get_fresh_var vars) as (z',Hz').
+     destruct (exist_fresh vars) as (z',Hz').
      simpl_fresh vars Hz'.
      apply AEq_rename_any with (z' := z') in EQ;
-       [ |varsdec|varsdec].
+       [ |namedec|namedec].
      clear z H H0 H1.
      apply AEqQu with z';
-       [rewrite 2 allvars_partialsubst; varsdec|].
+       [rewrite 2 allvars_partialsubst; namedec|].
      rewrite 2 (partialsubst_partialsubst x); auto;
-     try (rewrite !term_subst_notin by varsdec);
-     try (apply IH; auto); cbn; try varsdec;
+     try (rewrite !term_subst_notin by namedec);
+     try (apply IH; auto); cbn; try namedec;
      try apply IsSimple_partialsubst; auto with set.
 Qed.
 
@@ -788,21 +788,21 @@ Lemma AEqQu_nosubst f f' q v :
  AlphaEq f f' -> AlphaEq (Quant q v f) (Quant q v f').
 Proof.
  intros.
- set (vars := Vars.union (allvars f) (allvars f')).
- destruct (get_fresh_var vars) as (z,Hz).
+ set (vars := Names.union (allvars f) (allvars f')).
+ destruct (exist_fresh vars) as (z,Hz).
  apply AEqQu with z. exact Hz.
  apply AEq_partialsubst; auto with set.
 Qed.
 
 Lemma AEqQu_rename0 f q (v z : variable) :
- IsSimple v z f -> ~Vars.In z (freevars f) ->
+ IsSimple v z f -> ~Names.In z (freevars f) ->
  AlphaEq (Quant q v f) (Quant q z (partialsubst v z f)).
 Proof.
  intros IS NI.
- set (vars := Vars.add z (Vars.add v (allvars f))).
- destruct (get_fresh_var vars) as (z',Hz').
+ set (vars := Names.add z (Names.add v (allvars f))).
+ destruct (exist_fresh vars) as (z',Hz').
  apply AEqQu with z'.
- - rewrite allvars_partialsubst. cbn. varsdec.
+ - rewrite allvars_partialsubst. cbn. namedec.
  - case (eqbspec v z).
    + intros ->.
      rewrite (partialsubst_notin z z); auto. reflexivity.
@@ -814,11 +814,11 @@ Qed.
 (** Same, with weaker but clearer precondition *)
 
 Lemma AEqQu_rename f q (v z : variable) :
- ~Vars.In z (allvars f) ->
+ ~Names.In z (allvars f) ->
  AlphaEq (Quant q v f) (Quant q z (partialsubst v z f)).
 Proof.
  intros NI. apply AEqQu_rename0; auto with set.
- rewrite freevars_allvars; varsdec.
+ rewrite freevars_allvars; namedec.
 Qed.
 
 (** The full substitution, first as a relation *)
@@ -882,7 +882,7 @@ Qed.
 
 Lemma Subst_Qu2 x t q v f f' :
   x <> v ->
-  ~Vars.In v (Term.vars t) ->
+  ~Names.In v (Term.vars t) ->
   Subst x t f f' ->
   Subst x t (Quant q v f) (Quant q v f').
 Proof.
@@ -892,7 +892,7 @@ Qed.
 
 Lemma Subst_Qu3 x t q (v z : variable) f f' g :
   x <> v ->
-  ~Vars.In z (freevars f) ->
+  ~Names.In z (freevars f) ->
   Subst v z f f' ->
   Subst x t (Quant q z f') (Quant q z g) ->
   Subst x t (Quant q v f) (Quant q z g).
@@ -914,26 +914,26 @@ Proof.
  assert (LT : height f < h) by (cbn; auto with * ).
  clearbody h. revert x t f LT.
  induction h as [|h IH]; [inversion 1|];
-  intros x t [ ] LT; cbn -[fresh_var] in *; simpl_height.
+  intros x t [ ] LT; cbn -[fresh] in *; simpl_height.
  - apply Subst_True.
  - apply Subst_False.
  - apply Subst_Pred.
  - apply Subst_Not; auto.
  - apply Subst_Op; auto.
- - set (vars := Vars.union _ _).
-   assert (Hz := fresh_var_ok vars).
-   set (z := fresh_var _) in *. clearbody z.
+ - set (vars := Names.union _ _).
+   assert (Hz := fresh_ok vars).
+   set (z := fresh _) in *. clearbody z.
    case eqbspec.
    + intros ->. apply Subst_Qu1.
    + intros NE.
-     destruct (Vars.mem v (Term.vars t)) eqn:IN; cbn - [fresh_var].
+     destruct (Names.mem v (Term.vars t)) eqn:IN; cbn - [fresh].
      * clear IN.
        apply Subst_Qu3 with (hsubst h v z f); auto.
-       { rewrite freevars_allvars. varsdec. }
-       { apply Subst_Qu2; auto; try varsdec.
+       { rewrite freevars_allvars. namedec. }
+       { apply Subst_Qu2; auto; try namedec.
          apply IH. now rewrite hsubst_height. }
      * apply Subst_Qu2; auto.
-       rewrite <- Vars.mem_spec. now rewrite IN.
+       rewrite <- Names.mem_spec. now rewrite IN.
 Qed.
 
 Lemma Subst_exists x t f : exists f', Subst x t f f'.
@@ -961,15 +961,15 @@ Proof.
    split.
    + intros ((<-,?),?); auto.
    + now inversion_clear 1.
- - set (vars := Vars.union _ _).
-   assert (Hz := fresh_var_ok vars).
-   set (z := fresh_var vars) in *. clearbody z.
+ - set (vars := Names.union _ _).
+   assert (Hz := fresh_ok vars).
+   set (z := fresh vars) in *. clearbody z.
    rewrite <- !partialsubst_subst, !lazy_andb_iff, !eqb_eq, IH
      by auto with set.
    split.
    + intros (<-,?). apply AEqQu with z; auto with set.
    + inversion_clear 1. split; trivial.
-     apply AEq_rename_any with z0; auto. varsdec.
+     apply AEq_rename_any with z0; auto. namedec.
 Qed.
 
 Lemma Subst_compat' x t f1 f2 f1' :

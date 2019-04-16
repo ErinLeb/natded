@@ -1,7 +1,7 @@
 
 (** Notion of 1st order theories *)
 
-Require Import Arith Omega Defs Proofs Mix Meta Countable.
+Require Import Arith Omega Defs NameProofs Mix Meta Countable.
 Require Import Coq.Program.Equality.
 Import ListNotations.
 Local Open Scope bool_scope.
@@ -22,12 +22,12 @@ Lemma Wf_dec sign A :
 Proof.
  destruct (check sign A) eqn:C.
  - destruct (level A =? 0) eqn:L.
-   + destruct (Vars.is_empty (fvars A)) eqn:E.
+   + destruct (Names.is_empty (fvars A)) eqn:E.
      * left. repeat split; auto.
        now apply eqb_eq.
-       now apply Vars.is_empty_spec.
+       now apply Names.is_empty_spec.
      * right; intros (_ & _ & E').
-       apply Vars.is_empty_spec in E'. congruence.
+       apply Names.is_empty_spec in E'. congruence.
    + right; intros (_ & L' & _).
      apply eqb_eq in L'. congruence.
  - right; intros (C' & _ & _). congruence.
@@ -35,7 +35,7 @@ Qed.
 
 Lemma False_wf sign : Wf sign False.
 Proof.
- repeat split. red. cbn. varsdec.
+ repeat split. red. cbn. namedec.
 Qed.
 
 Lemma Op_wf sign o A B :
@@ -53,7 +53,7 @@ Proof.
  repeat split; unfold BClosed, FClosed in *; cbn in *.
  - rewrite check_bsubst; auto. cbn. now rewrite E, eqb_refl.
  - apply Nat.le_0_r, level_bsubst; auto with *.
- - rewrite bsubst_fvars. cbn - [Vars.union]. varsdec.
+ - rewrite bsubst_fvars. cbn - [Names.union]. namedec.
 Qed.
 
 Definition ValidDerivOn logic (sign:signature) d :=
@@ -94,10 +94,8 @@ Proof.
  - intros (WF & axs & F & PR).
    split; auto. rewrite Provable_alt in PR.
    destruct PR as (d & V & C).
-   assert (Hx := fresh_var_ok (fvars d)).
-   set (x := fresh_var (fvars d)) in *.
-   assert (Hy := fresh_var_ok (Vars.add x (fvars d))).
-   set (y := fresh_var (Vars.add x (fvars d))) in *.
+   destruct (exist_fresh (fvars d)) as (x,Hx).
+   destruct (exist_fresh (Names.add x (fvars d))) as (y,Hy).
    exists (forcelevel_deriv y (restrict_deriv th x d)).
    exists axs; repeat split; auto.
    + rewrite <- restrict_forcelevel_deriv.
@@ -105,7 +103,7 @@ Proof.
    + apply forcelevel_deriv_bclosed.
    + apply forcelevel_deriv_valid.
      * rewrite restrict_deriv_fvars.
-       varsdec.
+       namedec.
      * apply restrict_valid; auto.
    + rewrite Forall_forall in F.
      unfold Claim.
@@ -269,7 +267,7 @@ Definition IsEqualityTheory th :=
  forall A z,
    check th A = true ->
    BClosed A ->
-   Vars.Equal (fvars A) (Vars.singleton z) ->
+   Names.Equal (fvars A) (Names.singleton z) ->
    IsTheorem th (∀∀(Pred "=" [#1;#0] -> fsubst z (#1) A -> fsubst z (#0) A))%form.
 
 (** TODO: more about equality theories *)
@@ -422,17 +420,16 @@ Proof.
          destruct (eqbspec v newAx); intuition. }
        apply Provable_alt in PR'.
        destruct PR' as (d & V & C).
-       assert (Vars.Empty (fvars (axs' ++ axsA))).
+       assert (Names.Empty (fvars (axs' ++ axsA))).
        { intros v. unfold fvars, fvars_list.
-         rewrite vars_unionmap_in.
+         rewrite unionmap_in.
          intros (a & Hv & Ha).
          rewrite in_app_iff in Ha.
          revert v Hv. apply (WfAxiom th).
          rewrite Forall_forall in F', FA; intuition. }
-       apply VarsP.empty_is_empty_1 in H.
-       set (vars := Vars.union (fvars A) (fvars d)).
-       assert (Hx := fresh_var_ok vars).
-       set (x := fresh_var vars) in *.
+       apply NamesP.empty_is_empty_1 in H.
+       set (vars := Names.union (fvars A) (fvars d)).
+       destruct (exist_fresh vars) as (x,Hx).
        apply (restrict_valid logic th x) in V; auto with set.
        assert (C' := claim_restrict th x d).
        rewrite C in C'. cbn in C'.
@@ -452,7 +449,7 @@ Proof.
        apply (R_Ex_e logic x _ A).
        { cbn. rewrite H. destruct d.
          unfold vars in Hx. cbn in C. subst s.
-         cbn in Hx. varsdec. }
+         cbn in Hx. namedec. }
        { clear PR V.
          eapply Pr_weakening; eauto.
          constructor. intros v. rewrite in_app_iff; auto. }
@@ -655,18 +652,15 @@ Lemma exex_tauto A :
  Pr Classic ([] ⊢ ∃ ((∃ A) -> A)).
 Proof.
  intros HA.
+ destruct (exist_fresh (fvars A)) as (x,Hx).
  apply R_Or_e with (∃ A)%form (~(∃ A))%form.
- apply Excluded_Middle.
- - assert (Hx := fresh_var_ok (fvars A)).
-   set (x := fresh_var (fvars A)) in *.
-   apply R'_Ex_e with x.
-   cbn. varsdec.
+ - apply Excluded_Middle.
+ - apply R'_Ex_e with x.
+   cbn. namedec.
    apply R_Ex_i with (FVar x); auto.
    cbn.
    apply R_Imp_i. apply R_Ax. simpl; auto.
- - assert (Hx := fresh_var_ok (fvars A)).
-   set (x := fresh_var (fvars A)) in *.
-   apply R_Ex_i with (FVar x); auto.
+ - apply R_Ex_i with (FVar x); auto.
    cbn.
    rewrite form_level_bsubst_id; auto.
    apply R_Imp_i.
@@ -683,48 +677,45 @@ Proof.
  - destruct CL as (CK & BC & FC). repeat split.
    + cbn in *. now rewrite CK.
    + red. cbn. rewrite BC. cbn. apply BC.
-   + red; red in FC. cbn in *. varsdec.
+   + red; red in FC. cbn in *. namedec.
  - exists []; split; auto.
    subst logic. apply exex_tauto.
    assert (Nat.pred (level A) = 0) by apply CL. omega.
 Qed.
 
-(* TODO use a different module name than Vars for constant
-   names. A generic Names ? *)
-
 Fixpoint term_funs t :=
   match t with
-  | FVar _ | BVar _ => Vars.empty
-  | Fun f l => Vars.add f (vars_unionmap term_funs l)
+  | FVar _ | BVar _ => Names.empty
+  | Fun f l => Names.add f (Names.unionmap term_funs l)
   end.
 
 Fixpoint form_funs f :=
   match f with
-  | True | False => Vars.empty
-  | Pred p l => vars_unionmap term_funs l
+  | True | False => Names.empty
+  | Pred p l => Names.unionmap term_funs l
   | Not f => form_funs f
-  | Op _ f1 f2 => Vars.union (form_funs f1) (form_funs f2)
+  | Op _ f1 f2 => Names.union (form_funs f1) (form_funs f2)
   | Quant _ f => form_funs f
   end.
 
 Lemma term_funs_ok sign t c :
- ~Vars.In c (term_funs t) ->
+ ~Names.In c (term_funs t) ->
  check (delcst sign c) t = check sign t.
 Proof.
  revert t.
  fix IH 1. destruct t as [ | | f l]; cbn; auto.
  intros NI.
- case eqbspec; [varsdec|].
+ case eqbspec; [namedec|].
  intros _. destruct funsymbs; auto.
  case eqb; auto.
  revert l NI.
  fix IH' 1. destruct l as [ |t l]; cbn; auto.
  intros NI'.
- rewrite IH by varsdec. f_equal. apply IH'. varsdec.
+ rewrite IH by namedec. f_equal. apply IH'. namedec.
 Qed.
 
 Lemma form_funs_ok sign f c :
- ~Vars.In c (form_funs f) ->
+ ~Names.In c (form_funs f) ->
  check (delcst sign c) f = check sign f.
 Proof.
  induction f; cbn; auto.
@@ -733,13 +724,13 @@ Proof.
    revert l NI.
    induction l as [|t l]; cbn; auto.
    intros NI'.
-   rewrite term_funs_ok by varsdec. f_equal. apply IHl. varsdec.
+   rewrite term_funs_ok by namedec. f_equal. apply IHl. namedec.
  - intros NI.
-   now rewrite IHf1, IHf2 by varsdec.
+   now rewrite IHf1, IHf2 by namedec.
 Qed.
 
 Lemma form_funs_wf sign f c :
- ~Vars.In c (form_funs f) ->
+ ~Names.In c (form_funs f) ->
  Wf (delcst sign c) f <-> Wf sign f.
 Proof.
  intros NI.
@@ -754,27 +745,27 @@ Fixpoint fresh_cst_loop n used candidates :=
  | 0 => candidates 0
  | S n =>
    let c := candidates 0 in
-   if Vars.mem c used then
+   if Names.mem c used then
      let candidates' := fun n => candidates (S n) in
-     fresh_cst_loop n (Vars.remove c used) candidates'
+     fresh_cst_loop n (Names.remove c used) candidates'
    else c
  end.
 
 Definition fresh_cst used candidates :=
-  fresh_cst_loop (Vars.cardinal used) used candidates.
+  fresh_cst_loop (Names.cardinal used) used candidates.
 
 Lemma fresh_cst_loop_in_cands n used candidates :
- Vars.cardinal used = n ->
+ Names.cardinal used = n ->
  exists m, fresh_cst_loop n used candidates = candidates m.
 Proof.
  revert used candidates.
  induction n; simpl; intros used cs E; auto.
  - now exists 0.
- - destruct Vars.mem eqn:M.
-   + rewrite Vars.mem_spec in M.
-     destruct (IHn (Vars.remove (cs 0) used)
+ - destruct Names.mem eqn:M.
+   + rewrite Names.mem_spec in M.
+     destruct (IHn (Names.remove (cs 0) used)
                    (fun n : nat => cs (S n))) as (m,Hm).
-     rewrite <- (@VarsP.remove_cardinal_1 used (cs 0)) in E; auto.
+     rewrite <- (@NamesP.remove_cardinal_1 used (cs 0)) in E; auto.
      now exists (S m).
    + now exists 0.
 Qed.
@@ -786,33 +777,33 @@ Proof.
 Qed.
 
 Lemma fresh_cst_loop_ok n used candidates :
- Vars.cardinal used = n ->
+ Names.cardinal used = n ->
  (forall n m, candidates n = candidates m -> n = m) ->
- ~Vars.In (fresh_cst_loop n used candidates) used.
+ ~Names.In (fresh_cst_loop n used candidates) used.
 Proof.
  revert used candidates.
  induction n as [|n IH]; intros used cs E INJ.
- - apply VarsP.cardinal_inv_1 in E. varsdec.
- - simpl. destruct Vars.mem eqn:M.
-   + set (used' := Vars.remove (cs 0) used).
+ - apply NamesP.cardinal_inv_1 in E. namedec.
+ - simpl. destruct Names.mem eqn:M.
+   + set (used' := Names.remove (cs 0) used).
      set (cs' := fun n : nat => cs (S n)).
      specialize (IH used' cs').
-     unfold used' in IH at 3. rewrite Vars.remove_spec in IH.
-     assert (Vars.cardinal used' = n).
+     unfold used' in IH at 3. rewrite Names.remove_spec in IH.
+     assert (Names.cardinal used' = n).
      { unfold used'.
-       rewrite Vars.mem_spec in M.
-       rewrite <- (@VarsP.remove_cardinal_1 used (cs 0)) in E; auto. }
+       rewrite Names.mem_spec in M.
+       rewrite <- (@NamesP.remove_cardinal_1 used (cs 0)) in E; auto. }
      intros IN. apply IH; auto.
      * unfold cs'. intros m p E'. apply INJ in E'; auto.
      * split; auto.
        destruct (fresh_cst_loop_in_cands n used' cs') as (m,->); auto.
        unfold cs'. intros E'. now apply INJ in E'.
-   + rewrite <-Vars.mem_spec. now rewrite M.
+   + rewrite <-Names.mem_spec. now rewrite M.
 Qed.
 
 Lemma fresh_cst_ok used candidates :
  (forall n m, candidates n = candidates m -> n = m) ->
- ~Vars.In (fresh_cst used candidates) used.
+ ~Names.In (fresh_cst used candidates) used.
 Proof.
  now apply fresh_cst_loop_ok.
 Qed.
@@ -825,8 +816,8 @@ Fixpoint HenkinAxList th (nc : NewCsts th) n :=
    let A := decode_form n in
    match Wf_dec (HenkinAll_sign th nc) (∃A) with
    | left CL =>
-     let used := Vars.union (form_funs A)
-                            (vars_unionmap form_funs axs) in
+     let used := Names.union (form_funs A)
+                             (Names.unionmap form_funs axs) in
      let c := fresh_cst used nc in
      ((∃A)-> bsubst 0 (Cst c) A)%form :: axs
    | right _ => axs
@@ -880,7 +871,7 @@ Proof.
    simpl in IN.
    set (f := decode_form n) in *.
    destruct Wf_dec as [CL|_]; auto.
-   set (used := Vars.union _ _) in *.
+   set (used := Names.union _ _) in *.
    destruct (fresh_cst_in_cands used nc) as (m,Hm).
    assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
    set (c := fresh_cst used nc) in *.
@@ -921,7 +912,7 @@ Proof.
    unfold Consistent, IsTheorem. simpl.
    set (f := decode_form n) in *.
    destruct Wf_dec as [WF|WF] eqn:Ew; [|reflexivity].
-   set (used := Vars.union _ _) in *.
+   set (used := Names.union _ _) in *.
    destruct (fresh_cst_in_cands used nc) as (m,Hm).
    assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
    set (c := fresh_cst used nc) in *.
@@ -959,12 +950,12 @@ Proof.
        apply delcst_HenkinAll_signext.
      * rewrite form_funs_wf. apply WfAxiom. simpl. now right.
        intros IN.
-       assert (Vars.In c (vars_unionmap form_funs (HenkinAxList th nc n))).
-       { rewrite vars_unionmap_in. now exists A. }
-       varsdec.
+       assert (Names.In c (Names.unionmap form_funs (HenkinAxList th nc n))).
+       { rewrite unionmap_in. now exists A. }
+       namedec.
    + clearbody f. clear Ew. rewrite form_funs_ok. cbn.
      destruct WF as (CK,?). cbn in CK. now rewrite CK.
-     cbn. varsdec.
+     cbn. namedec.
 Qed.
 
 Lemma HenkinSeq_ax_grows th (nc : NewCsts th) n m A :
@@ -1051,7 +1042,7 @@ Proof.
  rewrite HA in Ax.
  cbn in CL.
  destruct Wf_dec; [|easy].
- set (used := Vars.union _ _) in *.
+ set (used := Names.union _ _) in *.
  destruct (fresh_cst_in_cands used nc) as (m,Hm).
  assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
  set (c := fresh_cst used nc) in *.

@@ -1,4 +1,4 @@
-Require Import Defs Mix Proofs Meta Omega Setoid Morphisms
+Require Import Defs Mix NameProofs Meta Omega Setoid Morphisms
   Eqdep_dec Theories PreModels.
 Import ListNotations.
 Local Open Scope bool_scope.
@@ -51,16 +51,16 @@ Definition Wf_term (sign:signature) (t:term) :=
   check sign t = true /\ BClosed t /\ FClosed t.
 
 Definition wf_term (sign:signature) (t:term) :=
- check sign t && (level t =? 0) && Vars.is_empty (fvars t).
+ check sign t && (level t =? 0) && Names.is_empty (fvars t).
 
 Lemma Wf_term_alt sign t : Wf_term sign t <-> wf_term sign t = true.
 Proof.
  unfold Wf_term, wf_term.
  split.
- - intros (-> & -> & H). cbn. now rewrite Vars.is_empty_spec.
+ - intros (-> & -> & H). cbn. now rewrite Names.is_empty_spec.
  - rewrite !andb_true_iff, !eqb_eq. unfold BClosed.
    intros ((->,->),H); repeat split; auto.
-   now rewrite Vars.is_empty_spec in H.
+   now rewrite Names.is_empty_spec in H.
 Qed.
 
 Lemma Fun_wf sign f l :
@@ -79,14 +79,14 @@ Proof.
      rewrite list_max_map_0 in BC; auto.
    + unfold FClosed in *. cbn in FC.
      intros v. specialize (FC v). contradict FC.
-     rewrite vars_unionmap_in. now exists t.
+     rewrite unionmap_in. now exists t.
  - intros (E,F).
    rewrite Forall_forall in F.
    repeat split; cbn.
    + rewrite E, eqb_refl. apply forallb_forall.
      intros u Hu. now apply F.
    + red; cbn. apply list_max_map_0. intros u Hu. now apply F.
-   + red; cbn. intro v. rewrite vars_unionmap_in.
+   + red; cbn. intro v. rewrite unionmap_in.
      intros (a & IN & IN'). apply F in IN'. now apply IN' in IN.
 Qed.
 
@@ -106,14 +106,14 @@ Proof.
      rewrite list_max_map_0 in BC; auto.
    + unfold FClosed in *. cbn in FC.
      intros v. specialize (FC v). contradict FC.
-     rewrite vars_unionmap_in. now exists t.
+     rewrite unionmap_in. now exists t.
  - intros (E,F).
    rewrite Forall_forall in F.
    repeat split; cbn.
    + rewrite E, eqb_refl. apply forallb_forall.
      intros u Hu. now apply F.
    + red; cbn. apply list_max_map_0. intros u Hu. now apply F.
-   + red; cbn. intro v. rewrite vars_unionmap_in.
+   + red; cbn. intro v. rewrite unionmap_in.
      intros (a & IN & IN'). apply F in IN'. now apply IN' in IN.
 Qed.
 
@@ -319,10 +319,10 @@ Proof.
    f_equal. apply IH. apply IH'.
 Qed.
 
-Lemma empty_union s s' : Vars.Empty (Vars.union s s') <->
- Vars.Empty s /\ Vars.Empty s'.
+Lemma empty_union s s' : Names.Empty (Names.union s s') <->
+ Names.Empty s /\ Names.Empty s'.
 Proof.
- split. split; varsdec. varsdec.
+ split. split; namedec. namedec.
 Qed.
 
 Lemma term_closure_fclosed t (genv:variable->M) :
@@ -566,20 +566,17 @@ Qed.
 Lemma pr_notex_allnot logic c A :
  Pr logic (c ⊢ ~∃A) <-> Pr logic (c ⊢ ∀~A).
 Proof.
+ destruct (exist_fresh (fvars (c ⊢ A))) as (x,Hx).
  split.
  - intros NE.
-   assert (Hx := fresh_var_ok (fvars (c ⊢ A))).
-   set (x := fresh_var (fvars (c ⊢ A))) in *.
-   apply R_All_i with x; cbn - [Vars.union] in *. varsdec.
+   apply R_All_i with x; cbn - [Names.union] in *. namedec.
    apply R_Not_i.
    apply R_Not_e with (∃A)%form.
    + apply R_Ex_i with (FVar x); auto using R'_Ax.
    + eapply Pr_weakening; eauto. constructor; red; simpl; auto.
  - intros AN.
    apply R_Not_i.
-   assert (Hx := fresh_var_ok (fvars (c ⊢ A))).
-   set (x := fresh_var (fvars (c ⊢ A))) in *.
-   apply R'_Ex_e with x. cbn in *. varsdec.
+   apply R'_Ex_e with x. cbn in *. namedec.
    eapply R_Not_e; [apply R'_Ax|].
    eapply Pr_weakening. eapply R_All_e with (t:=FVar x); eauto.
    constructor. red; simpl; auto.
@@ -588,20 +585,17 @@ Qed.
 Lemma pr_notexnot c A :
  Pr Classic (c ⊢ ~∃~A) <-> Pr Classic (c ⊢ ∀A).
 Proof.
+ destruct (exist_fresh (fvars (c ⊢ A))) as (x,Hx).
  split.
  - intros NEN.
-   assert (Hx := fresh_var_ok (fvars (c ⊢ A))).
-   set (x := fresh_var (fvars (c ⊢ A))) in *.
-   apply R_All_i with x; cbn - [Vars.union] in *. varsdec.
+   apply R_All_i with x; cbn - [Names.union] in *. namedec.
    apply R_Absu; auto.
    apply R_Not_e with (∃~A)%form.
    apply R_Ex_i with (FVar x); auto using R'_Ax.
    eapply Pr_weakening; eauto. constructor; red; simpl; auto.
  - intros ALL.
    apply R_Not_i.
-   assert (Hx := fresh_var_ok (fvars (c ⊢ A))).
-   set (x := fresh_var (fvars (c ⊢ A))) in *.
-   apply R'_Ex_e with x. cbn in *. varsdec.
+   apply R'_Ex_e with x. cbn in *. namedec.
    cbn.
    eapply R_Not_e; [|eapply R'_Ax].
    eapply Pr_weakening. eapply R_All_e with (t:=FVar x); eauto.
@@ -625,7 +619,7 @@ Proof.
  - apply check_bsubst; auto.
  - apply Nat.le_0_r.
    apply level_bsubst; red in BCf; red in BCt; cbn in *; omega.
- - unfold FClosed in *. rewrite bsubst_fvars. varsdec.
+ - unfold FClosed in *. rewrite bsubst_fvars. namedec.
 Qed.
 
 Lemma thm_all_e logic A t : Wf_term th t ->
@@ -948,10 +942,11 @@ Proof.
  assert (interp_form mo genv [] (~T)).
  { apply AxOk. cbn. now left. }
  cbn in H. apply H. clear H.
- assert (U := interp_form_restrict th th' M mo (proj1' EX) genv [] T).
- change (sign th') with (sign th) in U at 3.
+ set (SE := let (p,_) := EX in p).
+ assert (U := interp_form_restrict th th' M mo SE genv [] T).
+ change (sign th') with (sign th) in U at 2.
  rewrite <- U by (apply WF).
- assert (E : pre _ _ mo' = premodel_restrict th th' M (proj1' EX) mo).
+ assert (E : pre _ _ mo' = premodel_restrict th th' M SE mo).
  { unfold mo'; cbn. unfold model_restrict. cbn. now destruct EX. }
  rewrite <- E.
  apply HT.

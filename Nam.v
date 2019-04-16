@@ -121,8 +121,8 @@ Compute Term.check (Finite.to_infinite peano_sign) peano_term_example.
 
 Fixpoint vars t :=
  match t with
-  | Var v => Vars.singleton v
-  | Fun _ args => vars_unionmap vars args
+  | Var v => Names.singleton v
+  | Fun _ args => Names.unionmap vars args
  end.
 
 (** Simultaneous substitution (see type [substs] above) *)
@@ -156,13 +156,13 @@ Module Subst.
 Definition t := substitution.
 
 Definition invars (sub : substitution) :=
-  List.fold_right (fun p vs => Vars.add (fst p) vs) Vars.empty sub.
+  List.fold_right (fun p vs => Names.add (fst p) vs) Names.empty sub.
 
 Definition outvars (sub : substitution) :=
-  vars_unionmap (fun '(_,t) => Term.vars t) sub.
+  Names.unionmap (fun '(_,t) => Term.vars t) sub.
 
 Definition vars (sub : substitution) :=
-  Vars.union (invars sub) (outvars sub).
+  Names.union (invars sub) (outvars sub).
 
 End Subst.
 
@@ -255,20 +255,20 @@ Fixpoint check (sign : signature) f :=
 
 Fixpoint allvars f :=
   match f with
-  | True | False => Vars.empty
+  | True | False => Names.empty
   | Not f => allvars f
-  | Op _ f f' => Vars.union (allvars f) (allvars f')
-  | Quant _ v f => Vars.add v (allvars f)
-  | Pred _ args => vars_unionmap Term.vars args
+  | Op _ f f' => Names.union (allvars f) (allvars f')
+  | Quant _ v f => Names.add v (allvars f)
+  | Pred _ args => Names.unionmap Term.vars args
   end.
 
 Fixpoint freevars f :=
   match f with
-  | True | False => Vars.empty
+  | True | False => Names.empty
   | Not f => freevars f
-  | Op _ f f' => Vars.union (freevars f) (freevars f')
-  | Quant _ v f => Vars.remove v (freevars f)
-  | Pred _ args => vars_unionmap Term.vars args
+  | Op _ f f' => Names.union (freevars f) (freevars f')
+  | Quant _ v f => Names.remove v (freevars f)
+  | Pred _ args => Names.unionmap Term.vars args
   end.
 
 (** Simultaneous substitution of many variables in a term.
@@ -283,11 +283,11 @@ Fixpoint substs (sub : substitution) f :=
   | Quant q v f' =>
     let sub := list_unassoc v sub in
     let out_vars := Subst.outvars sub in
-    if negb (Vars.mem v out_vars) then
+    if negb (Names.mem v out_vars) then
       Quant q v (substs sub f')
     else
       (* variable capture : we change v into a fresh variable first *)
-      let z := fresh_var (vars_unions [allvars f; out_vars; Subst.invars sub])
+      let z := fresh (Names.unions [allvars f; out_vars; Subst.invars sub])
       in
       Quant q z (substs ((v,Var z)::sub) f')
  end.
@@ -313,8 +313,8 @@ Fixpoint αeq_gen sub1 f1 sub2 f2 :=
     αeq_gen sub1 f1' sub2 f2'
   | Quant q1 v1 f1', Quant q2 v2 f2' =>
     (q1 =? q2) &&&
-    (let z := fresh_var
-                (vars_unions
+    (let z := fresh
+                (Names.unions
                    [allvars f1; Subst.vars sub1; allvars f2; Subst.vars sub2])
      in
      αeq_gen ((v1,Var z)::sub1) f1' ((v2,Var z)::sub2) f2')
@@ -364,11 +364,11 @@ Fixpoint hsubst h x t f :=
      if x =? v then f
      else
        let out_vars := Term.vars t in
-       if negb (Vars.mem v out_vars) then
+       if negb (Names.mem v out_vars) then
          Quant q v (hsubst h x t f')
        else
          (* variable capture : we change v into a fresh variable first *)
-         let z := fresh_var (vars_unions [allvars f; out_vars; Vars.singleton x])
+         let z := fresh (Names.unions [allvars f; out_vars; Names.singleton x])
          in
          Quant q z (hsubst h x t (hsubst h v (Var z) f'))
    end
@@ -391,7 +391,7 @@ Fixpoint hαeq h f1 f2 :=
       (o1 =? o2) &&& hαeq h f1 f2 &&& hαeq h f1' f2'
     | Quant q1 v1 f1', Quant q2 v2 f2' =>
       (q1 =? q2) &&&
-      (let z := fresh_var (Vars.union (allvars f1) (allvars f2)) in
+      (let z := fresh (Names.union (allvars f1) (allvars f2)) in
        hαeq h (subst v1 (Var z) f1') (subst v2 (Var z) f2'))
     | _,_ => false
     end
@@ -417,7 +417,7 @@ Fixpoint partialsubst x t f :=
   | Op o f f' => Op o (partialsubst x t f) (partialsubst x t f')
   | Quant q v f' =>
     Quant q v
-     (if (x=?v) || Vars.mem v (Term.vars t) then f'
+     (if (x=?v) || Names.mem v (Term.vars t) then f'
       else partialsubst x t f')
   end.
 
@@ -436,9 +436,9 @@ Definition print Γ :=
 Definition check sign Γ :=
   List.forallb (Form.check sign) Γ.
 
-Definition allvars Γ := vars_unionmap Form.allvars Γ.
+Definition allvars Γ := Names.unionmap Form.allvars Γ.
 
-Definition freevars Γ := vars_unionmap Form.freevars Γ.
+Definition freevars Γ := Names.unionmap Form.freevars Γ.
 
 Definition subst v t Γ := List.map (Form.subst v t) Γ.
 
@@ -460,10 +460,10 @@ Definition check sign '(Γ ⊢ A) :=
   Ctx.check sign Γ &&& Form.check sign A.
 
 Definition allvars '(Γ ⊢ A) :=
-  Vars.union (Ctx.allvars Γ) (Form.allvars A).
+  Names.union (Ctx.allvars Γ) (Form.allvars A).
 
 Definition freevars '(Γ ⊢ A) :=
-  Vars.union (Ctx.freevars Γ) (Form.freevars A).
+  Names.union (Ctx.freevars Γ) (Form.freevars A).
 
 Definition subst v t '(Γ ⊢ A) :=
   (Ctx.subst v t Γ, Form.subst v t A).
@@ -512,14 +512,14 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
   | Imp_e,  s, [Γ ⊢ A->B;s2] =>
      (s =? (Γ ⊢ B)) &&& (s2 =? (Γ ⊢ A))
   | All_i x,  s, [Γ ⊢ A] =>
-     (s =? (Γ ⊢ ∀x,A)) &&& negb (Vars.mem x (Ctx.freevars Γ))
+     (s =? (Γ ⊢ ∀x,A)) &&& negb (Names.mem x (Ctx.freevars Γ))
   | All_e t, (Γ ⊢ B), [Γ'⊢ ∀x,A] =>
     (Γ =? Γ') &&& (B =? Form.subst x t A)
   | Ex_i t,  (Γ ⊢ ∃x,A), [Γ'⊢B] =>
     (Γ =? Γ') &&& (B =? Form.subst x t A)
   | Ex_e x,  s, [s1; A::Γ ⊢ B] =>
      (s =? (Γ ⊢ B)) &&& (s1 =? (Γ ⊢ ∃x, A)) &&&
-     negb (Vars.mem x (Seq.freevars s))
+     negb (Names.mem x (Seq.freevars s))
   | Absu, s, [Not A::Γ ⊢ False] =>
     (logic =? Classic) &&& (s =? (Γ ⊢ A))
   | _,_,_ => false

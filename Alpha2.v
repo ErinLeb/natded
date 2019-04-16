@@ -2,7 +2,7 @@
 (** Equivalence between various substs and alpha for named formulas *)
 
 Require Import Morphisms RelationClasses Arith Omega.
-Require Import Defs Proofs Nam Alpha Meta Equiv.
+Require Import Defs NameProofs Nam Alpha Meta Equiv.
 Import ListNotations.
 Import Nam.Form.
 Local Open Scope bool_scope.
@@ -10,52 +10,52 @@ Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
 Lemma invars_in sub v :
-  Vars.In v (Subst.invars sub) <-> In v (map fst sub).
+  Names.In v (Subst.invars sub) <-> In v (map fst sub).
 Proof.
- induction sub as [|(x,t) sub IH]; simpl. varsdec.
- VarsF.set_iff. intuition.
+ induction sub as [|(x,t) sub IH]; simpl. namedec.
+ nameiff. intuition.
 Qed.
 
 Lemma invars_app h h' :
-  Vars.Equal (Subst.invars (h++h'))
-             (Vars.union (Subst.invars h) (Subst.invars h')).
+  Names.Equal (Subst.invars (h++h'))
+             (Names.union (Subst.invars h) (Subst.invars h')).
 Proof.
  induction h; simpl; auto with set.
 Qed.
 
 Lemma invars_unassoc v h :
-  Vars.Equal (Subst.invars (list_unassoc v h))
-             (Vars.remove v (Subst.invars h)).
+  Names.Equal (Subst.invars (list_unassoc v h))
+             (Names.remove v (Subst.invars h)).
 Proof.
  induction h as [|(x,u) h IH]; simpl.
- - varsdec.
+ - namedec.
  - case eqbspec; simpl.
-   + intros ->. rewrite IH. varsdec.
-   + intros NE. rewrite IH. varsdec.
+   + intros ->. rewrite IH. namedec.
+   + intros NE. rewrite IH. namedec.
 Qed.
 
 Lemma outvars_app h h' :
- Vars.Equal (Subst.outvars (h++h'))
-            (Vars.union (Subst.outvars h) (Subst.outvars h')).
+ Names.Equal (Subst.outvars (h++h'))
+            (Names.union (Subst.outvars h) (Subst.outvars h')).
 Proof.
  unfold Subst.outvars.
- apply vars_unionmap_app.
+ apply unionmap_app.
 Qed.
 
 Lemma outvars_unassoc v h :
- Vars.Subset (Subst.outvars (list_unassoc v h))
+ Names.Subset (Subst.outvars (list_unassoc v h))
              (Subst.outvars h).
 Proof.
  induction h as [|(x,t) h IH]; simpl.
- - varsdec.
- - case eqbspec; simpl; varsdec.
+ - namedec.
+ - case eqbspec; simpl; namedec.
 Qed.
 
 (** Free variables after [substs] *)
 
 Lemma term_substs_vars h t :
- Vars.Subset (Term.vars (Term.substs h t))
-             (Vars.union (Vars.diff (Term.vars t) (Subst.invars h))
+ Names.Subset (Term.vars (Term.substs h t))
+             (Names.union (Names.diff (Term.vars t) (Subst.invars h))
                          (Subst.outvars h)).
 Proof.
  revert t.
@@ -67,74 +67,74 @@ Proof.
    + specialize (H t).
      unfold Subst.outvars.
      intros y Hy.
-     rewrite Vars.union_spec, vars_unionmap_in.
+     rewrite Names.union_spec, unionmap_in.
      right. exists (v,t); auto.
-   + simpl. intros y. rewrite Vars.singleton_spec. intros ->.
-     VarsF.set_iff. left; split; auto.
+   + simpl. intros y. rewrite Names.singleton_spec. intros ->.
+     nameiff. left; split; auto.
      rewrite invars_in; intuition.
  - clear f. revert l.
-   fix IH' 1. destruct l as [|t l]; cbn -[Vars.diff].
-   + varsdec.
-   + specialize (IH t). specialize (IH' l). varsdec.
+   fix IH' 1. destruct l as [|t l]; cbn -[Names.diff].
+   + namedec.
+   + specialize (IH t). specialize (IH' l). namedec.
 Qed.
 
 Lemma substs_freevars h f :
- Vars.Subset (freevars (substs h f))
-             (Vars.union (Vars.diff (freevars f) (Subst.invars h))
+ Names.Subset (freevars (substs h f))
+             (Names.union (Names.diff (freevars f) (Subst.invars h))
                          (Subst.outvars h)).
 Proof.
  revert h.
- induction f; cbn -[Subst.invars Subst.outvars Vars.diff]; intros; auto.
- - varsdec.
- - varsdec.
+ induction f; cbn -[Subst.invars Subst.outvars Names.diff]; intros; auto.
+ - namedec.
+ - namedec.
  - apply (term_substs_vars h (Fun "" l)).
- - rewrite IHf1, IHf2. varsdec.
- - destruct (Vars.mem _ _) eqn:E; simpl.
-   + set (vars := Vars.union _ _).
-     assert (Hz := fresh_var_ok vars).
-     set (z := fresh_var vars) in *.
+ - rewrite IHf1, IHf2. namedec.
+ - destruct (Names.mem _ _) eqn:E; simpl.
+   + set (vars := Names.union _ _).
+     assert (Hz := fresh_ok vars).
+     set (z := fresh vars) in *.
      rewrite IHf; simpl.
      rewrite invars_unassoc, outvars_unassoc.
-     varsdec.
+     namedec.
    + rewrite IHf; simpl.
      rewrite invars_unassoc, outvars_unassoc.
-     varsdec.
+     namedec.
 Qed.
 
 (** [nam2mix] and free variables *)
 
 Lemma nam2mix_tvars stk t :
-  Vars.Equal (Mix.fvars (nam2mix_term stk t))
-             (Vars.diff (Term.vars t) (vars_of_list stk)).
+  Names.Equal (Mix.fvars (nam2mix_term stk t))
+              (Names.diff (Term.vars t) (Names.of_list stk)).
 Proof.
  revert t.
  fix IH 1. destruct t as [v|f l]; cbn.
  - destruct list_index eqn:E; cbn.
    + assert (NE : list_index v stk <> None) by congruence.
-     rewrite list_index_in in NE. rewrite <-vars_of_list_in in NE. varsdec.
-   + rewrite list_index_notin, <-vars_of_list_in in E. varsdec.
+     rewrite list_index_in in NE. rewrite <-names_of_list_in in NE. namedec.
+   + rewrite list_index_notin, <-names_of_list_in in E. namedec.
  - clear f. revert l.
-   fix IH' 1. destruct l as [|t l]; cbn; rewrite ?IH, ?IH'; varsdec.
+   fix IH' 1. destruct l as [|t l]; cbn; rewrite ?IH, ?IH'; namedec.
 Qed.
 
 Lemma nam2mix_fvars stk f :
-  Vars.Equal (Mix.fvars (nam2mix stk f))
-             (Vars.diff (freevars f) (vars_of_list stk)).
+  Names.Equal (Mix.fvars (nam2mix stk f))
+              (Names.diff (freevars f) (Names.of_list stk)).
 Proof.
  revert stk.
  induction f; intros; cbn.
- - varsdec.
- - varsdec.
+ - namedec.
+ - namedec.
  - apply (nam2mix_tvars stk (Fun "" l)).
  - auto.
- - rewrite IHf1, IHf2; varsdec.
- - rewrite IHf. simpl. varsdec.
+ - rewrite IHf1, IHf2; namedec.
+ - rewrite IHf. simpl. namedec.
 Qed.
 
 (** [nam2mix] and modifying the stack while keeping the result *)
 
 Lemma nam2mix_term_indep (stk stk' : list variable) t :
- (forall (v:variable), Vars.In v (Term.vars t) ->
+ (forall (v:variable), Names.In v (Term.vars t) ->
             list_index v stk = list_index v stk') ->
  nam2mix_term stk t = nam2mix_term stk' t.
 Proof.
@@ -142,11 +142,11 @@ Proof.
  - rewrite Ht; auto with set.
  - f_equal. clear f. apply map_ext_iff. intros a Ha.
    apply IH; auto. intros v Hv. apply Ht.
-   rewrite vars_unionmap_in. now exists a.
+   rewrite unionmap_in. now exists a.
 Qed.
 
 Lemma nam2mix_indep (stk stk' : list variable) f :
- (forall (v:variable), Vars.In v (freevars f) ->
+ (forall (v:variable), Names.In v (freevars f) ->
             list_index v stk = list_index v stk') ->
  nam2mix stk f = nam2mix stk' f.
 Proof.
@@ -155,11 +155,11 @@ Proof.
  - injection (nam2mix_term_indep stk stk' (Fun "" l)); auto.
  - apply IHf. intros v' Hv'; simpl.
    case eqbspec; auto.
-   intros NE. f_equal. apply EQ. varsdec.
+   intros NE. f_equal. apply EQ. namedec.
 Qed.
 
 Lemma nam2mix_term_nostack stk t :
- (forall v, In v stk -> ~Vars.In v (Term.vars t)) ->
+ (forall v, In v stk -> ~Names.In v (Term.vars t)) ->
  nam2mix_term stk t = nam2mix_term [] t.
 Proof.
  intros H. apply nam2mix_term_indep.
@@ -178,8 +178,8 @@ Proof.
 Qed.
 
 Lemma nam2mix_shadowstack' stk stk' x y f :
- In x stk \/ ~Vars.In x (freevars f) ->
- In y stk \/ ~Vars.In y (freevars f) ->
+ In x stk \/ ~Names.In x (freevars f) ->
+ In y stk \/ ~Names.In y (freevars f) ->
  nam2mix (stk++x::stk') f = nam2mix (stk++y::stk') f.
 Proof.
  intros Hx Hy. apply nam2mix_indep.
@@ -192,8 +192,8 @@ Proof.
 Qed.
 
 Lemma nam2mix_shadowstack_map stk stk' x y f :
- In x stk \/ ~Vars.In x (freevars f) ->
- In y stk \/ ~Vars.In y (freevars f) ->
+ In x stk \/ ~Names.In x (freevars f) ->
+ In y stk \/ ~Names.In y (freevars f) ->
  nam2mix (stk++map (fun a => if a =?x then y else a) stk') f =
  nam2mix (stk++stk') f.
 Proof.
@@ -212,19 +212,19 @@ Qed.
 (** [Term.substs] may do nothing *)
 
 Lemma term_substs_notin h t :
- Vars.Empty (Vars.inter (Term.vars t) (Subst.invars h)) ->
+ Names.Empty (Names.inter (Term.vars t) (Subst.invars h)) ->
  Term.substs h t = t.
 Proof.
  induction t as [v |f l IH] using term_ind'; intros EM; cbn in *.
  - rewrite list_assoc_dft_alt.
    assert (NI : ~In v (map fst h)).
-   { rewrite <- invars_in. varsdec. }
+   { rewrite <- invars_in. namedec. }
    rewrite <- list_assoc_notin in NI. now rewrite NI.
  - f_equal. clear f.
    apply map_id_iff.
-   intros a Ha. apply IH; auto. intros v. VarsF.set_iff. intros (Hv,Hv').
-   apply (EM v). VarsF.set_iff. split; auto.
-   rewrite vars_unionmap_in. now exists a.
+   intros a Ha. apply IH; auto. intros v. nameiff. intros (Hv,Hv').
+   apply (EM v). nameiff. split; auto.
+   rewrite unionmap_in. now exists a.
 Qed.
 
 Lemma nam2mix_term_subst stk x u t:
@@ -248,7 +248,7 @@ Qed.
 
 Lemma nam2mix_partialsubst stk x u f :
  ~In x stk ->
- (forall v, In v stk -> ~Vars.In v (Term.vars u)) ->
+ (forall v, In v stk -> ~Names.In v (Term.vars u)) ->
  IsSimple x u f ->
  nam2mix stk (partialsubst x u f) =
  Mix.fsubst x (nam2mix_term [] u) (nam2mix stk f).
@@ -266,17 +266,17 @@ Proof.
      intros x. rewrite nam2mix_fvars. simpl.
      unfold Mix.varsubst.
      intros IN.
-     case eqbspec; auto. intros <-. varsdec.
+     case eqbspec; auto. intros <-. namedec.
    + intros NE.
      destruct IS as [-> | (NI,IS)]; [easy|].
-     rewrite vars_mem_false by trivial.
+     rewrite mem_false by trivial.
      apply IHf; simpl; intuition auto; subst; eauto.
 Qed.
 
 Lemma nam2mix_term_subst' stk stk' x z t :
  ~In x stk ->
  ~In z stk ->
- ~Vars.In z (Term.vars t) ->
+ ~Names.In z (Term.vars t) ->
  nam2mix_term (stk++z::stk') (Term.subst x (Var z) t) =
  nam2mix_term (stk++x::stk') t.
 Proof.
@@ -288,17 +288,17 @@ Proof.
    + intros NE. destruct (In_dec string_dec v stk).
      * rewrite 2 list_index_app_l; auto.
      * rewrite 2 list_index_app_r by auto. simpl.
-       do 2 case eqbspec; auto. varsdec. intuition.
+       do 2 case eqbspec; auto. namedec. intuition.
  - f_equal; clear f.
    rewrite !map_map.
    apply map_ext_in. intros t Ht. apply IH; auto.
-   rewrite vars_unionmap_in in NI. contradict NI. now exists t.
+   rewrite unionmap_in in NI. contradict NI. now exists t.
 Qed.
 
 Lemma nam2mix_partialsubst' stk stk' x z f :
  ~In x stk ->
  ~In z stk ->
- ~Vars.In z (allvars f) ->
+ ~Names.In z (allvars f) ->
  nam2mix (stk++z::stk') (partialsubst x (Var z) f) =
  nam2mix (stk++x::stk') f.
 Proof.
@@ -307,17 +307,17 @@ Proof.
  - injection (nam2mix_term_subst' stk stk' x z (Fun "" l)); easy.
  - intuition.
  - intuition.
- - rewrite vars_mem_false by varsdec.
+ - rewrite mem_false by namedec.
    case eqbspec; cbn.
    + intros <-.
      symmetry.
      apply (nam2mix_shadowstack' (x::stk)). simpl; auto.
-     right. rewrite freevars_allvars. varsdec.
+     right. rewrite freevars_allvars. namedec.
    + intros NE.
      apply (IHf (v::stk)).
      simpl. intuition.
      simpl. intuition.
-     varsdec.
+     namedec.
 Qed.
 
 Lemma nam2mix0_partialsubst x u f :
@@ -330,7 +330,7 @@ Qed.
 
 Lemma term_subst_bsubst stk (x:variable) u t :
  ~In x stk ->
- (forall v, In v stk -> ~Vars.In v (Term.vars u)) ->
+ (forall v, In v stk -> ~Names.In v (Term.vars u)) ->
  nam2mix_term stk (Term.subst x u t) =
   Mix.bsubst (length stk) (nam2mix_term [] u)
              (nam2mix_term (stk++[x]) t).
@@ -353,7 +353,7 @@ Qed.
 
 Lemma partialsubst_bsubst stk x u f :
  ~In x stk ->
- (forall v, In v stk -> ~Vars.In v (Term.vars u)) ->
+ (forall v, In v stk -> ~Names.In v (Term.vars u)) ->
  IsSimple x u f ->
  nam2mix stk (partialsubst x u f) =
   Mix.bsubst (length stk) (nam2mix_term [] u)
@@ -373,7 +373,7 @@ Proof.
      now rewrite nam2mix_level.
    + intros NE.
      destruct IS as [->|(NI,IS)]; [easy|].
-     rewrite vars_mem_false by varsdec0.
+     rewrite mem_false by namedec0.
      apply IHf; simpl; auto.
      intuition.
      intros y [<-|Hy]; auto.
@@ -388,7 +388,7 @@ Proof.
 Qed.
 
 Lemma partialsubst_bsubst0_var x z f :
- ~Vars.In z (allvars f) ->
+ ~Names.In z (allvars f) ->
  nam2mix [] (partialsubst x (Var z) f) =
   Mix.bsubst 0 (Mix.FVar z) (nam2mix [x] f).
 Proof.
@@ -397,17 +397,17 @@ Proof.
 Qed.
 
 Lemma nam2mix_rename_iff z v v' f f' :
-  ~ Vars.In z (Vars.union (allvars f) (allvars f')) ->
+  ~ Names.In z (Names.union (allvars f) (allvars f')) ->
   nam2mix [] (partialsubst v (Var z) f) =
   nam2mix [] (partialsubst v' (Var z) f')
   <->
   nam2mix [v] f = nam2mix [v'] f'.
 Proof.
  intros Hz.
- rewrite 2 partialsubst_bsubst0_var by varsdec.
+ rewrite 2 partialsubst_bsubst0_var by namedec.
  split.
  - intros H. apply bsubst_fresh_inj in H; auto.
-   rewrite !nam2mix_fvars. cbn. rewrite !freevars_allvars. varsdec.
+   rewrite !nam2mix_fvars. cbn. rewrite !freevars_allvars. namedec.
  - now intros ->.
 Qed.
 
@@ -434,7 +434,7 @@ Proof.
    + intros [= E]; auto.
    + intros [= <- E1 E2]; auto.
    + intros [= <- E].
-     destruct (get_fresh_var (Vars.union (allvars f) (allvars f'))) as (z,Hz).
+     destruct (exist_fresh (Names.union (allvars f) (allvars f'))) as (z,Hz).
      apply Ind.AEqQu with z; auto.
      apply IH; try rewrite partialsubst_height; auto.
      apply nam2mix_rename_iff; auto.
@@ -475,8 +475,8 @@ Proof.
  intros H. revert stk.
  induction H; cbn; intros stk; f_equal; auto.
  generalize (IHAlphaEq (z::stk)).
- rewrite (nam2mix_partialsubst' [] stk v z) by (auto; varsdec).
- rewrite (nam2mix_partialsubst' [] stk v' z) by (auto; varsdec).
+ rewrite (nam2mix_partialsubst' [] stk v z) by (auto; namedec).
+ rewrite (nam2mix_partialsubst' [] stk v' z) by (auto; namedec).
  auto.
 Qed.
 
@@ -484,7 +484,7 @@ Qed.
 
 Lemma nam2mix_Subst_fsubst stk (x:variable) u f f' :
  ~In x stk ->
- (forall v, In v stk -> ~Vars.In v (Term.vars u)) ->
+ (forall v, In v stk -> ~Names.In v (Term.vars u)) ->
  Subst x u f f' ->
  nam2mix stk f' = Mix.fsubst x (nam2mix_term [] u) (nam2mix stk f).
 Proof.
@@ -496,7 +496,7 @@ Qed.
 
 Lemma nam2mix_altsubst_fsubst stk (x:variable) u f :
  ~In x stk ->
- (forall v, In v stk -> ~Vars.In v (Term.vars u)) ->
+ (forall v, In v stk -> ~Names.In v (Term.vars u)) ->
  nam2mix stk (Alt.subst x u f) =
  Mix.fsubst x (nam2mix_term [] u) (nam2mix stk f).
 Proof.
@@ -514,7 +514,7 @@ Qed.
 
 Lemma nam2mix_Subst_bsubst stk x u f f' :
  ~In x stk ->
- (forall v, In v stk -> ~Vars.In v (Term.vars u)) ->
+ (forall v, In v stk -> ~Names.In v (Term.vars u)) ->
  Subst x u f f' ->
  nam2mix stk f' =
  Mix.bsubst (length stk) (nam2mix_term [] u)
@@ -529,7 +529,7 @@ Qed.
 
 Lemma nam2mix_altsubst_bsubst stk (x:variable) u f :
  ~In x stk ->
- (forall v, In v stk -> ~Vars.In v (Term.vars u)) ->
+ (forall v, In v stk -> ~Names.In v (Term.vars u)) ->
  nam2mix stk (Alt.subst x u f) =
   Mix.bsubst (length stk) (nam2mix_term [] u)
              (nam2mix (stk++[x]) f).
@@ -547,7 +547,7 @@ Proof.
 Qed.
 
 Lemma nam2mix_rename_iff2 z v v' f f' :
-  ~ Vars.In z (Vars.union (freevars f) (freevars f')) ->
+  ~ Names.In z (Names.union (freevars f) (freevars f')) ->
   nam2mix [] (Alt.subst v (Var z) f) =
   nam2mix [] (Alt.subst v' (Var z) f')
   <->
@@ -557,7 +557,7 @@ Proof.
  rewrite 2 nam2mix_altsubst_bsubst0. cbn.
  split.
  - intros H. apply bsubst_fresh_inj in H; auto.
-   rewrite !nam2mix_fvars. cbn. varsdec.
+   rewrite !nam2mix_fvars. cbn. namedec.
  - now intros ->.
 Qed.
 
@@ -579,7 +579,7 @@ Proof.
 Qed.
 
 Lemma nam2mix_rename_iff3 (v x : variable) f f' :
-  ~ Vars.In x (Vars.remove v (freevars f)) ->
+  ~ Names.In x (Names.remove v (freevars f)) ->
   nam2mix [] (Alt.subst v (Var x) f) = nam2mix [] f'
   <->
   nam2mix [v] f = nam2mix [x] f'.
@@ -590,7 +590,7 @@ Proof.
  - rewrite <- (nam2mix_altsubst_nop x f').
    rewrite nam2mix_altsubst_bsubst0. cbn.
    apply bsubst_fresh_inj.
-   rewrite !nam2mix_fvars. cbn. varsdec.
+   rewrite !nam2mix_fvars. cbn. namedec.
  - intros ->.
    rewrite <- (nam2mix_altsubst_bsubst0 x (Var x)).
    apply nam2mix_altsubst_nop.
@@ -619,8 +619,8 @@ Proof.
        rewrite <- E'.
        clear E E'.
        rewrite !nam2mix_altsubst_bsubst, Eq; simpl; auto.
-       intros v Hv. VarsF.set_iff. now intros ->.
-       intros v Hv. VarsF.set_iff. now intros ->.
+       intros v Hv. nameiff. now intros ->.
+       intros v Hv. nameiff. now intros ->.
  - rewrite nam2mix_canonical'. apply AlphaEq_nam2mix_gen.
 Qed.
 
@@ -696,32 +696,32 @@ Qed.
 Fixpoint Inv vs (h:renaming) :=
   match h with
   | [] => Logic.True
-  | (v,z)::h => ~Vars.In z vs /\
+  | (v,z)::h => ~Names.In z vs /\
                 (forall a b, In (a,b) h -> z<>a/\z<>b) /\
                 Inv vs h
   end.
 
 Lemma Inv_subset vs vs' h :
-  Vars.Subset vs vs' -> Inv vs' h -> Inv vs h.
+  Names.Subset vs vs' -> Inv vs' h -> Inv vs h.
 Proof.
  induction h as [|(v,z) h IH]; simpl; intuition.
 Qed.
 
 Lemma Inv_add vs x (h:renaming) :
-  Vars.Subset vs (Vars.add x vs) ->
-  ~Vars.In x (Subst.vars (map putVar h)) ->
-  Inv vs h -> Inv (Vars.add x vs) h.
+  Names.Subset vs (Names.add x vs) ->
+  ~Names.In x (Subst.vars (map putVar h)) ->
+  Inv vs h -> Inv (Names.add x vs) h.
 Proof.
  induction h as [|(v,z) h IH]; simpl; auto.
  intros SU NI (NI' & H & IV).
  unfold Subst.vars in *. simpl in NI.
  split; [|split; auto with set].
- VarsF.set_iff.
+ nameiff.
  intros [->|IN]; auto with set.
 Qed.
 
 Lemma Inv_notin vs (h:renaming) v z :
-  Inv vs h -> list_assoc v h = Some z -> ~Vars.In z vs.
+  Inv vs h -> list_assoc v h = Some z -> ~Names.In z vs.
 Proof.
  induction h as [|(a,b) h IH]; simpl; try easy.
  intros (H & H' & IV).
@@ -731,7 +731,7 @@ Qed.
 
 Lemma Inv_notin_unassoc vs (h:renaming) v z :
  Inv vs h -> list_assoc v h = Some z ->
- ~Vars.In z (Subst.outvars (map putVar (list_unassoc v h))).
+ ~Names.In z (Subst.outvars (map putVar (list_unassoc v h))).
 Proof.
  induction h as [|(a,b) h IH]; simpl; try easy.
  intros (H & H' & IV).
@@ -740,39 +740,39 @@ Proof.
  - intros -> [= ->].
    rewrite <- unassoc_putVar.
    unfold Subst.outvars.
-   rewrite vars_unionmap_in.
+   rewrite unionmap_in.
    intros ((x,t) & IN & IN').
    rewrite unassoc_in, in_map_iff in IN'.
    destruct IN' as (((a,b) & [=] & IN'),NE).
-   subst t a. cbn in *. apply H' in IN'. varsdec.
+   subst t a. cbn in *. apply H' in IN'. namedec.
  - intros NE EQ.
    specialize (IH IV EQ). unfold Subst.vars in IH.
    assert (IN: In (v,z) h).
    { now apply list_assoc_in2. }
    apply H' in IN.
-   varsdec.
+   namedec.
 Qed.
 
 Lemma Inv_notin' vs (h:renaming) (v x:variable) :
-  Inv vs h -> (Vars.In x vs \/ list_assoc v h = Some x) ->
-  ~Vars.In x (Subst.outvars (map putVar (list_unassoc v h))).
+  Inv vs h -> (Names.In x vs \/ list_assoc v h = Some x) ->
+  ~Names.In x (Subst.outvars (map putVar (list_unassoc v h))).
 Proof.
  intros IV.
  induction h as [|(a,b) h IH]; simpl in *; auto.
- - varsdec.
+ - namedec.
  - destruct IV as (H & H' & IV).
    rewrite eqb_sym.
    case eqbspec; simpl.
    + intros -> [IN|[= ->]]. intuition.
-     unfold Subst.outvars. rewrite vars_unionmap_in.
+     unfold Subst.outvars. rewrite unionmap_in.
      intros ((a,t) & IN & IN').
      rewrite in_map_iff in IN'.
      destruct IN' as ((a',b) & [= -> <-] & IN').
      rewrite unassoc_in in IN'.
-     simpl in IN. rewrite Vars.singleton_spec in IN.
+     simpl in IN. rewrite Names.singleton_spec in IN.
      destruct (H' a b); intuition.
    + intros NE [IN|SO];
-      rewrite Vars.union_spec, Vars.singleton_spec.
+      rewrite Names.union_spec, Names.singleton_spec.
      * intuition.
      * intros [<-|IN]; [|intuition].
        apply list_assoc_in2 in SO. now apply H' in SO.
@@ -796,7 +796,7 @@ Qed.
 
 Lemma Inv_inj' vs (h:renaming) (x y:variable) :
   Inv vs h ->
-  Vars.In x vs -> Vars.In y vs ->
+  Names.In x vs -> Names.In y vs ->
   chgVar h x = chgVar h y -> x = y.
 Proof.
  intros IV Hx Hy.
@@ -820,7 +820,7 @@ Qed.
 
 Lemma nam2mix_substs_rename_aux stk stk' v (h:renaming) f :
   let g := list_unassoc v h in
-  In (chgVar h v) stk \/ ~Vars.In (chgVar h v) (freevars f) ->
+  In (chgVar h v) stk \/ ~Names.In (chgVar h v) (freevars f) ->
   In v stk ->
   nam2mix (stk ++ map (chgVar h) stk') f =
   nam2mix (stk ++ map (chgVar g) stk') f.
@@ -842,7 +842,7 @@ Proof.
 Qed.
 
 Lemma nam2mix_term_chgVar_some stk (h:renaming) (v z:variable) :
-  Inv (Vars.union (vars_of_list stk) (Vars.singleton v)) h ->
+  Inv (Names.union (Names.of_list stk) (Names.singleton v)) h ->
   list_assoc v h = Some z -> In v stk ->
   nam2mix_term (map (chgVar h) stk) (Var z) =
   nam2mix_term stk (Var v).
@@ -858,8 +858,8 @@ Proof.
      eapply Inv_inj'; eauto with set.
    + intros NE'.
      destruct IN; [subst;easy|].
-     assert (H' : Inv (Vars.union (vars_of_list stk) (Vars.singleton v)) h).
-     { eapply Inv_subset; eauto. varsdec. }
+     assert (H' : Inv (Names.union (Names.of_list stk) (Names.singleton v)) h).
+     { eapply Inv_subset; eauto. namedec. }
      specialize (IHstk H' H).
      destruct (list_index z (map (chgVar h) stk)),
               (list_index v stk); simpl; try easy.
@@ -867,7 +867,7 @@ Proof.
 Qed.
 
 Lemma nam2mix_term_chgVar_none stk (h:renaming) (v:variable) :
-  Inv (Vars.union (vars_of_list stk) (Vars.singleton v)) h ->
+  Inv (Names.union (Names.of_list stk) (Names.singleton v)) h ->
   list_assoc v h = None ->
   nam2mix_term (map (chgVar h) stk) (Var v) =
   nam2mix_term stk (Var v).
@@ -882,8 +882,8 @@ Proof.
      rewrite <- (chgVar_none _ _ EQ) in EQ'.
      eapply Inv_inj'; eauto with set.
    + intros NE'.
-     assert (H : Inv (Vars.union (vars_of_list stk) (Vars.singleton v)) h).
-     { eapply Inv_subset; eauto. varsdec. }
+     assert (H : Inv (Names.union (Names.of_list stk) (Names.singleton v)) h).
+     { eapply Inv_subset; eauto. namedec. }
      specialize (IHstk H).
      destruct (list_index v (map (chgVar h) stk)),
               (list_index v stk); simpl; try easy.
@@ -891,7 +891,7 @@ Proof.
 Qed.
 
 Lemma nam2mix_term_substs_rename stk (h:renaming) t :
- Inv (Vars.union (vars_of_list stk) (Term.vars t)) h ->
+ Inv (Names.union (Names.of_list stk) (Term.vars t)) h ->
  (forall a b, In (a,b) h -> In a stk) ->
  nam2mix_term (map (chgVar h) stk) (Term.substs (map putVar h) t) =
  nam2mix_term stk t.
@@ -908,12 +908,12 @@ Proof.
    revert l IV.
    fix IH' 1. destruct l as [|t l]; cbn; intros IV; auto.
    f_equal.
-   apply IH; auto. eapply Inv_subset; eauto. varsdec.
-   apply IH'; auto. eapply Inv_subset; eauto. varsdec.
+   apply IH; auto. eapply Inv_subset; eauto. namedec.
+   apply IH'; auto. eapply Inv_subset; eauto. namedec.
 Qed.
 
 Lemma nam2mix_substs_rename stk (h:renaming) f:
- Inv (Vars.union (vars_of_list stk) (allvars f)) h ->
+ Inv (Names.union (Names.of_list stk) (allvars f)) h ->
  (forall a b, In (a,b) h -> In a stk) ->
  nam2mix (map (chgVar h) stk) (substs (map putVar h) f) =
  nam2mix stk f.
@@ -923,18 +923,18 @@ Proof.
  - f_equal.
    injection (nam2mix_term_substs_rename stk h (Fun "" l)); auto.
  - f_equal; auto.
- - f_equal. apply IHf1; auto. eapply Inv_subset; eauto. varsdec.
-   apply IHf2; auto. eapply Inv_subset; eauto. varsdec.
+ - f_equal. apply IHf1; auto. eapply Inv_subset; eauto. namedec.
+   apply IHf2; auto. eapply Inv_subset; eauto. namedec.
  - set (g' := list_unassoc v (map putVar h)).
    set (g := list_unassoc v h).
-   assert (~Vars.In v (Subst.outvars g')).
+   assert (~Names.In v (Subst.outvars g')).
    { unfold g'. rewrite unassoc_putVar.
-     eapply Inv_notin'; eauto. left; varsdec. }
-   rewrite vars_mem_false by trivial; simpl.
+     eapply Inv_notin'; eauto. left; namedec. }
+   rewrite mem_false by trivial; simpl.
    f_equal.
    rewrite <- IHf with (h:=g).
    2:{ apply Inv_unassoc.
-       eapply Inv_subset; eauto. simpl; varsdec. }
+       eapply Inv_subset; eauto. simpl; namedec. }
    2:{ intros a b. unfold g.
        rewrite unassoc_in. intros (IN,_); simpl; eauto. }
    cbn.
@@ -953,17 +953,17 @@ Proof.
      assert (IV2 := Inv_notin _ _ _ _ IV Hz).
      assert (IV3 := Inv_notin' _ _ _ _ IV (or_intror _ Hz)).
      rewrite <- unassoc_putVar in IV3. fold g' in IV3.
-     varsdec.
+     namedec.
    + left; left. symmetry. now apply chgVar_none.
 Qed.
 
 Lemma nam2mix_term_substs stk h x u t:
- Inv (vars_unions [vars_of_list stk;
+ Inv (Names.unions [Names.of_list stk;
                    Term.vars t;
-                   Vars.add x (Term.vars u)]) h ->
+                   Names.add x (Term.vars u)]) h ->
  (forall a b , In (a,b) h -> In a stk) ->
  ~In x stk ->
- (forall v, In v stk -> ~Vars.In (chgVar h v) (Term.vars u)) ->
+ (forall v, In v stk -> ~Names.In (chgVar h v) (Term.vars u)) ->
  nam2mix_term (map (chgVar h) stk)
               (Term.substs (map putVar h ++ [(x,u)]) t) =
  Mix.fsubst x (nam2mix_term [] u) (nam2mix_term stk t).
@@ -984,7 +984,7 @@ Proof.
      { now apply list_assoc_in2, SU in E. }
      generalize (nam2mix_term_chgVar_some stk h v z).
      simpl.
-     intros ->; auto; [ | eapply Inv_subset; eauto; varsdec].
+     intros ->; auto; [ | eapply Inv_subset; eauto; namedec].
      rewrite <- list_index_in in IN'.
      now destruct (list_index v stk).
    + assert (~In v (map fst (map putVar h))).
@@ -993,7 +993,7 @@ Proof.
      rewrite list_assoc_app_r by auto.
      simpl. case eqbspec; simpl.
      * intros <-. apply list_index_notin in NI.
-       change Vars.elt with variable in *.
+       change Names.elt with variable in *.
        rewrite NI. cbn. unfold Mix.varsubst. rewrite eqb_refl.
        apply nam2mix_term_nostack.
        intros y. rewrite in_map_iff. intros (x & <- & Hx); auto.
@@ -1001,53 +1001,53 @@ Proof.
        generalize (nam2mix_term_chgVar_none stk h v).
        simpl.
        intros ->; auto.
-       2:{ eapply Inv_subset; eauto. varsdec. }
+       2:{ eapply Inv_subset; eauto. namedec. }
        2:{ now apply list_assoc_notin. }
        unfold Mix.fsubst.
        rewrite term_vmap_id; auto.
        intros y. unfold Mix.varsubst.
-       destruct (list_index v stk); cbn; VarsF.set_iff; intuition.
+       destruct (list_index v stk); cbn; nameiff; intuition.
  - f_equal. clear f.
    revert l IV.
    fix IH' 1. destruct l as [|t l]; cbn; intros IV; auto.
    f_equal.
-   apply IH; auto. eapply Inv_subset; eauto. simpl. varsdec.
-   apply IH'; auto. eapply Inv_subset; eauto. simpl. varsdec.
+   apply IH; auto. eapply Inv_subset; eauto. simpl. namedec.
+   apply IH'; auto. eapply Inv_subset; eauto. simpl. namedec.
 Qed.
 
-Ltac varsdec00 := clear; VarsF.set_iff; intuition auto.
+Ltac namedec00 := clear; nameiff; intuition auto.
 
 Lemma stack_notin_term
   (v z z' : variable)(t : term)
   (stk : list variable)(h g : renaming) g' :
   g = list_unassoc v h ->
   g' = map putVar g ->
-  ~Vars.In z (Term.vars t) ->
-  ~Vars.In z' (Vars.union (Subst.vars g') (Vars.add v (Term.vars t))) ->
+  ~Names.In z (Term.vars t) ->
+  ~Names.In z' (Names.union (Subst.vars g') (Names.add v (Term.vars t))) ->
   let stk' := map (fun a : variable => if a =? z then z' else a) stk in
   (forall v : variable,
-    In v stk -> ~ Vars.In (chgVar h v) (Term.vars t)) ->
+    In v stk -> ~ Names.In (chgVar h v) (Term.vars t)) ->
   forall v' : variable,
     In v' (v :: stk') ->
-    ~ Vars.In (chgVar ((v, z) :: g) v') (Term.vars t).
+    ~ Names.In (chgVar ((v, z) :: g) v') (Term.vars t).
 Proof.
  intros Hg Hg' Hz Hz' stk' CL v0 [<-|IN].
- - unfold chgVar. simpl. rewrite eqb_refl. varsdec0.
+ - unfold chgVar. simpl. rewrite eqb_refl. namedec0.
  - unfold stk' in IN. rewrite in_map_iff in IN.
    destruct IN as (y & EQ & IN). revert EQ.
    case eqbspec.
    + intros -> <-.
-     rewrite chgVar_none; [varsdec0|]; simpl.
-     case eqbspec; [intros <-;varsdec0|].
+     rewrite chgVar_none; [namedec0|]; simpl.
+     case eqbspec; [intros <-;namedec0|].
      intros _.
      assert (NO : list_assoc z' g' = None).
      { apply list_assoc_notin.
-       rewrite <- invars_in. unfold Subst.vars in Hz'. varsdec0. }
+       rewrite <- invars_in. unfold Subst.vars in Hz'. namedec0. }
      revert NO.
      rewrite Hg'. rewrite assoc_putVar.
      now destruct (list_assoc z' g).
    + intros NE' ->. unfold chgVar. simpl.
-     case eqbspec; [varsdec0|].
+     case eqbspec; [namedec0|].
      intros NE''.
      fold (chgVar g v0). rewrite Hg.
      rewrite chgVar_unassoc_else by auto.
@@ -1057,64 +1057,64 @@ Qed.
 Lemma Inv_Inv
   (x v z z' : variable)(t : term)(f : formula)
   (stk : list variable)(h g : renaming) g' :
-  let vars := Vars.union (Vars.add v (allvars f))
-                         (Vars.add x (Term.vars t)) in
-  Inv (Vars.union (vars_of_list stk) vars) h ->
+  let vars := Names.union (Names.add v (allvars f))
+                         (Names.add x (Term.vars t)) in
+  Inv (Names.union (Names.of_list stk) vars) h ->
   g = list_unassoc v h ->
   g' = map putVar g ->
-  ~Vars.In z (Vars.union (Subst.vars g') vars) ->
-  ~Vars.In z' (Vars.union (Subst.vars g') vars) ->
-  ~Vars.In z' (vars_of_list stk) ->
+  ~Names.In z (Names.union (Subst.vars g') vars) ->
+  ~Names.In z' (Names.union (Subst.vars g') vars) ->
+  ~Names.In z' (Names.of_list stk) ->
   let stk' := map (fun a : variable => if a =? z then z' else a) stk in
   Inv
-    (Vars.union (vars_of_list (v :: stk'))
-       (Vars.union (allvars f)
-          (Vars.union (Vars.add x (Term.vars t)) Vars.empty)))
+    (Names.union (Names.of_list (v :: stk'))
+       (Names.union (allvars f)
+          (Names.union (Names.add x (Term.vars t)) Names.empty)))
     ((v, z) :: g).
 Proof.
  intros vars IV Hg Hg' Hz Hz' Hz'' stk'.
  simpl. split; [|split].
- - assert (NI' : ~Vars.In z (vars_of_list stk')).
-   { rewrite vars_of_list_in.
+ - assert (NI' : ~Names.In z (Names.of_list stk')).
+   { rewrite names_of_list_in.
      unfold stk'. rewrite in_map_iff.
-     intros (z0 & EQ & IN). rewrite <- vars_of_list_in in IN.
+     intros (z0 & EQ & IN). rewrite <- names_of_list_in in IN.
      revert EQ. case eqbspec; [|easy].
      intros -> <-; exact (Hz'' IN). }
-   revert Hz NI'. unfold vars. varsdec00.
+   revert Hz NI'. unfold vars. namedec00.
  - intros a b Hab.
    assert (In (a,Var b) g').
    { rewrite Hg'. rewrite in_map_iff. now exists (a,b). }
-   assert (Vars.In a (Subst.invars g')).
+   assert (Names.In a (Subst.invars g')).
    { rewrite invars_in. rewrite in_map_iff. now exists (a,Var b). }
-   assert (Vars.In b (Subst.outvars g')).
-   { unfold Subst.outvars. rewrite vars_unionmap_in. exists (a,Var b).
+   assert (Names.In b (Subst.outvars g')).
+   { unfold Subst.outvars. rewrite unionmap_in. exists (a,Var b).
      simpl. auto with set. }
    unfold vars, Subst.vars in Hz.
-   split; varsdec.
+   split; namedec.
  - apply Inv_unassoc with (v:=v) in IV. rewrite <- Hg in IV.
    apply Inv_add with (x:=z') in IV;
-     [ | varsdec| rewrite <- Hg'; revert Hz'; varsdec00].
+     [ | namedec| rewrite <- Hg'; revert Hz'; namedec00].
    eapply Inv_subset; eauto.
-   assert (Vars.Subset (vars_of_list stk')
-                       (Vars.add z' (vars_of_list stk))).
+   assert (Names.Subset (Names.of_list stk')
+                        (Names.add z' (Names.of_list stk))).
    { unfold stk'. clear. intros x.
-     rewrite Vars.add_spec, !vars_of_list_in, in_map_iff.
+     rewrite Names.add_spec, !names_of_list_in, in_map_iff.
      intros (x0 & EQ & IN). revert EQ.
      case eqbspec; intros; subst; auto. }
-   rewrite H. intro. unfold vars. varsdec00.
+   rewrite H. intro. unfold vars. namedec00.
 Qed.
 
 Lemma nam2mix_substs_aux1
   (x v z z' : variable)(t : term)(f : formula)
   (stk : list variable)(h g : renaming) g' :
-  let vars := Vars.union (Vars.add v (allvars f))
-                         (Vars.add x (Term.vars t)) in
+  let vars := Names.union (Names.add v (allvars f))
+                         (Names.add x (Term.vars t)) in
   Inv vars h ->
   g = list_unassoc v h ->
   g' = map putVar g ->
-  ~Vars.In z (Vars.union (Subst.vars g') vars) ->
-  ~Vars.In z' (Vars.union (Subst.vars g') vars) ->
-  ~Vars.In z' (vars_of_list stk) ->
+  ~Names.In z (Names.union (Subst.vars g') vars) ->
+  ~Names.In z' (Names.union (Subst.vars g') vars) ->
+  ~Names.In z' (Names.of_list stk) ->
   (In v stk -> chgVar h v <> v) ->
   let stk' := map (fun a : variable => if a =? z then z' else a) stk in
   nam2mix (z :: map (chgVar h) stk)
@@ -1139,30 +1139,30 @@ Proof.
  simpl in Hy.
  rewrite freevars_allvars in Hy.
  assert (Hyz' : y <> z').
- { intros ->. revert Hz' Hy Hyz. unfold vars. varsdec00. }
- assert (H : ~Vars.In z (Subst.invars g')) by varsdec0.
- assert (Hzv : z<>v) by (unfold vars in Hz; varsdec0).
+ { intros ->. revert Hz' Hy Hyz. unfold vars. namedec00. }
+ assert (H : ~Names.In z (Subst.invars g')) by namedec0.
+ assert (Hzv : z<>v) by (unfold vars in Hz; namedec0).
  rewrite Hg',Hg, <- unassoc_putVar in H.
  rewrite invars_unassoc in H.
- assert (Hzh : ~Vars.In z (Subst.invars (map putVar h))).
- { revert H Hzv. varsdec00. }
+ assert (Hzh : ~Names.In z (Subst.invars (map putVar h))).
+ { revert H Hzv. namedec00. }
  clear H.
  rewrite invars_in, fst_putVar in Hzh.
  assert (Hhz : chgVar h z = z).
  { apply chgVar_none. now apply list_assoc_notin. }
  assert (Hgz' : chgVar ((v, z) :: g) z' = z').
  { apply chgVar_none. simpl.
-   case eqbspec; [unfold vars in Hz';varsdec0|].
+   case eqbspec; [unfold vars in Hz';namedec0|].
    intros NE2. apply list_assoc_notin.
    rewrite <- fst_putVar, <- Hg'.
-   rewrite <- invars_in. varsdec0. }
+   rewrite <- invars_in. namedec0. }
  assert (NI := Inv_notin _ _ v (chgVar h v) IV).
  assert (NI' := Inv_notin_unassoc _ _ v (chgVar h v) IV).
  clear IV.
  revert stk CL Hz''.
  induction stk as [|s stk IH]; simpl; auto.
  intros CL Hz''.
- rewrite Vars.add_spec in Hz''.
+ rewrite Names.add_spec in Hz''.
  apply Decidable.not_or in Hz''.
  destruct Hz'' as (Hsz',Hz'').
  case (eqbspec s z).
@@ -1183,7 +1183,7 @@ Proof.
        unfold hv, chgVar. rewrite list_assoc_dft_alt.
        destruct list_assoc; intuition. }
      generalize (NI H) (NI' H) Hy Hyz.
-     rewrite <- Hg, <- Hg'. unfold vars. varsdec00.
+     rewrite <- Hg, <- Hg'. unfold vars. namedec00.
    + intros NE.
      replace (chgVar ((v, z)::g) s) with (chgVar h s).
      { case eqbspec; intros; f_equal; auto. }
@@ -1196,8 +1196,8 @@ Qed.
 Lemma form_substs_aux2
   (x v : variable)(t : term)(f : formula)
   (stk : list variable)(h g : renaming) g' :
-  let vars := Vars.union (Vars.add v (allvars f))
-                         (Vars.add x (Term.vars t)) in
+  let vars := Names.union (Names.add v (allvars f))
+                         (Names.add x (Term.vars t)) in
   Inv vars h ->
   g = list_unassoc v h ->
   g' = map putVar g ->
@@ -1223,7 +1223,7 @@ Proof.
    generalize (Inv_notin _ _ _ _ IV E). simpl.
    generalize (Inv_notin_unassoc _ _ _ _ IV E).
    rewrite <- Hg, <- Hg'.
-   revert NE. unfold vars. varsdec00. }
+   revert NE. unfold vars. namedec00. }
  rewrite Hg.
  clear - NE NE'.
  induction stk; simpl; auto.
@@ -1238,12 +1238,12 @@ Proof.
 Qed.
 
 Lemma nam2mix_substs (stk:list variable) h (x:variable) t f:
- Inv (vars_unions [vars_of_list stk;
+ Inv (Names.unions [Names.of_list stk;
                    allvars f;
-                   Vars.add x (Term.vars t)]) h ->
+                   Names.add x (Term.vars t)]) h ->
  (forall a b , In (a,b) h -> In a stk) ->
  ~In x stk ->
- (forall v, In v stk -> ~Vars.In (chgVar h v) (Term.vars t)) ->
+ (forall v, In v stk -> ~Names.In (chgVar h v) (Term.vars t)) ->
  nam2mix (map (chgVar h) stk)
          (substs (map putVar h ++ [(x,t)]) f) =
  Mix.fsubst x (nam2mix_term [] t) (nam2mix stk f).
@@ -1253,8 +1253,8 @@ Proof.
  - f_equal.
    injection (nam2mix_term_substs stk h x t (Fun "" l)); auto.
  - f_equal; auto.
- - f_equal. apply IHf1; auto. eapply Inv_subset; eauto. varsdec.
-   apply IHf2; auto. eapply Inv_subset; eauto. varsdec.
+ - f_equal. apply IHf1; auto. eapply Inv_subset; eauto. namedec.
+   apply IHf2; auto. eapply Inv_subset; eauto. namedec.
  - rewrite !unassoc_app. cbn.
    set (g' := list_unassoc v (map putVar h)).
    set (g := list_unassoc v h).
@@ -1267,33 +1267,33 @@ Proof.
      unfold Mix.fsubst.
      rewrite form_vmap_id.
      2:{ intros v. unfold Mix.varsubst. case eqbspec; auto.
-         intros <-. rewrite nam2mix_fvars. simpl. varsdec. }
+         intros <-. rewrite nam2mix_fvars. simpl. namedec. }
      change
        (nam2mix (map (chgVar h) stk)
                 (substs (map putVar h) (Quant q x f))
         = nam2mix stk (Quant q x f)).
      apply nam2mix_substs_rename; auto.
-     eapply Inv_subset; eauto. cbn. varsdec.
+     eapply Inv_subset; eauto. cbn. namedec.
    + (* x <> v *)
      intros NE.
-     destruct (Vars.mem _ _) eqn:MM; cbn; f_equal;
+     destruct (Names.mem _ _) eqn:MM; cbn; f_equal;
      rewrite outvars_app in MM; simpl in MM.
      * (* Capture of variable v, which occurs in t *)
-       assert (IN : Vars.In v (Term.vars t)).
+       assert (IN : Names.In v (Term.vars t)).
        { revert MM.
-         rewrite Vars.mem_spec.
+         rewrite Names.mem_spec.
          rewrite Hg. unfold g.
-         generalize (Inv_notin' _ _ v v IV). varsdec00. }
+         generalize (Inv_notin' _ _ v v IV). namedec00. }
        clear MM.
-       set (vars := Vars.union _ _).
-       assert (Hz := fresh_var_ok vars).
-       set (z := fresh_var vars) in *. clearbody z.
-       set (vars' := Vars.union vars (vars_of_list stk)).
-       assert (Hz' := fresh_var_ok vars').
-       set (z' := fresh_var vars') in *. clearbody z'.
+       set (vars := Names.union _ _).
+       assert (Hz := fresh_ok vars).
+       set (z := fresh vars) in *. clearbody z.
+       set (vars' := Names.union vars (Names.of_list stk)).
+       assert (Hz' := fresh_ok vars').
+       set (z' := fresh vars') in *. clearbody z'.
        set (stk' := map (fun a => if a =? z then z' else a) stk).
        unfold vars' in Hz'.
-       rewrite Vars.union_spec in Hz'. apply Decidable.not_or in Hz'.
+       rewrite Names.union_spec in Hz'. apply Decidable.not_or in Hz'.
        destruct Hz' as (Hz',Hz'2).
        unfold vars in Hz,Hz'. clear vars' vars.
        rewrite outvars_app, invars_app in Hz,Hz'.
@@ -1301,45 +1301,45 @@ Proof.
        assert (CL' : In v stk -> chgVar h v <> v).
        { intros IN' EQ. apply (CL v IN'). now rewrite EQ. }
        erewrite nam2mix_substs_aux1; eauto; fold stk'; fold g.
-       2:{clear -IV. eapply Inv_subset; eauto. simpl. intro. varsdec00. }
-       2:{revert Hz. unfold Subst.vars; simpl. varsdec00. }
-       2:{revert Hz'. unfold Subst.vars; simpl. varsdec00. }
+       2:{clear -IV. eapply Inv_subset; eauto. simpl. intro. namedec00. }
+       2:{revert Hz. unfold Subst.vars; simpl. namedec00. }
+       2:{revert Hz'. unfold Subst.vars; simpl. namedec00. }
        rewrite IHf; clear IHf.
        { f_equal.
          apply (nam2mix_shadowstack_map [v] stk);
-          right; rewrite freevars_allvars; varsdec0. }
+          right; rewrite freevars_allvars; namedec0. }
        { eapply Inv_Inv with (h:=h); auto.
-         eapply Inv_subset; eauto. intro. varsdec00.
-         revert Hz. rewrite <- Hg. unfold Subst.vars. varsdec00.
-         revert Hz'. rewrite <- Hg. unfold Subst.vars. varsdec00. }
+         eapply Inv_subset; eauto. intro. namedec00.
+         revert Hz. rewrite <- Hg. unfold Subst.vars. namedec00.
+         revert Hz'. rewrite <- Hg. unfold Subst.vars. namedec00. }
        { clear CL CL' IN.
          intros a b [[= -> ->]|IN]; simpl; auto.
-         assert (Vars.In a (Subst.invars g')).
+         assert (Names.In a (Subst.invars g')).
          { unfold g'.
            rewrite invars_in. rewrite unassoc_putVar. fold g.
            rewrite map_map. apply in_map_iff. now exists (a,b). }
-         assert (a <> z) by (intros ->; varsdec0).
+         assert (a <> z) by (intros ->; namedec0).
          unfold g in IN. rewrite unassoc_in in IN. right.
          unfold stk'. rewrite in_map_iff. exists a.
          case eqbspec; try easy. split; auto. eapply SU. apply IN. }
        { clear CL CL' IN.
          intros [->|IN]; [easy|]. unfold stk' in IN. rewrite in_map_iff in IN.
          destruct IN as (x0 & EQ & IN). revert EQ.
-         case eqbspec; intros; subst; auto. varsdec0. }
+         case eqbspec; intros; subst; auto. namedec0. }
        { apply stack_notin_term with (h:=h)(g':=g'); auto.
-         revert Hz. varsdec00.
-         revert Hz'. unfold Subst.vars. varsdec00. }
+         revert Hz. namedec00.
+         revert Hz'. unfold Subst.vars. namedec00. }
      * (* No capture of variable v *)
-       assert (~Vars.In v (Term.vars t)).
-       { simpl in MM. rewrite <-not_true_iff_false, Vars.mem_spec in MM.
-         varsdec0. }
+       assert (~Names.In v (Term.vars t)).
+       { simpl in MM. rewrite <-not_true_iff_false, Names.mem_spec in MM.
+         namedec0. }
        clear MM.
        rewrite form_substs_aux2 with (g:=g); auto.
-       2:{clear -IV. eapply Inv_subset; eauto. simpl. intro. varsdec00. }
+       2:{clear -IV. eapply Inv_subset; eauto. simpl. intro. namedec00. }
        rewrite Hg.
        apply IHf; clear IHf.
        { apply Inv_unassoc.
-         eapply Inv_subset; eauto. simpl. varsdec. }
+         eapply Inv_subset; eauto. simpl. namedec. }
        { intros a b. unfold g.
          rewrite unassoc_in. intros (IN,_); simpl; eauto. }
        { simpl. intros [->|IN]; intuition. }
@@ -1384,7 +1384,7 @@ Qed.
     reuse it afterwards. *)
 
 Lemma altsubst_altsubst x y u v f :
- x<>y -> ~Vars.In x (Term.vars v) ->
+ x<>y -> ~Names.In x (Term.vars v) ->
  AlphaEq (Alt.subst y v (Alt.subst x u f))
          (Alt.subst x (Term.subst y v u) (Alt.subst y v f)).
 Proof.
@@ -1393,11 +1393,11 @@ Proof.
  rewrite !nam2mix0_altsubst_fsubst.
  rewrite nam2mix_term_subst by auto.
  apply form_fsubst_fsubst; auto.
- rewrite nam2mix_tvars. cbn. varsdec.
+ rewrite nam2mix_tvars. cbn. namedec.
 Qed.
 
 Lemma subst_subst x y u v f :
- x<>y -> ~Vars.In x (Term.vars v) ->
+ x<>y -> ~Names.In x (Term.vars v) ->
  AlphaEq (subst y v (subst x u f))
          (subst x (Term.subst y v u) (subst y v f)).
 Proof.
@@ -1411,7 +1411,7 @@ Qed.
 
 Lemma altsubst_QuGen (x z:variable) t q v f :
  x<>v ->
- ~Vars.In z (Vars.add x (Vars.union (freevars f) (Term.vars t))) ->
+ ~Names.In z (Names.add x (Names.union (freevars f) (Term.vars t))) ->
  AlphaEq (Alt.subst x t (Quant q v f))
          (Quant q z (Alt.subst x t (Alt.subst v (Var z) f))).
 Proof.
@@ -1419,14 +1419,14 @@ Proof.
  apply nam2mix_canonical'. cbn - [Alt.subst].
  rewrite !nam2mix0_altsubst_fsubst. cbn - [Alt.subst].
  f_equal.
- rewrite nam2mix_altsubst_fsubst by (simpl; varsdec).
+ rewrite nam2mix_altsubst_fsubst by (simpl; namedec).
  f_equal.
- apply nam2mix_rename_iff3; auto. varsdec.
+ apply nam2mix_rename_iff3; auto. namedec.
 Qed.
 
 Lemma subst_QuGen (x z:variable) t q v f :
  x<>v ->
- ~Vars.In z (Vars.add x (Vars.union (freevars f) (Term.vars t))) ->
+ ~Names.In z (Names.add x (Names.union (freevars f) (Term.vars t))) ->
  AlphaEq (subst x t (Quant q v f))
          (Quant q z (subst x t (subst v (Var z) f))).
 Proof.

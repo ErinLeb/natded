@@ -1,7 +1,7 @@
 
 (** Some Meta-properties (proved on the Mix encoding) *)
 
-Require Import RelationClasses Arith Omega Defs Proofs Mix.
+Require Import RelationClasses Arith Omega Defs NameProofs Mix.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
@@ -64,34 +64,34 @@ Qed.
 (** [bsubst] and [fvars] *)
 
 Lemma bsubst_term_fvars n (u t:term) :
- Vars.Subset (fvars (bsubst n u t)) (Vars.union (fvars u) (fvars t)).
+ Names.Subset (fvars (bsubst n u t)) (Names.union (fvars u) (fvars t)).
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
- intros v. rewrite Vars.union_spec, !vars_unionmap_in.
+ intros v. rewrite Names.union_spec, !unionmap_in.
  intros (a & Hv & Ha). rewrite in_map_iff in Ha.
  destruct Ha as (a' & <- & Ha'). apply IH in Hv; auto.
- rewrite Vars.union_spec in Hv; destruct Hv as [Hv|Hv]; auto.
+ rewrite Names.union_spec in Hv; destruct Hv as [Hv|Hv]; auto.
  right. now exists a'.
 Qed.
 
 Lemma bsubst_fvars n u (f:formula) :
- Vars.Subset (fvars (bsubst n u f)) (Vars.union (fvars u) (fvars f)).
+ Names.Subset (fvars (bsubst n u f)) (Names.union (fvars u) (fvars f)).
 Proof.
  revert n.
  induction f; cbn; intros; auto with *.
- - intros v. rewrite Vars.union_spec, !vars_unionmap_in.
+ - intros v. rewrite Names.union_spec, !unionmap_in.
    intros (a & Hv & Ha). rewrite in_map_iff in Ha.
    destruct Ha as (a' & <- & Ha'). apply bsubst_term_fvars in Hv; auto.
-   rewrite Vars.union_spec in Hv; destruct Hv as [Hv|Hv]; auto.
+   rewrite Names.union_spec in Hv; destruct Hv as [Hv|Hv]; auto.
    right. now exists a'.
- - rewrite IHf1, IHf2. varsdec.
+ - rewrite IHf1, IHf2. namedec.
 Qed.
 
 Lemma bsubst_ctx_fvars n u (c:context) :
- Vars.Subset (fvars (bsubst n u c)) (Vars.union (fvars u) (fvars c)).
+ Names.Subset (fvars (bsubst n u c)) (Names.union (fvars u) (fvars c)).
 Proof.
  induction c as [|f c IH]; cbn; auto with *.
- rewrite bsubst_fvars, IH. varsdec.
+ rewrite bsubst_fvars, IH. namedec.
 Qed.
 
 (** [bsubst] above the level does nothing *)
@@ -125,27 +125,27 @@ Qed.
 (** [bsubst] to a fesh variable is injective *)
 
 Lemma term_bsubst_fresh_inj n z (t t':term):
- ~ Vars.In z (Vars.union (fvars t) (fvars t')) ->
+ ~ Names.In z (Names.union (fvars t) (fvars t')) ->
  bsubst n (FVar z) t = bsubst n (FVar z) t' ->
  t = t'.
 Proof.
  revert t t'.
  fix IH 1; destruct t, t'; cbn; intros NI; try discriminate.
  - intro E. exact E.
- - clear IH. case eqbspec; auto. intros -> [= ->]. varsdec.
- - clear IH. case eqbspec; auto. intros -> [= ->]. varsdec.
+ - clear IH. case eqbspec; auto. intros -> [= ->]. namedec.
+ - clear IH. case eqbspec; auto. intros -> [= ->]. namedec.
  - clear IH. do 2 case eqbspec; intros; subst; easy.
  - clear IH. case eqbspec; easy.
  - clear IH. case eqbspec; easy.
  - intros [= <- E]; f_equal.
    revert l l0 NI E.
    fix IH' 1; destruct l, l0; cbn; trivial; try discriminate.
-   intros NI. intros [= E E']. f_equal. apply IH; auto. varsdec.
-   apply IH'; auto. varsdec.
+   intros NI. intros [= E E']. f_equal. apply IH; auto. namedec.
+   apply IH'; auto. namedec.
 Qed.
 
 Lemma bsubst_fresh_inj n z (f f':formula):
- ~ Vars.In z (Vars.union (fvars f) (fvars f')) ->
+ ~ Names.In z (Names.union (fvars f) (fvars f')) ->
  Mix.bsubst n (Mix.FVar z) f = Mix.bsubst n (Mix.FVar z) f' ->
  f = f'.
 Proof.
@@ -155,15 +155,15 @@ Proof.
    injection (term_bsubst_fresh_inj n z (Mix.Fun "" l) (Mix.Fun "" l0));
     cbn; auto. now f_equal.
  - intros [= E]. f_equal; eauto.
- - intros [= <- E1 E2]. f_equal. eapply IHf1; eauto. varsdec.
-   eapply IHf2; eauto. varsdec.
+ - intros [= <- E1 E2]. f_equal. eapply IHf1; eauto. namedec.
+   eapply IHf2; eauto. namedec.
  - intros [= <- E]. f_equal. eapply IHf; eauto.
 Qed.
 
 (** [vmap] basic results : extensionality, identity, composition *)
 
 Lemma term_vmap_ext h h' (t:term) :
- (forall v:variable, Vars.In v (fvars t) -> h v = h' v) ->
+ (forall v:variable, Names.In v (fvars t) -> h v = h' v) ->
  vmap h t = vmap h' t.
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn; auto with set.
@@ -171,7 +171,7 @@ Proof.
 Qed.
 
 Lemma form_vmap_ext h h' (f:formula) :
- (forall v:variable, Vars.In v (fvars f) -> h v = h' v) ->
+ (forall v:variable, Names.In v (fvars f) -> h v = h' v) ->
  vmap h f = vmap h' f.
 Proof.
  induction f; cbn; intro; f_equal; auto with set.
@@ -179,7 +179,7 @@ Proof.
 Qed.
 
 Lemma ctx_vmap_ext h h' (c:context) :
- (forall v:variable, Vars.In v (fvars c) -> h v = h' v) ->
+ (forall v:variable, Names.In v (fvars c) -> h v = h' v) ->
  vmap h c = vmap h' c.
 Proof.
  induction c; cbn; intros; f_equal;
@@ -187,7 +187,7 @@ Proof.
 Qed.
 
 Lemma seq_vmap_ext h h' (s:sequent) :
- (forall v:variable, Vars.In v (fvars s) -> h v = h' v) ->
+ (forall v:variable, Names.In v (fvars s) -> h v = h' v) ->
  vmap h s = vmap h' s.
 Proof.
  destruct s; intros. cbn in *. f_equal.
@@ -196,7 +196,7 @@ Proof.
 Qed.
 
 Lemma term_vmap_id h (t:term) :
- (forall v:variable, Vars.In v (fvars t) -> h v = FVar v) ->
+ (forall v:variable, Names.In v (fvars t) -> h v = FVar v) ->
  vmap h t = t.
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn; auto with set.
@@ -204,7 +204,7 @@ Proof.
 Qed.
 
 Lemma form_vmap_id h (f:formula) :
- (forall v:variable, Vars.In v (fvars f) -> h v = FVar v) ->
+ (forall v:variable, Names.In v (fvars f) -> h v = FVar v) ->
  vmap h f = f.
 Proof.
  induction f; cbn; intro; f_equal; auto with set.
@@ -212,7 +212,7 @@ Proof.
 Qed.
 
 Lemma ctx_vmap_id h (c:context) :
- (forall v:variable, Vars.In v (fvars c) -> h v = FVar v) ->
+ (forall v:variable, Names.In v (fvars c) -> h v = FVar v) ->
  vmap h c = c.
 Proof.
  induction c; cbn; intros; f_equal;
@@ -242,54 +242,54 @@ Qed.
 (** Estimating free variables of a substitution *)
 
 Lemma term_fvars_vmap h (t:term) :
-  Vars.Subset
+  Names.Subset
     (fvars (vmap h t))
-    (vars_flatmap (fun v => fvars (h v)) (fvars t)).
+    (Names.flatmap (fun v => fvars (h v)) (fvars t)).
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn.
- - unfold Vars.singleton. cbn. varsdec.
- - varsdec.
- - intros v. rewrite vars_unionmap_in. intros (a & Ha & Ha').
+ - unfold Names.singleton. cbn. namedec.
+ - namedec.
+ - intros v. rewrite unionmap_in. intros (a & Ha & Ha').
    rewrite in_map_iff in Ha'. destruct Ha' as (t & <- & Ht).
-   generalize (IH t Ht v Ha). apply vars_flatmap_subset; auto.
+   generalize (IH t Ht v Ha). apply flatmap_subset; auto.
    intro. eauto with set.
 Qed.
 
 Lemma form_fvars_vmap h (f:formula) :
-  Vars.Subset
+  Names.Subset
     (fvars (vmap h f))
-    (vars_flatmap (fun v => fvars (h v)) (fvars f)).
+    (Names.flatmap (fun v => fvars (h v)) (fvars f)).
 Proof.
- induction f; simpl; try varsdec.
+ induction f; simpl; try namedec.
  - apply (term_fvars_vmap h (Fun "" l)).
- - cbn. rewrite vars_flatmap_union. varsdec.
+ - cbn. rewrite flatmap_union. namedec.
 Qed.
 
 Lemma ctx_fvars_vmap h (c:context) :
-  Vars.Subset
+  Names.Subset
     (fvars (vmap h c))
-    (vars_flatmap (fun v => fvars (h v)) (fvars c)).
+    (Names.flatmap (fun v => fvars (h v)) (fvars c)).
 Proof.
  induction c as [|f c IH]; cbn.
- - varsdec.
+ - namedec.
  - generalize (form_fvars_vmap h f).
-   rewrite vars_flatmap_union. varsdec.
+   rewrite flatmap_union. namedec.
 Qed.
 
 Lemma seq_fvars_vmap h (s:sequent) :
-  Vars.Subset
+  Names.Subset
     (fvars (vmap h s))
-    (vars_flatmap (fun v => fvars (h v)) (fvars s)).
+    (Names.flatmap (fun v => fvars (h v)) (fvars s)).
 Proof.
  destruct s. cbn.
- rewrite vars_flatmap_union.
- generalize (form_fvars_vmap h f) (ctx_fvars_vmap h c). varsdec.
+ rewrite flatmap_union.
+ generalize (form_fvars_vmap h f) (ctx_fvars_vmap h c). namedec.
 Qed.
 
 (** [fsubst] commutes *)
 
 Lemma term_fsubst_fsubst x y (u v t:term) :
- x<>y -> ~Vars.In x (fvars v) ->
+ x<>y -> ~Names.In x (fvars v) ->
  fsubst y v (fsubst x u t) =
  fsubst x (fsubst y v u) (fsubst y v t).
 Proof.
@@ -300,7 +300,7 @@ Proof.
    + unfold varsubst. now rewrite eqb_refl.
    + unfold fsubst. symmetry. apply term_vmap_id.
      intros z Hz. unfold varsubst.
-     case eqbspec; auto. varsdec.
+     case eqbspec; auto. namedec.
    + unfold varsubst. now case eqbspec.
  - f_equal. rewrite !map_map.
    apply map_ext_iff. intros a Ha.
@@ -308,7 +308,7 @@ Proof.
 Qed.
 
 Lemma form_fsubst_fsubst x y (u v:term)(f:formula) :
- x<>y -> ~Vars.In x (fvars v) ->
+ x<>y -> ~Names.In x (fvars v) ->
  fsubst y v (fsubst x u f) =
  fsubst x (fsubst y v u) (fsubst y v f).
 Proof.
@@ -362,14 +362,14 @@ Proof.
 Qed.
 
 Lemma form_sub_set_ext x t h (f:formula) :
- ~Vars.In x (fvars f) -> vmap (sub_set x t h) f = vmap h f.
+ ~Names.In x (fvars f) -> vmap (sub_set x t h) f = vmap h f.
 Proof.
  intros. apply form_vmap_ext. intros.
  rewrite sub_set_else; auto with set.
 Qed.
 
 Lemma ctx_sub_set_ext x t h (c:context) :
- ~Vars.In x (fvars c) -> vmap (sub_set x t h) c = vmap h c.
+ ~Names.In x (fvars c) -> vmap (sub_set x t h) c = vmap h c.
 Proof.
  intros. apply ctx_vmap_ext. intros.
  rewrite sub_set_else; auto with set.
@@ -378,7 +378,7 @@ Qed.
 Lemma vmap_bsubst_adhoc h x t (f:formula) :
  BClosed_sub h ->
  BClosed t ->
- ~Vars.In x (fvars f) ->
+ ~Names.In x (fvars f) ->
  bsubst 0 t (vmap h f) =
   vmap (sub_set x t h) (bsubst 0 (FVar x) f).
 Proof.
@@ -444,11 +444,6 @@ Hint Resolve bclosed_ctx_vmap bclosed_seq_vmap.
 
 (** The substitution lemma for proof derivations *)
 
-Ltac Fresh z vars :=
-  set (z := fresh_var vars);
-  assert (Hz : ~Vars.In z vars) by (apply fresh_var_ok);
-  clearbody z.
-
 Ltac tryinst :=
  repeat match goal with
  | H : (forall h, BClosed_sub h -> _), H' : BClosed_sub _ |- _ =>
@@ -461,8 +456,8 @@ Lemma Pr_vmap logic (s:sequent) :
 Proof.
  induction 1; cbn in *; intros; try (tryinst; eauto 2; fail).
  - now apply R_Ax, in_map.
- - Fresh z (fvars (vmap h (Γ⊢A))).
-   rewrite Vars.union_spec in *.
+ - destruct (exist_fresh (fvars (vmap h (Γ⊢A)))) as (z,Hz).
+   rewrite Names.union_spec in *.
    apply R_All_i with z; auto.
    rewrite (vmap_bsubst_adhoc h x) by auto.
    rewrite <- (ctx_sub_set_ext x (FVar z)) by auto.
@@ -470,8 +465,8 @@ Proof.
  - rewrite form_vmap_bsubst by auto. apply R_All_e; auto.
  - apply R_Ex_i with (vmap h t); auto.
    rewrite <- form_vmap_bsubst by auto. apply IHPr; auto.
- - Fresh z (fvars (vmap h (A::Γ⊢B))).
-   rewrite !Vars.union_spec in H.
+ - destruct (exist_fresh (fvars (vmap h (A::Γ⊢B)))) as (z,Hz).
+   rewrite !Names.union_spec in H.
    apply R_Ex_e with z (vmap h A); auto.
    rewrite (vmap_bsubst_adhoc h x) by auto.
    rewrite <- (ctx_sub_set_ext x (FVar z)) by auto.
@@ -528,12 +523,12 @@ Instance deriv_vmap : VMap derivation :=
   let '(Rule r s ds) := d in
   match r with
   | All_i x =>
-    let z := fresh_var (fvars (vmap h s)) in
+    let z := fresh (fvars (vmap h s)) in
     let h' := sub_set x (FVar z) h in
     Rule (All_i z) (vmap h s) (List.map (deriv_vmap h') ds)
   | Ex_e x =>
-    let z := fresh_var (Vars.union (fvars (vmap h (getA ds)))
-                                   (fvars (vmap h s))) in
+    let z := fresh (Names.union (fvars (vmap h (getA ds)))
+                                (fvars (vmap h s))) in
     let h' := sub_set x (FVar z) h in
     Rule (Ex_e z) (vmap h s) (List.map (deriv_vmap h') ds)
   | _ =>
@@ -557,16 +552,16 @@ Lemma Valid_vmap_direct logic (d:derivation) :
 Proof.
  induction 1; intros h CL; cbn; try (econstructor; eauto; doClaim h).
  - constructor. now apply in_map.
- - set (vars:=Vars.union _ _).
-   assert (Hz := fresh_var_ok vars).
-   set (z:=fresh_var vars) in *.
+ - set (vars:=Names.union _ _).
+   assert (Hz := fresh_ok vars).
+   set (z:=fresh vars) in *.
    set (h':=sub_set x (FVar z) h).
    constructor.
-   + cbn. varsdec.
+   + cbn. namedec.
    + apply IHValid, bclosed_sub_set; auto.
    + cbn in H.
-     rewrite <- (ctx_sub_set_ext x (FVar z)) by varsdec.
-     rewrite (vmap_bsubst_adhoc h x) by (auto; varsdec).
+     rewrite <- (ctx_sub_set_ext x (FVar z)) by namedec.
+     rewrite (vmap_bsubst_adhoc h x) by (auto; namedec).
      doClaim h'.
  - rewrite form_vmap_bsubst by auto. constructor; auto.
    doClaim h.
@@ -576,22 +571,22 @@ Proof.
    assert (E : getA [d1;d2] = (∃A)%form).
    { destruct d1. cbn in H2. now subst s. }
    rewrite E.
-   set (vars:=Vars.union _ _).
-   assert (Hz := fresh_var_ok vars).
-   set (z:=fresh_var vars) in *.
+   set (vars:=Names.union _ _).
+   assert (Hz := fresh_ok vars).
+   set (z:=fresh vars) in *.
    set (h':=sub_set x (FVar z) h).
    apply V_Ex_e with (vmap h A).
-   + cbn. varsdec.
+   + cbn. namedec.
    + apply IHValid1, bclosed_sub_set; auto.
    + apply IHValid2, bclosed_sub_set; auto.
    + cbn in H.
-     rewrite <- (ctx_sub_set_ext x (FVar z)) by varsdec.
-     rewrite <- (form_sub_set_ext x (FVar z) h A) by varsdec.
+     rewrite <- (ctx_sub_set_ext x (FVar z)) by namedec.
+     rewrite <- (form_sub_set_ext x (FVar z) h A) by namedec.
      doClaim h'.
    + cbn in H.
-     rewrite <- (ctx_sub_set_ext x (FVar z)) by varsdec.
-     rewrite <- (form_sub_set_ext x (FVar z) h B) by varsdec.
-     rewrite (vmap_bsubst_adhoc h x) by (auto; varsdec).
+     rewrite <- (ctx_sub_set_ext x (FVar z)) by namedec.
+     rewrite <- (form_sub_set_ext x (FVar z) h B) by namedec.
+     rewrite (vmap_bsubst_adhoc h x) by (auto; namedec).
      doClaim h'.
 Qed.
 
@@ -684,27 +679,27 @@ Proof.
 Qed.
 
 Lemma vmap_rename_notIn x z (c:context) :
- x<>z -> ~Vars.In x (fvars (vmap (sub_rename x z) c)).
+ x<>z -> ~Names.In x (fvars (vmap (sub_rename x z) c)).
 Proof.
  intros NE IN. apply ctx_fvars_vmap in IN.
- rewrite vars_flatmap_in in IN. destruct IN as (v & IN & _).
- revert IN. unfold sub_rename. case eqbspec; cbn; varsdec.
+ rewrite flatmap_in in IN. destruct IN as (v & IN & _).
+ revert IN. unfold sub_rename. case eqbspec; cbn; namedec.
 Qed.
 
 Lemma form_rename_id x z (f:formula) :
- ~Vars.In x (fvars f) -> vmap (sub_rename x z) f = f.
+ ~Names.In x (fvars f) -> vmap (sub_rename x z) f = f.
 Proof.
- intros. apply form_vmap_id. intros. apply sub_rename_else. varsdec.
+ intros. apply form_vmap_id. intros. apply sub_rename_else. namedec.
 Qed.
 
 Lemma ctx_rename_id x z (c:context) :
- ~Vars.In x (fvars c) -> vmap (sub_rename x z) c = c.
+ ~Names.In x (fvars c) -> vmap (sub_rename x z) c = c.
 Proof.
- intros. apply ctx_vmap_id. intros. apply sub_rename_else. varsdec.
+ intros. apply ctx_vmap_id. intros. apply sub_rename_else. namedec.
 Qed.
 
 Lemma ctx_rename_rename x z (c:context) :
- ~Vars.In z (fvars c) ->
+ ~Names.In z (fvars c) ->
  vmap (sub_rename z x) (vmap (sub_rename x z) c) = c.
 Proof.
  intros.
@@ -726,10 +721,11 @@ Proof.
  intros H. revert s'.
  induction H; inversion_clear 1; auto; try (tryinst2; eauto 2; fail).
  - apply R_Or_e with A B; auto.
- - Fresh z (Vars.add x (fvars (Γ' ⊢ A))). cbn in *.
-   rewrite Vars.add_spec, Vars.union_spec in *.
+ - destruct (exist_fresh (Names.add x (fvars (Γ' ⊢ A)))) as (z,Hz).
+   cbn in *.
+   rewrite Names.add_spec, Names.union_spec in *.
    set (Γ'z := vmap (sub_rename x z) Γ').
-   assert (~Vars.In x (fvars Γ'z))
+   assert (~Names.In x (fvars Γ'z))
     by (apply vmap_rename_notIn; intuition).
    assert (ListSubset Γ Γ'z).
    { rewrite <- (ctx_rename_id x z Γ) by tauto.
@@ -739,10 +735,11 @@ Proof.
    apply Pr_vmap with (h := sub_rename z x) in PR; auto.
    revert PR. cbn; unfold Γ'z.
    rewrite ctx_rename_rename, form_rename_id; intuition.
- - Fresh z (Vars.add x (fvars (A::Γ' ⊢ B))). cbn in *.
-   rewrite Vars.add_spec, ?Vars.union_spec in *.
+ - destruct (exist_fresh (Names.add x (fvars (A::Γ' ⊢ B)))) as (z,Hz).
+   cbn in *.
+   rewrite Names.add_spec, ?Names.union_spec in *.
    set (Γ'z := vmap (sub_rename x z) Γ').
-   assert (~Vars.In x (fvars Γ'z))
+   assert (~Names.In x (fvars Γ'z))
     by (apply vmap_rename_notIn; intuition).
    assert (ListSubset Γ Γ'z).
    { rewrite <- (ctx_rename_id x z Γ) by tauto.
@@ -776,13 +773,13 @@ Fixpoint subset_deriv (c:context)(d:derivation) : derivation :=
   | Rule Imp_i (_⊢A->B) [d1] =>
     Rule Imp_i (c⊢A->B) [subset_deriv (A::c) d1]
   | Rule (All_i x) (_⊢f) [d1] =>
-    let z := fresh_var (Vars.add x (fvars (c⊢f))) in
+    let z := fresh (Names.add x (fvars (c⊢f))) in
     let h' := sub_rename x z in
     let cz := vmap h' c in
     let d' := Rule (All_i x) (cz⊢f) [subset_deriv cz d1] in
     vmap (sub_rename z x) d'
   | Rule (Ex_e x) (_⊢f) [(Rule _ (_ ⊢ ∃A) _ as d1);d2] =>
-    let z := fresh_var (Vars.add x (fvars (A::c⊢f))) in
+    let z := fresh (Names.add x (fvars (A::c⊢f))) in
     let h' := sub_rename x z in
     let cz := vmap h' c in
     let ds' :=
@@ -805,19 +802,19 @@ Lemma claim_subset c c' d f :
  Claim d (c⊢f) -> Claim (subset_deriv c' d) (c'⊢f).
 Proof.
  destruct d as (r,(c0,f0),ds). intros [= -> ->].
- destruct r; cbn -[fresh_var vmap]; break; auto.
- - set (vars := Vars.add v _).
-   assert (Hz := fresh_var_ok vars).
-   set (z := fresh_var vars) in *.
-   cbn -[fresh_var]. f_equal.
-   + apply ctx_rename_rename. varsdec.
-   + apply form_rename_id. varsdec.
- - set (vars := Vars.add v _).
-   assert (Hz := fresh_var_ok vars).
-   set (z := fresh_var vars) in *.
-   cbn -[fresh_var]. f_equal.
-   + apply ctx_rename_rename. varsdec.
-   + apply form_rename_id. varsdec.
+ destruct r; cbn -[fresh vmap]; break; auto.
+ - set (vars := Names.add v _).
+   assert (Hz := fresh_ok vars).
+   set (z := fresh vars) in *.
+   cbn -[fresh]. f_equal.
+   + apply ctx_rename_rename. namedec.
+   + apply form_rename_id. namedec.
+ - set (vars := Names.add v _).
+   assert (Hz := fresh_ok vars).
+   set (z := fresh vars) in *.
+   cbn -[fresh]. f_equal.
+   + apply ctx_rename_rename. namedec.
+   + apply form_rename_id. namedec.
 Qed.
 
 Lemma Valid_weakening_direct logic d :
@@ -826,38 +823,38 @@ Lemma Valid_weakening_direct logic d :
     Claim d (c⊢f) -> ListSubset c c' ->
     Valid logic (subset_deriv c' d).
 Proof.
- induction 1; intros f c c' [= <- <-] SU; cbn -[fresh_var vmap];
+ induction 1; intros f c c' [= <- <-] SU; cbn -[fresh vmap];
  try (econstructor; eauto using claim_subset; fail).
  - destruct d1. cbn in H2; subst s.
    econstructor; eauto using claim_subset.
- - set (vars := Vars.add x _).
-   assert (Hz := fresh_var_ok vars).
-   set (z := fresh_var vars) in *.
+ - set (vars := Names.add x _).
+   assert (Hz := fresh_ok vars).
+   set (z := fresh vars) in *.
    set (h := sub_rename x z).
    apply Valid_vmap_direct; auto.
    cbn in H.
    constructor; eauto using claim_subset.
    + unfold h. cbn - [z vmap sub_rename].
-     generalize (vmap_rename_notIn x z c'). varsdec.
+     generalize (vmap_rename_notIn x z c'). namedec.
    + eapply IHValid; eauto.
-     rewrite <- (ctx_rename_id x z Γ) by varsdec.
+     rewrite <- (ctx_rename_id x z Γ) by namedec.
      now apply ListSubset_map.
  - destruct d1. cbn in H2; subst s.
-   set (vars := Vars.add x _).
-   assert (Hz := fresh_var_ok vars).
-   set (z := fresh_var vars) in *.
+   set (vars := Names.add x _).
+   assert (Hz := fresh_ok vars).
+   set (z := fresh vars) in *.
    set (h := sub_rename x z).
    apply Valid_vmap_direct; auto.
    cbn in H.
    econstructor; eauto using claim_subset.
    + unfold h. cbn - [z vmap sub_rename].
-     generalize (vmap_rename_notIn x z c'). varsdec.
+     generalize (vmap_rename_notIn x z c'). namedec.
    + eapply IHValid1; eauto.
-     rewrite <- (ctx_rename_id x z Γ) by varsdec.
+     rewrite <- (ctx_rename_id x z Γ) by namedec.
      now apply ListSubset_map.
    + eapply IHValid2; eauto.
      apply ListSubset_cons.
-     rewrite <- (ctx_rename_id x z Γ) by varsdec.
+     rewrite <- (ctx_rename_id x z Γ) by namedec.
      now apply ListSubset_map.
 Qed.
 
@@ -983,13 +980,13 @@ Proof.
 Qed.
 
 Lemma R'_Ex_e logic Γ A B x :
- ~Vars.In x (fvars (A::Γ⊢B)) ->
+ ~Names.In x (fvars (A::Γ⊢B)) ->
  Pr logic (bsubst 0 (FVar x) A :: Γ ⊢ B) ->
  Pr logic ((∃A) :: Γ ⊢ B)%form.
 Proof.
  intros.
  apply R_Ex_e with x A.
- - cbn in *. varsdec.
+ - cbn in *. namedec.
  - apply R'_Ax.
  - now apply Pr_swap, Pr_pop.
 Qed.
@@ -1205,81 +1202,81 @@ Proof.
 Qed.
 
 Lemma restrict_term_fvars sign x t :
- Vars.Subset (fvars (restrict_term sign x t))
-             (Vars.add x (fvars t)).
+ Names.Subset (fvars (restrict_term sign x t))
+              (Names.add x (fvars t)).
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
  destruct funsymbs; cbn; auto with *.
  case eqbspec; cbn; auto with *.
  intros _. clear f a.
- intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+ intros v. rewrite Names.add_spec, !unionmap_in.
  intros (t & Hv & Ht).
  rewrite in_map_iff in Ht.
  destruct Ht as (a & <- & Ha).
  apply IH in Hv; auto.
- rewrite Vars.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
+ rewrite Names.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
  right. now exists a.
 Qed.
 
 Lemma restrict_form_fvars sign x f :
- Vars.Subset (fvars (restrict sign x f))
-             (Vars.add x (fvars f)).
+ Names.Subset (fvars (restrict sign x f))
+              (Names.add x (fvars f)).
 Proof.
  induction f; cbn; auto with *.
  destruct predsymbs; cbn; auto with *.
  case eqbspec; cbn; auto with *.
  intros _. clear p a.
- intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+ intros v. rewrite Names.add_spec, !unionmap_in.
  intros (t & Hv & Ht).
  rewrite in_map_iff in Ht.
  destruct Ht as (a & <- & Ha).
  apply restrict_term_fvars in Hv; auto.
- rewrite Vars.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
+ rewrite Names.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
  right. now exists a.
 Qed.
 
 Lemma restrict_ctx_fvars sign x c :
- Vars.Subset (fvars (restrict_ctx sign x c))
-             (Vars.add x (fvars c)).
+ Names.Subset (fvars (restrict_ctx sign x c))
+              (Names.add x (fvars c)).
 Proof.
  unfold restrict_ctx.
  intros v. unfold fvars, fvars_list.
- rewrite Vars.add_spec, !vars_unionmap_in.
+ rewrite Names.add_spec, !unionmap_in.
  intros (f & Hv & Hf).
  rewrite in_map_iff in Hf.
  destruct Hf as (a & <- & Ha).
  apply restrict_form_fvars in Hv; auto.
- rewrite Vars.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
+ rewrite Names.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
  right. now exists a.
 Qed.
 
 Lemma restrict_seq_fvars sign x s :
- Vars.Subset (fvars (restrict_seq sign x s))
-             (Vars.add x (fvars s)).
+ Names.Subset (fvars (restrict_seq sign x s))
+              (Names.add x (fvars s)).
 Proof.
  destruct s; cbn. rewrite restrict_ctx_fvars, restrict_form_fvars.
- varsdec.
+ namedec.
 Qed.
 
 Lemma restrict_rule_fvars sign x r :
- Vars.Subset (fvars (restrict_rule sign x r))
-             (Vars.add x (fvars r)).
+ Names.Subset (fvars (restrict_rule sign x r))
+              (Names.add x (fvars r)).
 Proof.
  destruct r; cbn; rewrite ?restrict_term_fvars; auto with *.
 Qed.
 
 Lemma restrict_deriv_fvars sign x d :
- Vars.Subset (fvars (restrict_deriv sign x d))
-             (Vars.add x (fvars d)).
+ Names.Subset (fvars (restrict_deriv sign x d))
+              (Names.add x (fvars d)).
 Proof.
  induction d as [r s ds IH] using derivation_ind'; cbn.
  rewrite restrict_rule_fvars, restrict_seq_fvars.
  rewrite Forall_forall in IH.
- intros v. VarsF.set_iff.
- rewrite !vars_unionmap_in. intuition.
+ intros v. nameiff.
+ rewrite !unionmap_in. intuition.
  destruct H0 as (a & Hv & Ha).
  rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
- apply IH in Hv; auto. rewrite Vars.add_spec in Hv.
+ apply IH in Hv; auto. rewrite Names.add_spec in Hv.
  destruct Hv; auto.
  right; right; right; left. now exists a'.
 Qed.
@@ -1315,37 +1312,37 @@ Qed.
 Ltac solver :=
   try econstructor; auto;
   try match goal with
-  | H : ~Vars.In _ _ -> Valid _ ?d |- Valid _ ?d => apply H; varsdec end;
+  | H : ~Names.In _ _ -> Valid _ ?d |- Valid _ ?d => apply H; namedec end;
   try (unfold Claim; rewrite claim_restrict);
   try match goal with
   | H : claim ?d = _ |- context [claim ?d] => now rewrite H end.
 
 Lemma restrict_valid logic sign x (d:derivation) :
- ~Vars.In x (fvars d) ->
+ ~Names.In x (fvars d) ->
  Valid logic d ->
  Valid logic (restrict_deriv sign x d).
 Proof.
- induction 2; cbn - [Vars.union] in *; try (solver; fail).
+ induction 2; cbn - [Names.union] in *; try (solver; fail).
   - constructor. now apply in_map.
   - constructor.
-    + cbn. rewrite restrict_ctx_fvars, restrict_form_fvars. varsdec.
-    + apply IHValid; varsdec.
+    + cbn. rewrite restrict_ctx_fvars, restrict_form_fvars. namedec.
+    + apply IHValid; namedec.
     + unfold Claim. rewrite claim_restrict. rewrite H2. simpl.
       f_equal. apply restrict_bsubst.
   - rewrite restrict_bsubst.
     constructor.
     + now apply restrict_term_bclosed.
-    + apply IHValid; varsdec.
+    + apply IHValid; namedec.
     + unfold Claim. rewrite claim_restrict. now rewrite H2.
   - constructor.
     + now apply restrict_term_bclosed.
-    + apply IHValid; varsdec.
+    + apply IHValid; namedec.
     + unfold Claim. rewrite claim_restrict. rewrite H2.
       cbn. now rewrite restrict_bsubst.
   - apply V_Ex_e with (restrict sign x A).
-    + cbn. rewrite restrict_ctx_fvars, !restrict_form_fvars. varsdec.
-    + apply IHValid1; varsdec.
-    + apply IHValid2; varsdec.
+    + cbn. rewrite restrict_ctx_fvars, !restrict_form_fvars. namedec.
+    + apply IHValid1; namedec.
+    + apply IHValid2; namedec.
     + unfold Claim. rewrite claim_restrict. now rewrite H1.
     + unfold Claim. rewrite claim_restrict. rewrite H2.
       cbn. f_equal. f_equal. apply restrict_bsubst.
@@ -1489,39 +1486,39 @@ Proof.
 Qed.
 
 Lemma forcelevel_term_fvars n x t :
- Vars.Subset (fvars (forcelevel_term n x t)) (Vars.add x (fvars t)).
+ Names.Subset (fvars (forcelevel_term n x t)) (Names.add x (fvars t)).
 Proof.
  induction t as [ | | f l IH] using term_ind';
    cbn - [Nat.ltb]; auto with *.
  - case Nat.ltb_spec; cbn; auto with *.
- - intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+ - intros v. rewrite Names.add_spec, !unionmap_in.
    intros (a & Hv & Ha).
    rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
-   apply IH in Hv; auto. apply Vars.add_spec in Hv.
+   apply IH in Hv; auto. apply Names.add_spec in Hv.
    destruct Hv; auto. right; now exists a'.
 Qed.
 
 Lemma forcelevel_fvars n x f :
- Vars.Subset (fvars (forcelevel n x f)) (Vars.add x (fvars f)).
+ Names.Subset (fvars (forcelevel n x f)) (Names.add x (fvars f)).
 Proof.
  revert n.
  induction f; cbn; intros; auto with *.
- - intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+ - intros v. rewrite Names.add_spec, !unionmap_in.
    intros (a & Hv & Ha).
    rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
-   apply forcelevel_term_fvars in Hv; auto. apply Vars.add_spec in Hv.
+   apply forcelevel_term_fvars in Hv; auto. apply Names.add_spec in Hv.
    destruct Hv; auto. right; now exists a'.
- - rewrite IHf1, IHf2. varsdec.
+ - rewrite IHf1, IHf2. namedec.
 Qed.
 
 Lemma forcelevel_ctx_fvars x (c:context) :
- Vars.Subset (fvars (forcelevel_ctx x c)) (Vars.add x (fvars c)).
+ Names.Subset (fvars (forcelevel_ctx x c)) (Names.add x (fvars c)).
 Proof.
  unfold forcelevel_ctx. unfold fvars, fvars_list.
- intros v. rewrite Vars.add_spec, !vars_unionmap_in.
+ intros v. rewrite Names.add_spec, !unionmap_in.
  intros (a & Hv & Ha).
  rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
- apply forcelevel_fvars in Hv; auto. apply Vars.add_spec in Hv.
+ apply forcelevel_fvars in Hv; auto. apply Names.add_spec in Hv.
  destruct Hv; auto. right; now exists a'.
 Qed.
 
@@ -1696,38 +1693,38 @@ Qed.
 Ltac solver' :=
   try econstructor; auto;
   try match goal with
-  | H : ~Vars.In _ _ -> Valid _ ?d |- Valid _ ?d => apply H; varsdec end;
+  | H : ~Names.In _ _ -> Valid _ ?d |- Valid _ ?d => apply H; namedec end;
   try (unfold Claim; rewrite claim_forcelevel);
   try match goal with
   | H : claim ?d = _ |- context [claim ?d] => now rewrite H end.
 
 Lemma forcelevel_deriv_valid logic x (d:derivation) :
- ~Vars.In x (fvars d) ->
+ ~Names.In x (fvars d) ->
  Valid logic d ->
  Valid logic (forcelevel_deriv x d).
 Proof.
- induction 2; cbn - [Vars.union] in *; try (solver'; fail).
+ induction 2; cbn - [Names.union] in *; try (solver'; fail).
  - constructor. now apply in_map.
  - constructor.
    + cbn. rewrite forcelevel_ctx_fvars, forcelevel_fvars.
-     varsdec.
-   + apply IHValid. varsdec.
+     namedec.
+   + apply IHValid. namedec.
    + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
      rewrite forcelevel_bsubst; auto.
  - rewrite forcelevel_bsubst by now rewrite H0.
    rewrite forcelevel_term_id by now rewrite H0.
    constructor; auto.
-   + apply IHValid; varsdec.
+   + apply IHValid; namedec.
    + unfold Claim. now rewrite claim_forcelevel, H2.
  - rewrite forcelevel_term_id by now rewrite H0.
    constructor; auto.
-   + apply IHValid. varsdec.
+   + apply IHValid. namedec.
    + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
      apply forcelevel_bsubst; now rewrite H0.
  - apply V_Ex_e with (forcelevel 1 x A).
-   + cbn. rewrite forcelevel_ctx_fvars, !forcelevel_fvars. varsdec.
-   + apply IHValid1. varsdec.
-   + apply IHValid2. varsdec.
+   + cbn. rewrite forcelevel_ctx_fvars, !forcelevel_fvars. namedec.
+   + apply IHValid1. namedec.
+   + apply IHValid2. namedec.
    + unfold Claim; now rewrite claim_forcelevel, H1.
    + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
      f_equal. apply forcelevel_bsubst; auto.

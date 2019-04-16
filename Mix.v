@@ -97,7 +97,7 @@ Class Level (A : Type) := level : A -> nat.
 Arguments level {_} {_} !_.
 
 (** Compute the set of free variables *)
-Class FVars (A : Type) := fvars : A -> Vars.t.
+Class FVars (A : Type) := fvars : A -> Names.t.
 Arguments fvars {_} {_} !_.
 
 (** General replacement of free variables *)
@@ -108,7 +108,7 @@ Arguments vmap {_} {_} _ !_.
 
 Definition BClosed {A}`{Level A} (a:A) := level a = 0.
 
-Definition FClosed {A}`{FVars A} (a:A) := Vars.Empty (fvars a).
+Definition FClosed {A}`{FVars A} (a:A) := Names.Empty (fvars a).
 
 Hint Unfold BClosed FClosed.
 
@@ -132,7 +132,7 @@ Instance level_list {A}`{Level A} : Level (list A) :=
  fun l => list_max (List.map level l).
 
 Instance fvars_list {A}`{FVars A} : FVars (list A) :=
- vars_unionmap fvars.
+ Names.unionmap fvars.
 
 Instance vmap_list {A}`{VMap A} : VMap (list A) :=
  fun h => List.map (vmap h).
@@ -147,7 +147,7 @@ Instance level_pair {A B}`{Level A}`{Level B} : Level (A*B) :=
  fun '(a,b) => Nat.max (level a) (level b).
 
 Instance fvars_pair {A B}`{FVars A}`{FVars B} : FVars (A*B) :=
- fun '(a,b) => Vars.union (fvars a) (fvars b).
+ fun '(a,b) => Names.union (fvars a) (fvars b).
 
 Instance vmap_pair {A B}`{VMap A}`{VMap B} : VMap (A*B) :=
  fun h '(a,b) => (vmap h a, vmap h b).
@@ -175,9 +175,9 @@ Compute check (Finite.to_infinite peano_sign) peano_term_example.
 Instance term_fvars : FVars term :=
  fix term_fvars t :=
  match t with
- | BVar _ => Vars.empty
- | FVar v => Vars.singleton v
- | Fun _ args => vars_unionmap term_fvars args
+ | BVar _ => Names.empty
+ | FVar v => Names.singleton v
+ | Fun _ args => Names.unionmap term_fvars args
  end.
 
 Instance term_level : Level term :=
@@ -337,11 +337,11 @@ Instance form_bsubst : BSubst formula :=
 Instance form_fvars : FVars formula :=
  fix form_fvars f :=
   match f with
-  | True | False => Vars.empty
+  | True | False => Names.empty
   | Not f => form_fvars f
-  | Op _ f f' => Vars.union (form_fvars f) (form_fvars f')
+  | Op _ f f' => Names.union (form_fvars f) (form_fvars f')
   | Quant _ f => form_fvars f
-  | Pred _ args => vars_unionmap fvars args
+  | Pred _ args => Names.unionmap fvars args
   end.
 
 Instance form_vmap : VMap formula :=
@@ -406,7 +406,7 @@ Instance level_seq : Level sequent :=
  fun '(Γ ⊢ A) => Nat.max (level Γ) (level A).
 
 Instance seq_fvars : FVars sequent :=
- fun '(Γ ⊢ A) => Vars.union (fvars Γ) (fvars A).
+ fun '(Γ ⊢ A) => Names.union (fvars Γ) (fvars A).
 
 Instance seq_vmap : VMap sequent :=
  fun h '(Γ ⊢ A) => (vmap h Γ ⊢ vmap h A).
@@ -469,15 +469,15 @@ Instance check_derivation : Check derivation :=
 Instance fvars_rule : FVars rule_kind :=
  fun r =>
  match r with
- | All_i x | Ex_e x => Vars.singleton x
+ | All_i x | Ex_e x => Names.singleton x
  | All_e wit | Ex_i wit => fvars wit
- | _ => Vars.empty
+ | _ => Names.empty
  end.
 
 Instance fvars_derivation : FVars derivation :=
  fix fvars_derivation d :=
   let '(Rule r s ds) := d in
-  vars_unions [fvars r; fvars s; vars_unionmap fvars_derivation ds].
+  Names.unions [fvars r; fvars s; Names.unionmap fvars_derivation ds].
 
 Instance bsubst_rule : BSubst rule_kind :=
  fun n u r =>
@@ -545,7 +545,7 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
      (s =? (Γ ⊢ B)) &&& (s2 =? (Γ ⊢ A))
   | All_i x,  (Γ⊢∀A), [Γ' ⊢ A'] =>
      (Γ =? Γ') &&& (A' =? bsubst 0 (FVar x) A)
-     &&& negb (Vars.mem x (fvars (Γ⊢A)))
+     &&& negb (Names.mem x (fvars (Γ⊢A)))
   | All_e t, (Γ ⊢ B), [Γ'⊢ ∀A] =>
     (Γ =? Γ') &&& (B =? bsubst 0 t A) &&& (level t =? 0)
   | Ex_i t,  (Γ ⊢ ∃A), [Γ'⊢B] =>
@@ -553,7 +553,7 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
   | Ex_e x,  s, [Γ⊢∃A; A'::Γ'⊢B] =>
      (s =? (Γ ⊢ B)) &&& (Γ' =? Γ)
      &&& (A' =? bsubst 0 (FVar x) A)
-     &&& negb (Vars.mem x (fvars (A::Γ⊢B)))
+     &&& negb (Names.mem x (fvars (A::Γ⊢B)))
   | Absu, s, [Not A::Γ ⊢ False] =>
     (logic =? Classic) &&& (s =? (Γ ⊢ A))
   | _,_,_ => false
@@ -753,7 +753,7 @@ Inductive Valid (l:logic) : derivation -> Prop :=
      Claim d1 (Γ ⊢ A->B) -> Claim d2 (Γ ⊢ A) ->
      Valid l (Rule Imp_e (Γ ⊢ B) [d1;d2])
  | V_All_i x d Γ A :
-     ~Vars.In x (fvars (Γ ⊢ A)) ->
+     ~Names.In x (fvars (Γ ⊢ A)) ->
      Valid l d -> Claim d (Γ ⊢ bsubst 0 (FVar x) A) ->
      Valid l (Rule (All_i x) (Γ ⊢ ∀A) [d])
  | V_All_e t d Γ A :
@@ -763,7 +763,7 @@ Inductive Valid (l:logic) : derivation -> Prop :=
      BClosed t -> Valid l d -> Claim d (Γ ⊢ bsubst 0 t A) ->
      Valid l (Rule (Ex_i t) (Γ ⊢ ∃A) [d])
  | V_Ex_e x d1 d2 Γ A B :
-     ~Vars.In x (fvars (A::Γ⊢B)) ->
+     ~Names.In x (fvars (A::Γ⊢B)) ->
      Valid l d1 -> Valid l d2 ->
      Claim d1 (Γ ⊢ ∃A) -> Claim d2 ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
      Valid l (Rule (Ex_e x) (Γ ⊢ B) [d1;d2])
@@ -815,13 +815,13 @@ Proof.
    mytac; subst; eauto.
    + now apply V_Ax, list_mem_in.
    + apply V_All_i; auto.
-     rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
+     rewrite <- Names.mem_spec. cbn. intros EQ. now rewrite EQ in *.
    + apply V_Ex_e with f; auto.
-     rewrite <- Vars.mem_spec. cbn. intros EQ. now rewrite EQ in *.
+     rewrite <- Names.mem_spec. cbn. intros EQ. now rewrite EQ in *.
  - induction 1; simpl; rewr; auto.
    + apply list_mem_in in H. now rewrite H.
-   + rewrite <- Vars.mem_spec in H. destruct Vars.mem; auto.
-   + rewrite <- Vars.mem_spec in H. destruct Vars.mem; auto.
+   + rewrite <- Names.mem_spec in H. destruct Names.mem; auto.
+   + rewrite <- Names.mem_spec in H. destruct Names.mem; auto.
 Qed.
 
 (** A notion of provability, directly on a sequent *)
@@ -868,14 +868,14 @@ Inductive Pr (l:logic) : sequent -> Prop :=
                      Pr l (Γ ⊢ A->B)
  | R_Imp_e Γ A B : Pr l (Γ ⊢ A->B) -> Pr l (Γ ⊢ A) ->
                    Pr l (Γ ⊢ B)
- | R_All_i x Γ A : ~Vars.In x (fvars (Γ ⊢ A)) ->
+ | R_All_i x Γ A : ~Names.In x (fvars (Γ ⊢ A)) ->
                    Pr l (Γ ⊢ bsubst 0 (FVar x) A) ->
                    Pr l (Γ ⊢ ∀A)
  | R_All_e t Γ A : BClosed t -> Pr l (Γ ⊢ ∀A) ->
                    Pr l (Γ ⊢ bsubst 0 t A)
  | R_Ex_i t Γ A : BClosed t -> Pr l (Γ ⊢ bsubst 0 t A) ->
                   Pr l (Γ ⊢ ∃A)
- | R_Ex_e x Γ A B : ~Vars.In x (fvars (A::Γ⊢B)) ->
+ | R_Ex_e x Γ A B : ~Names.In x (fvars (A::Γ⊢B)) ->
       Pr l (Γ ⊢ ∃A) -> Pr l ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
       Pr l (Γ ⊢ B)
  | R_Absu Γ A : l=Classic -> Pr l (Not A :: Γ ⊢ False) ->

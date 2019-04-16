@@ -899,6 +899,11 @@ Proof.
    symmetry. apply test_ok. now exists 0.
 Qed.
 
+(** Stdlib [proj1] is opaque ! *)
+
+Definition proj1' {A B:Prop} (c:A/\B) : A :=
+ let '(conj a _) := c in a.
+
 Lemma completeness_theorem (th:theory) (nc : NewCsts th) :
  (forall A, A\/~A) ->
  forall T,
@@ -907,38 +912,47 @@ Lemma completeness_theorem (th:theory) (nc : NewCsts th) :
    -> IsTheorem Classic th T.
 Proof.
  intros EM T WF HT.
- destruct (EM (IsTheorem Classic th False))
-   as [(_ & axs & F & P)|C].
- - split; auto. exists axs; auto.
- - change (Consistent Classic th) in C.
-   destruct (EM (IsTheorem Classic th T)) as [Thm|NT]; auto.
-   exfalso.
-   assert (WF' : forall A, A = (~T)%form \/ IsAxiom th A -> Wf th A).
-   { intros A [->|HA]; auto using WfAxiom. }
-   set (th' := {| sign := th;
-                 IsAxiom := fun f => f = (~T)%form \/ IsAxiom th f;
-                 WfAxiom := WF' |}).
-   assert (nc' : NewCsts th').
-   { apply (Build_NewCsts th')
-      with (csts:=csts _ nc) (test:=test _ nc).
-     - apply csts_inj.
-     - intros. cbn. apply csts_ok.
-     - apply test_ok. }
-   assert (Consistent Classic th').
-   { intros (_ & axs & F & P).
-     (* soit ~T dans axs et donc on prouve T contradiction
-        soit pas et on infirme la consistence de th *)
-     admit. }
-   destruct (consistent_has_model th' nc' EM) as (M,mo); auto.
-   assert (EX : Extend Classic th th').
-   { apply extend_alt. split.
-     - cbn. apply signext_refl.
-     - intros B HB. apply ax_thm. cbn. now right. }
-   set (mo' := model_restrict Classic th th' M EM EX mo).
-   (* ~interp_form mo' T car ~T axiome de th' mais idem dans mo (extend)
-      or HT dit le contraire... *)
-Admitted.
-
-
-
-
+ destruct (EM (IsTheorem Classic th T)) as [Thm|NT]; auto.
+ exfalso.
+ assert (WF' : forall A, A = (~T)%form \/ IsAxiom th A -> Wf th A).
+ { intros A [->|HA]; auto using WfAxiom. }
+ set (th' := {| sign := th;
+                IsAxiom := fun f => f = (~T)%form \/ IsAxiom th f;
+                WfAxiom := WF' |}).
+ assert (nc' : NewCsts th').
+ { apply (Build_NewCsts th')
+   with (csts:=csts _ nc) (test:=test _ nc).
+   - apply csts_inj.
+   - intros. cbn. apply csts_ok.
+   - apply test_ok. }
+ assert (C : Consistent Classic th').
+ { intros (_ & axs & F & P).
+   set (axs' := filter (fun f => negb (f =? (~T)%form)) axs).
+   apply NT; split; auto.
+   exists axs'. split.
+   - rewrite Forall_forall in *. intros A.
+     unfold axs'. rewrite filter_In, negb_true_iff, eqb_neq.
+     intros (HA,NE). destruct (F A HA); intuition.
+   - apply R_Absu; auto.
+     eapply Pr_weakening; eauto. constructor.
+     intros A; simpl. unfold axs'.
+     rewrite filter_In, negb_true_iff, eqb_neq.
+     case (eqbspec A (~T)%form); intuition. }
+ destruct (consistent_has_model th' nc' EM) as (M,mo); auto.
+ assert (EX : Extend Classic th th').
+ { apply extend_alt. split.
+   - cbn. apply signext_refl.
+   - intros B HB. apply ax_thm. cbn. now right. }
+ set (mo' := model_restrict Classic th th' M EM EX mo).
+ set (genv := fun (_:variable) => mo.(someone)).
+ assert (interp_form mo genv [] (~T)).
+ { apply AxOk. cbn. now left. }
+ cbn in H. apply H. clear H.
+ assert (U := interp_form_restrict th th' M mo (proj1' EX) genv [] T).
+ change (sign th') with (sign th) in U at 3.
+ rewrite <- U by (apply WF).
+ assert (E : pre _ _ mo' = premodel_restrict th th' M (proj1' EX) mo).
+ { unfold mo'; cbn. unfold model_restrict. cbn. now destruct EX. }
+ rewrite <- E.
+ apply HT.
+Qed.

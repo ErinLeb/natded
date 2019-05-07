@@ -540,9 +540,7 @@ Lemma Valid_vmap_direct logic (d:derivation) :
 Proof.
  induction 1; intros h CL; cbn; try (econstructor; eauto; doClaim h).
  - constructor. now apply in_map.
- - set (vars:=Names.union _ _).
-   assert (Hz := fresh_ok vars).
-   set (z:=fresh vars) in *.
+ - setfresh vars z Hz.
    set (h':=sub_set x (FVar z) h).
    constructor.
    + cbn. namedec.
@@ -559,9 +557,7 @@ Proof.
    assert (E : getA [d1;d2] = (∃A)%form).
    { destruct d1. cbn in H2. now subst s. }
    rewrite E.
-   set (vars:=Names.union _ _).
-   assert (Hz := fresh_ok vars).
-   set (z:=fresh vars) in *.
+   setfresh vars z Hz.
    set (h':=sub_set x (FVar z) h).
    apply V_Ex_e with (vmap h A).
    + cbn. namedec.
@@ -791,16 +787,12 @@ Lemma claim_subset c c' d f :
 Proof.
  destruct d as (r,(c0,f0),ds). intros [= -> ->].
  destruct r; cbn -[fresh vmap]; break; auto.
- - set (vars := Names.add v _).
-   assert (Hz := fresh_ok vars).
-   set (z := fresh vars) in *.
-   cbn -[fresh]. f_equal.
+ - setfresh vars z Hz.
+   cbn. f_equal.
    + apply ctx_rename_rename. namedec.
    + apply form_rename_id. namedec.
- - set (vars := Names.add v _).
-   assert (Hz := fresh_ok vars).
-   set (z := fresh vars) in *.
-   cbn -[fresh]. f_equal.
+ - setfresh vars z Hz.
+   cbn. f_equal.
    + apply ctx_rename_rename. namedec.
    + apply form_rename_id. namedec.
 Qed.
@@ -815,27 +807,23 @@ Proof.
  try (econstructor; eauto using claim_subset; fail).
  - destruct d1. cbn in H2; subst s.
    econstructor; eauto using claim_subset.
- - set (vars := Names.add x _).
-   assert (Hz := fresh_ok vars).
-   set (z := fresh vars) in *.
+ - setfresh vars z Hz.
    set (h := sub_rename x z).
    apply Valid_vmap_direct; auto.
    cbn in H.
    constructor; eauto using claim_subset.
-   + unfold h. cbn - [z vmap sub_rename].
+   + unfold h. cbn - [vmap sub_rename].
      generalize (vmap_rename_notIn x z c'). namedec.
    + eapply IHValid; eauto.
      rewrite <- (ctx_rename_id x z Γ) by namedec.
      now apply ListSubset_map.
  - destruct d1. cbn in H2; subst s.
-   set (vars := Names.add x _).
-   assert (Hz := fresh_ok vars).
-   set (z := fresh vars) in *.
+   setfresh vars z Hz.
    set (h := sub_rename x z).
    apply Valid_vmap_direct; auto.
    cbn in H.
    econstructor; eauto using claim_subset.
-   + unfold h. cbn - [z vmap sub_rename].
+   + unfold h. cbn - [vmap sub_rename].
      generalize (vmap_rename_notIn x z c'). namedec.
    + eapply IHValid1; eauto.
      rewrite <- (ctx_rename_id x z Γ) by namedec.

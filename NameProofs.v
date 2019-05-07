@@ -394,6 +394,12 @@ Proof.
  unfold strict_prefixes. simpl. namedec.
 Qed.
 
+Ltac setfresh vars z Hz :=
+ match goal with |- context [fresh ?v] => set (vars := v) end;
+ assert (Hz := fresh_ok vars);
+ set (z:=fresh vars) in *;
+ clearbody z.
+
 Lemma exist_fresh names : exists z, ~In z names.
 Proof.
  exists (fresh names). apply fresh_ok.

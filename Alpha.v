@@ -1,7 +1,7 @@
 
 (** Alternative definitions of substs and alpha for named formulas *)
 
-Require Import RelationClasses Arith Omega Defs NameProofs Nam.
+Require Import Morphisms RelationClasses Arith Omega Defs NameProofs Nam.
 Import ListNotations.
 Import Nam.Form.
 Import Nam.Form.Alt.
@@ -912,13 +912,11 @@ Proof.
  - apply Subst_Pred.
  - apply Subst_Not; auto.
  - apply Subst_Op; auto.
- - set (vars := Names.union _ _).
-   assert (Hz := fresh_ok vars).
-   set (z := fresh _) in *. clearbody z.
+ - setfresh vars z Hz.
    case eqbspec.
    + intros ->. apply Subst_Qu1.
    + intros NE.
-     destruct (Names.mem v (Term.vars t)) eqn:IN; cbn - [fresh].
+     destruct (Names.mem v (Term.vars t)) eqn:IN; cbn.
      * clear IN.
        apply Subst_Qu3 with (hsubst h v z f); auto.
        { rewrite freevars_allvars. namedec. }
@@ -953,9 +951,7 @@ Proof.
    split.
    + intros ((<-,?),?); auto.
    + now inversion_clear 1.
- - set (vars := Names.union _ _).
-   assert (Hz := fresh_ok vars).
-   set (z := fresh vars) in *. clearbody z.
+ - setfresh vars z Hz.
    rewrite <- !partialsubst_subst, !lazy_andb_iff, !eqb_eq, IH
      by auto with set.
    split.
@@ -974,8 +970,6 @@ Proof.
  eapply Subst_compat; eauto. apply Subst_subst.
 Qed.
 
-Require Import Morphisms RelationClasses.
-
 Instance : Proper (eq ==> eq ==> AlphaEq ==> eq ==> iff) Subst.
 Proof.
  intros x x' <- t t' <- f f' Hf g g' <-.
@@ -990,10 +984,4 @@ Instance : Proper (eq ==> eq ==> AlphaEq ==> AlphaEq) subst.
 Proof.
  intros x x' <- t t' <- f f' Hf.
  apply (Subst_compat x t f f'); auto using Subst_subst.
-Qed.
-
-Lemma subst_Qu1 x t q f :
- subst x t (Quant q x f) = Quant q x f.
-Proof.
- rewrite subst_eqn. now rewrite eqb_refl.
 Qed.

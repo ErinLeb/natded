@@ -259,9 +259,7 @@ Proof.
    rewrite IHf1, IHf2 by (eapply Inv_weak; eauto; namedec).
    split; [intros ((<-,<-),<-)|intros [= <- <- <-]]; easy.
  - rewrite lazy_andb_iff, !eqb_eq.
-   set (vars := Names.union _ _).
-   assert (Hz := fresh_ok vars).
-   set (z := fresh vars) in *.
+   setfresh vars z Hz.
    rewrite IHf by (constructor; try (eapply Inv_weak; eauto); namedec).
    simpl.
    split; [intros (<-,<-) | intros [=]]; easy.
@@ -318,16 +316,11 @@ Proof.
  - cbn in *. f_equal.
    apply IHf; auto.
    + constructor; auto.
-     set (vars := Names.union (Names.of_list stack) (Mix.fvars f)).
-     assert (FR' := fresh_ok vars).
-     contradict FR'.
-     unfold vars at 2. nameiff. left.
-     now apply names_of_list_in.
+     setfresh vars z Hz. rewrite <- names_of_list_in. namedec.
    + simpl. omega with *.
    + simpl.
      intros v [<-|IN].
-     * set (vars := Names.union (Names.of_list stack) (Mix.fvars f)).
-       generalize (fresh_ok vars). namedec.
+     * setfresh vars z Hz. namedec.
      * apply FR in IN. namedec.
 Qed.
 

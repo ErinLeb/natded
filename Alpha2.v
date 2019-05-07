@@ -90,15 +90,11 @@ Proof.
  - apply (term_substs_vars h (Fun "" l)).
  - rewrite IHf1, IHf2. namedec.
  - destruct (Names.mem _ _) eqn:E; simpl.
-   + set (vars := Names.union _ _).
-     assert (Hz := fresh_ok vars).
-     set (z := fresh vars) in *.
+   + setfresh vars z Hz.
      rewrite IHf; simpl.
-     rewrite invars_unassoc, outvars_unassoc.
-     namedec.
+     rewrite invars_unassoc, outvars_unassoc. namedec.
    + rewrite IHf; simpl.
-     rewrite invars_unassoc, outvars_unassoc.
-     namedec.
+     rewrite invars_unassoc, outvars_unassoc. namedec.
 Qed.
 
 (** [nam2mix] and free variables *)
@@ -1282,17 +1278,13 @@ Proof.
          rewrite Hg. unfold g.
          generalize (Inv_notin' _ _ v v IV). namedec00. }
        clear MM.
-       set (vars := Names.union _ _).
-       assert (Hz := fresh_ok vars).
-       set (z := fresh vars) in *. clearbody z.
-       set (vars' := Names.union vars (Names.of_list stk)).
-       assert (Hz' := fresh_ok vars').
-       set (z' := fresh vars') in *. clearbody z'.
+       setfresh vars z Hz.
+       destruct (exist_fresh (Names.union vars (Names.of_list stk)))
+        as (z',Hz').
        set (stk' := map (fun a => if a =? z then z' else a) stk).
-       unfold vars' in Hz'.
        rewrite Names.union_spec in Hz'. apply Decidable.not_or in Hz'.
        destruct Hz' as (Hz',Hz'2).
-       unfold vars in Hz,Hz'. clear vars' vars.
+       unfold vars in Hz,Hz'. clear vars.
        rewrite outvars_app, invars_app in Hz,Hz'.
        simpl in Hz, Hz'.
        assert (CL' : In v stk -> chgVar h v <> v).

@@ -13,7 +13,7 @@ General
 - Peut-on éviter tous ces "fix IH 1" ??
   Eviter tous ces preuves similaires (termes, formules, etc).
 
-- plus de exist_fresh au lieu des assert + set ?
+(x) setfresh au lieu des assert + set ?
 
 - essayer preuves de Equiv et Equiv2 directement sur hsubst
   (peut-on avoir substs simultanée que en def alternative ?)

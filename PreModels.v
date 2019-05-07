@@ -1,4 +1,4 @@
-Require Import Defs Mix NameProofs Meta Omega Setoid Morphisms.
+Require Import Defs Mix NameProofs Meta.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.

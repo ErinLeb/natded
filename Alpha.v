@@ -1,7 +1,7 @@
 
 (** Alternative definitions of substs and alpha for named formulas *)
 
-Require Import Morphisms RelationClasses Arith Omega Defs NameProofs Nam.
+Require Import Defs NameProofs Nam.
 Import ListNotations.
 Import Nam.Form.
 Import Nam.Form.Alt.

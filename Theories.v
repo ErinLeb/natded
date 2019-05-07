@@ -1,8 +1,7 @@
 
 (** Notion of 1st order theories *)
 
-Require Import Arith Omega Defs NameProofs Mix Meta Countable.
-Require Import Coq.Program.Equality.
+Require Import Defs NameProofs Mix Meta Countable.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.

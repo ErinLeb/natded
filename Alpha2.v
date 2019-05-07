@@ -1,7 +1,6 @@
 
 (** Equivalence between various substs and alpha for named formulas *)
 
-Require Import Morphisms RelationClasses Arith Omega.
 Require Import Defs NameProofs Nam Alpha Meta Equiv.
 Import ListNotations.
 Import Nam.Form.

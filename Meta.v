@@ -1,7 +1,7 @@
 
 (** Some Meta-properties (proved on the Mix encoding) *)
 
-Require Import RelationClasses Arith Omega Defs NameProofs Mix.
+Require Import Defs NameProofs Mix.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.

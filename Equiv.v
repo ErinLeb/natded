@@ -1,7 +1,7 @@
 
 (** Conversion from Named formulas to Locally Nameless formulas *)
 
-Require Import RelationClasses Arith Omega Defs NameProofs.
+Require Import Defs NameProofs.
 Require Nam Mix.
 Import ListNotations.
 Import Nam Nam.Form.

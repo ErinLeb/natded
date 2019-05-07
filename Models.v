@@ -1,5 +1,4 @@
-Require Import Defs Mix NameProofs Meta Omega Setoid Morphisms
-  Eqdep_dec Theories PreModels.
+Require Import Eqdep_dec Defs Mix NameProofs Meta Theories PreModels.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.

@@ -1,6 +1,5 @@
 
-Require Import Ascii Omega MSetFacts MSetProperties
- Setoid Utils StringUtils Defs.
+Require Import Ascii MSetFacts MSetProperties StringUtils Defs.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope string_scope.

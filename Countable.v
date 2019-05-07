@@ -1,5 +1,4 @@
-Require Import Ascii NArith Omega Setoid Morphisms.
-Require Import Defs Mix NameProofs Meta.
+Require Import Ascii NArith Defs Mix NameProofs Meta.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.

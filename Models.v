@@ -78,8 +78,7 @@ Proof.
    + unfold BClosed in *. cbn in BC.
      rewrite list_max_map_0 in BC; auto.
    + unfold FClosed in *. cbn in FC.
-     intros v. specialize (FC v). contradict FC.
-     rewrite unionmap_in. now exists t.
+     intros v. eapply unionmap_notin; eauto.
  - intros (E,F).
    rewrite Forall_forall in F.
    repeat split; cbn.
@@ -105,8 +104,7 @@ Proof.
    + unfold BClosed in *. cbn in BC.
      rewrite list_max_map_0 in BC; auto.
    + unfold FClosed in *. cbn in FC.
-     intros v. specialize (FC v). contradict FC.
-     rewrite unionmap_in. now exists t.
+     intros v. eapply unionmap_notin; eauto.
  - intros (E,F).
    rewrite Forall_forall in F.
    repeat split; cbn.

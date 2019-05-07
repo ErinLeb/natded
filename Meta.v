@@ -55,8 +55,7 @@ Lemma level_bsubst n u (f:formula) :
 Proof.
  revert n.
  induction f; cbn; intros n Hf Hu; auto with arith.
- - rewrite map_map. apply list_max_map_le.
-   rewrite list_max_map_le in Hf; auto using level_bsubst_term.
+ - apply (level_bsubst_term n u (Fun "" l)); auto.
  - rewrite max_le in *; intuition.
  - specialize (IHf (S n)). omega.
 Qed.
@@ -67,11 +66,7 @@ Lemma bsubst_term_fvars n (u t:term) :
  Names.Subset (fvars (bsubst n u t)) (Names.union (fvars u) (fvars t)).
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
- intros v. rewrite Names.union_spec, !unionmap_in.
- intros (a & Hv & Ha). rewrite in_map_iff in Ha.
- destruct Ha as (a' & <- & Ha'). apply IH in Hv; auto.
- rewrite Names.union_spec in Hv; destruct Hv as [Hv|Hv]; auto.
- right. now exists a'.
+ apply subset_unionmap_map; auto.
 Qed.
 
 Lemma bsubst_fvars n u (f:formula) :
@@ -79,11 +74,7 @@ Lemma bsubst_fvars n u (f:formula) :
 Proof.
  revert n.
  induction f; cbn; intros; auto with *.
- - intros v. rewrite Names.union_spec, !unionmap_in.
-   intros (a & Hv & Ha). rewrite in_map_iff in Ha.
-   destruct Ha as (a' & <- & Ha'). apply bsubst_term_fvars in Hv; auto.
-   rewrite Names.union_spec in Hv; destruct Hv as [Hv|Hv]; auto.
-   right. now exists a'.
+ - apply (bsubst_term_fvars n u (Fun "" l)).
  - rewrite IHf1, IHf2. namedec.
 Qed.
 
@@ -249,9 +240,8 @@ Proof.
  induction t as [ | |f l IH] using term_ind'; cbn.
  - unfold Names.singleton. cbn. namedec.
  - namedec.
- - intros v. rewrite unionmap_in. intros (a & Ha & Ha').
-   rewrite in_map_iff in Ha'. destruct Ha' as (t & <- & Ht).
-   generalize (IH t Ht v Ha). apply flatmap_subset; auto.
+ - intros v. rewrite unionmap_map_in. intros (a & Hv & Ha).
+   generalize (IH a Ha v Hv). apply flatmap_subset; auto.
    intro. eauto with set.
 Qed.
 
@@ -1208,14 +1198,7 @@ Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
  destruct funsymbs; cbn; auto with *.
  case eqbspec; cbn; auto with *.
- intros _. clear f a.
- intros v. rewrite Names.add_spec, !unionmap_in.
- intros (t & Hv & Ht).
- rewrite in_map_iff in Ht.
- destruct Ht as (a & <- & Ha).
- apply IH in Hv; auto.
- rewrite Names.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
- right. now exists a.
+ intros _. apply subset_unionmap_map'; auto.
 Qed.
 
 Lemma restrict_form_fvars sign x f :
@@ -1225,14 +1208,8 @@ Proof.
  induction f; cbn; auto with *.
  destruct predsymbs; cbn; auto with *.
  case eqbspec; cbn; auto with *.
- intros _. clear p a.
- intros v. rewrite Names.add_spec, !unionmap_in.
- intros (t & Hv & Ht).
- rewrite in_map_iff in Ht.
- destruct Ht as (a & <- & Ha).
- apply restrict_term_fvars in Hv; auto.
- rewrite Names.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
- right. now exists a.
+ intros _. apply subset_unionmap_map'.
+ intros t _. apply restrict_term_fvars.
 Qed.
 
 Lemma restrict_ctx_fvars sign x c :
@@ -1240,14 +1217,8 @@ Lemma restrict_ctx_fvars sign x c :
               (Names.add x (fvars c)).
 Proof.
  unfold restrict_ctx.
- intros v. unfold fvars, fvars_list.
- rewrite Names.add_spec, !unionmap_in.
- intros (f & Hv & Hf).
- rewrite in_map_iff in Hf.
- destruct Hf as (a & <- & Ha).
- apply restrict_form_fvars in Hv; auto.
- rewrite Names.add_spec in Hv. destruct Hv as [Hv|Hv]; auto.
- right. now exists a.
+ apply subset_unionmap_map'.
+ intros f _. apply restrict_form_fvars.
 Qed.
 
 Lemma restrict_seq_fvars sign x s :
@@ -1272,13 +1243,7 @@ Proof.
  induction d as [r s ds IH] using derivation_ind'; cbn.
  rewrite restrict_rule_fvars, restrict_seq_fvars.
  rewrite Forall_forall in IH.
- intros v. nameiff.
- rewrite !unionmap_in. intuition.
- destruct H0 as (a & Hv & Ha).
- rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
- apply IH in Hv; auto. rewrite Names.add_spec in Hv.
- destruct Hv; auto.
- right; right; right; left. now exists a'.
+ apply subset_unionmap_map' in IH. rewrite IH. namedec.
 Qed.
 
 
@@ -1491,11 +1456,7 @@ Proof.
  induction t as [ | | f l IH] using term_ind';
    cbn - [Nat.ltb]; auto with *.
  - case Nat.ltb_spec; cbn; auto with *.
- - intros v. rewrite Names.add_spec, !unionmap_in.
-   intros (a & Hv & Ha).
-   rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
-   apply IH in Hv; auto. apply Names.add_spec in Hv.
-   destruct Hv; auto. right; now exists a'.
+ - apply subset_unionmap_map'; auto.
 Qed.
 
 Lemma forcelevel_fvars n x f :
@@ -1503,11 +1464,8 @@ Lemma forcelevel_fvars n x f :
 Proof.
  revert n.
  induction f; cbn; intros; auto with *.
- - intros v. rewrite Names.add_spec, !unionmap_in.
-   intros (a & Hv & Ha).
-   rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
-   apply forcelevel_term_fvars in Hv; auto. apply Names.add_spec in Hv.
-   destruct Hv; auto. right; now exists a'.
+ - apply subset_unionmap_map'.
+   intros t _. apply forcelevel_term_fvars.
  - rewrite IHf1, IHf2. namedec.
 Qed.
 
@@ -1515,11 +1473,8 @@ Lemma forcelevel_ctx_fvars x (c:context) :
  Names.Subset (fvars (forcelevel_ctx x c)) (Names.add x (fvars c)).
 Proof.
  unfold forcelevel_ctx. unfold fvars, fvars_list.
- intros v. rewrite Names.add_spec, !unionmap_in.
- intros (a & Hv & Ha).
- rewrite in_map_iff in Ha. destruct Ha as (a' & <- & Ha').
- apply forcelevel_fvars in Hv; auto. apply Names.add_spec in Hv.
- destruct Hv; auto. right; now exists a'.
+ apply subset_unionmap_map'.
+ intros f _. apply forcelevel_fvars.
 Qed.
 
 Lemma forcelevel_term_level n x t :

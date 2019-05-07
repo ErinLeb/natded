@@ -255,8 +255,7 @@ Proof.
  induction t as [v|f a IH] using term_ind'; cbn.
  - case eqbspec; auto. namedec.
  - intros NI. f_equal. apply map_id_iff.
-   intros t Ht. apply IH; auto. rewrite unionmap_in in NI.
-   contradict NI. now exists t.
+   intros t Ht. apply IH; auto. eapply unionmap_notin; eauto.
 Qed.
 
 Lemma partialsubst_notin x t f :
@@ -265,7 +264,7 @@ Lemma partialsubst_notin x t f :
 Proof.
  induction f; cbn; intros NI; f_equal; auto with set.
  - apply map_id_iff. intros a Ha. apply term_subst_notin.
-   rewrite unionmap_in in NI. contradict NI. now exists a.
+   eapply unionmap_notin; eauto.
  - case eqbspec; cbn; auto.
    intros NE. case Names.mem; f_equal; auto with set.
 Qed.
@@ -283,15 +282,10 @@ Lemma term_vars_subst x u t :
 Proof.
  induction t using term_ind'; cbn.
  - case eqbspec; cbn; auto with set.
- - intros v. rewrite unionmap_in.
-   intros (a & IN & IN'). rewrite in_map_iff in IN'.
-   destruct IN' as (b & <- & IN').
-   apply H in IN; trivial.
+ - intros v. rewrite unionmap_map_in.
+   intros (a & IN & IN'). apply H in IN; trivial.
    revert IN.
-   nameiff. rewrite unionmap_in in *.
-   intros [(U,V)|W].
-   + left. split; auto. now exists b.
-   + now right.
+   nameiff. intros [(U,V)|W]; auto. left; split; eauto with set.
 Qed.
 
 Lemma term_vars_subst_in x u t :
@@ -313,8 +307,7 @@ Proof.
      * intros _.
        assert (E'' : map (Term.substs [(x, u)]) l = l).
        { apply map_id_iff. intros a Ha.
-         apply term_subst_notin. contradict E'.
-         rewrite unionmap_in. now exists a. }
+         apply term_subst_notin. eapply unionmap_notin; eauto. }
        change Names.elt with variable in *.
        rewrite E''.
        fold (Term.subst x u t). rewrite (IH t E).
@@ -332,10 +325,9 @@ Lemma term_vars_subst_in' x u t :
 Proof.
  induction t using term_ind'; cbn.
  - case eqbspec; cbn; auto with set.
- - intros IN v Hv. rewrite unionmap_in in *.
-   destruct IN as (a & Ha & IN).
-   exists (Term.subst x u a); split; auto using in_map.
-   now apply (H a IN Ha).
+ - intros IN v Hv. rewrite unionmap_map_in.
+   rewrite unionmap_in in IN. destruct IN as (a & Ha & IN).
+   exists a; split; auto. apply H; auto.
 Qed.
 
 Lemma allvars_partialsubst x t f :

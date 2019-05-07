@@ -77,6 +77,43 @@ Qed.
 
 Hint Resolve unionmap_in' : set.
 
+Lemma unionmap_notin {A} (f: A -> t) (l: list A) v a :
+ ~In v (unionmap f l) -> List.In a l -> ~In v (f a).
+Proof.
+ intros NI IN. contradict NI. eapply unionmap_in'; eauto.
+Qed.
+
+Lemma unionmap_map_in {A B} (f: B -> t) (g : A -> B) (l: list A) v :
+ In v (unionmap f (List.map g l)) <-> exists a, In v (f (g a)) /\ List.In a l.
+Proof.
+ rewrite unionmap_in.
+ split.
+ - intros (b & Hv & Hb). apply in_map_iff in Hb.
+   destruct Hb as (a & <- & Ha). now exists a.
+ - intros (a & Hv & Ha). exists (g a). split; auto.
+   apply in_map_iff. now exists a.
+Qed.
+
+Lemma subset_unionmap_map {A} (f: A -> t) (g : A -> A) (l: list A) s :
+ (forall x, List.In x l -> Subset (f (g x)) (union s (f x))) ->
+ Subset (unionmap f (List.map g l)) (union s (unionmap f l)).
+Proof.
+ intros H v.
+ rewrite union_spec, unionmap_map_in, unionmap_in.
+ intros (a & Hv & Ha). apply H in Hv; auto.
+ rewrite union_spec in Hv. destruct Hv as [Hv|Hv]; auto.
+ right. now exists a.
+Qed.
+
+Lemma subset_unionmap_map' {A} (f: A -> t) (g : A -> A) (l: list A) c :
+ (forall x, List.In x l -> Subset (f (g x)) (add c (f x))) ->
+ Subset (unionmap f (List.map g l)) (add c (unionmap f l)).
+Proof.
+ intros H. rewrite NamesP.add_union_singleton.
+ apply subset_unionmap_map. intros x Hx.
+ rewrite <- NamesP.add_union_singleton; auto.
+Qed.
+
 Lemma map_in_aux (f : name -> name) l y acc :
  In y
   (List.fold_left (fun vs a => add (f a) vs) l acc) <->

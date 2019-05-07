@@ -292,7 +292,7 @@ Proof.
  - f_equal; clear f.
    rewrite !map_map.
    apply map_ext_in. intros t Ht. apply IH; auto.
-   rewrite unionmap_in in NI. contradict NI. now exists t.
+   eapply unionmap_notin; eauto.
 Qed.
 
 Lemma nam2mix_partialsubst' stk stk' x z f :
@@ -764,11 +764,8 @@ Proof.
    rewrite eqb_sym.
    case eqbspec; simpl.
    + intros -> [IN|[= ->]]. intuition.
-     unfold Subst.outvars. rewrite unionmap_in.
-     intros ((a,t) & IN & IN').
-     rewrite in_map_iff in IN'.
-     destruct IN' as ((a',b) & [= -> <-] & IN').
-     rewrite unassoc_in in IN'.
+     unfold Subst.outvars. rewrite unionmap_map_in.
+     intros ((a,b) & IN & IN'). rewrite unassoc_in in IN'.
      simpl in IN. rewrite Names.singleton_spec in IN.
      destruct (H' a b); intuition.
    + intros NE [IN|SO];

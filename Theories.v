@@ -949,10 +949,7 @@ Proof.
        rewrite Hm.
        apply delcst_HenkinAll_signext.
      * rewrite form_funs_wf. apply WfAxiom. simpl. now right.
-       intros IN.
-       assert (Names.In c (Names.unionmap form_funs (HenkinAxList th nc n))).
-       { rewrite unionmap_in. now exists A. }
-       namedec.
+       eapply unionmap_notin; eauto; namedec.
    + clearbody f. clear Ew. rewrite form_funs_ok. cbn.
      destruct WF as (CK,?). cbn in CK. now rewrite CK.
      cbn. namedec.

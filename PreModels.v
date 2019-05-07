@@ -137,12 +137,12 @@ Proof.
  intros E.
  unfold interp_ctx.
  split; intros H f Hf.
- rewrite <- (interp_form_ext genv); auto with set.
- intros v Hv. apply E. unfold fvars, fvars_list.
- rewrite unionmap_in. exists f. now split.
- rewrite (interp_form_ext genv); auto with set.
- intros v Hv. apply E. unfold fvars, fvars_list.
- rewrite unionmap_in. exists f. now split.
+ - rewrite <- (interp_form_ext genv); auto with set.
+   intros v Hv. apply E. unfold fvars, fvars_list.
+   eauto with set.
+ - rewrite (interp_form_ext genv); auto with set.
+   intros v Hv. apply E. unfold fvars, fvars_list.
+   eauto with set.
 Qed.
 
 Lemma interp_term_more_lenv genv lenv lenv' t :

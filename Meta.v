@@ -18,8 +18,7 @@ Proof.
  - destruct funsymbs; auto.
    rewrite !lazy_andb_iff, map_length.
    intros Hu (Hl,Hl'); split; auto.
-   rewrite forallb_forall in *. intros t Ht.
-   rewrite in_map_iff in Ht. destruct Ht as (t' & <- & Ht'); auto.
+   rewrite forallb_map, forallb_forall in *. auto.
 Qed.
 
 Lemma check_bsubst sign n u (f:formula) :
@@ -31,9 +30,8 @@ Proof.
  - destruct predsymbs; auto.
    rewrite !lazy_andb_iff in *. rewrite map_length.
    destruct Hf as (Hl,Hl'); split; auto.
-   rewrite forallb_forall in *. intros t Ht.
-   rewrite in_map_iff in Ht.
-   destruct Ht as (t' & <- & Ht'); auto using check_bsubst_term.
+   rewrite forallb_map, forallb_forall in *.
+   auto using check_bsubst_term.
  - rewrite !lazy_andb_iff in *; intuition.
 Qed.
 
@@ -1351,10 +1349,7 @@ Proof.
  destruct funsymbs eqn:E; try easy.
  case eqbspec; cbn; auto.
  intros <-.
- rewrite E.
- rewrite map_length, eqb_refl.
- rewrite forallb_forall. intros t Ht.
- rewrite in_map_iff in Ht. destruct Ht as (a & <- & Ha); auto.
+ rewrite E, map_length, eqb_refl, forallb_map, forallb_forall; auto.
 Qed.
 
 Lemma restrict_form_check sign x (f:formula) :
@@ -1364,11 +1359,8 @@ Proof.
  - destruct predsymbs eqn:E; try easy.
    case eqbspec; cbn; auto.
    intros <-.
-   rewrite E.
-   rewrite map_length, eqb_refl.
-   rewrite forallb_forall. intros t Ht.
-   rewrite in_map_iff in Ht.
-   destruct Ht as (a & <- & Ha); auto using restrict_term_check.
+   rewrite E, map_length, eqb_refl, forallb_map, forallb_forall;
+    auto using restrict_term_check.
  - now rewrite IHf1, IHf2.
 Qed.
 
@@ -1397,9 +1389,7 @@ Lemma restrict_deriv_check sign x (d:derivation) :
 Proof.
  induction d as [r s ds IH] using derivation_ind'; cbn.
  rewrite restrict_rule_check, restrict_seq_check.
- rewrite forallb_forall. intros d Hd.
- apply in_map_iff in Hd. destruct Hd as (d' & <- & Hd').
- rewrite Forall_forall in IH; auto.
+ rewrite forallb_map, forallb_forall, Forall_forall in *; auto.
 Qed.
 
 (** When a derivation has some bounded variables, we could

@@ -393,3 +393,9 @@ Lemma map_id_iff {A} (f : A -> A) l :
 Proof.
  rewrite <- (map_id l) at 2. apply map_ext_iff.
 Qed.
+
+Lemma forallb_map {A B} (f: B -> bool) (g: A -> B) l :
+ forallb f (map g l) = forallb (fun x => f (g x)) l.
+Proof.
+ induction l; simpl; f_equal; auto.
+Qed.

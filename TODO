@@ -18,7 +18,7 @@ General
 - essayer preuves de Equiv et Equiv2 directement sur hsubst
   (peut-on avoir substs simultanée que en def alternative ?)
 
-- unionmap_in à revoir, plus gal pourquoi autant de map_in_iff
+(x) unionmap_in à revoir, plus gal pourquoi autant de in_map_iff
 
 PreModel : revoir a se passer de BClosed general,
         maintenant que Valid impose des temoins BClosed (??)

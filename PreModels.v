@@ -29,7 +29,7 @@ Record PreModel (M:Type)(sign:signature) :=
     predsOk : forall s, sign.(predsymbs) s = get_arity (preds s)
   }.
 
-(** A premodel is also called a Σ-structure. For a complete model
+(** A premodel is also called a Σ-structure. For a full model
     of a theorie, we'll need the axioms of the theories, and
     the facts that their interpretations are valid. *)
 

@@ -1,7 +1,8 @@
 
  - un depôt a part du cours
  - un README detaillé, licence, etc etc
- - paquet opam ? depot git a part
+ - plus de doc et de commentaires dans les .v
+ - paquet opam ?
 
  - formula parsing
  - puis en faire un binaire autonome par extraction
@@ -25,11 +26,18 @@ General
 
 (x) unionmap_in à revoir, plus gal pourquoi autant de in_map_iff
 
-PreModel : revoir a se passer de BClosed general,
-        maintenant que Valid impose des temoins BClosed (??)
+KO : PreModel : revoir a se passer de BClosed general,
+        maintenant que Valid impose des temoins BClosed
+     --> Non, ou alors il faudrait revoir bsubst avec des -1 pour
+         les bvars au delà de celle qu'on substitue.
 
-Axiomes de Peano + exos + modèle Coq
-Idem pour ZF
+- PreModel : funsOk et predsOk sont-ils vraiment utiles ?
+   ou bien sinon est-ce que AxOk suffit ?
+
+- Axiomes de Peano + exos + modèle Coq
+- Idem pour ZF
+- Skolem
+
 
 Related works
 https://www.isa-afp.org/entries/Completeness-paper.pdf

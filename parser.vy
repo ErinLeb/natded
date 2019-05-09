@@ -1,3 +1,7 @@
+(* Grammar for 1st-order formulas *)
+(* To be used with a recent menhir (with Coq backend). *)
+(* /!\ NOT FINISHED YET : lacks a lexer + resync with the rest of the project *)
+
 %token TRUE FALSE AND OR IFF IMPL ALL EX NOT LPAREN RPAREN LCURL RCURL COMMA
 %token EQ IN PLUS MULT EOF
 %token<int> INT

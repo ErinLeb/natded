@@ -1,5 +1,10 @@
 
+ - un depôt a part du cours
+ - un README detaillé, licence, etc etc
+ - paquet opam ? depot git a part
+
  - formula parsing
+ - puis en faire un binaire autonome par extraction
 
  - affichage court du <->
 
@@ -23,7 +28,8 @@ General
 PreModel : revoir a se passer de BClosed general,
         maintenant que Valid impose des temoins BClosed (??)
 
-Modele de Peano un jour
+Axiomes de Peano + exos + modèle Coq
+Idem pour ZF
 
 Related works
 https://www.isa-afp.org/entries/Completeness-paper.pdf

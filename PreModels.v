@@ -1,3 +1,9 @@
+
+(** * Pre-models of theories *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
+
 Require Import Defs Mix NameProofs Meta.
 Import ListNotations.
 Local Open Scope bool_scope.
@@ -5,6 +11,12 @@ Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
 Set Implicit Arguments.
+
+(** A pre-model (also called a Σ-structure) is a non-empty domain M
+    alongside some interpretations for function symbols and predicate
+    symbols. For a full model of a theorie, we'll need the axioms
+    of the theories, and the facts that their interpretations are
+    valid. *)
 
 Fixpoint arity_fun A n B :=
   match n with
@@ -28,10 +40,6 @@ Record PreModel (M:Type)(sign:signature) :=
     funsOk : forall s, sign.(funsymbs) s = get_arity (funs s);
     predsOk : forall s, sign.(predsymbs) s = get_arity (preds s)
   }.
-
-(** A premodel is also called a Σ-structure. For a full model
-    of a theorie, we'll need the axioms of the theories, and
-    the facts that their interpretations are valid. *)
 
 (** Note: actually, we're not using [sign], [funsOk], [predsOK]
     anywhere in this file (yet?) !! *)

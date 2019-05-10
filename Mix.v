@@ -1,5 +1,8 @@
 
-(** Natded again, with a Locally Nameless encoding *)
+(** * Natural deduction, with a Locally Nameless encoding *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs.
 Require DecimalString.

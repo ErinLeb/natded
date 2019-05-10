@@ -1,5 +1,8 @@
 
-(** Conversion from Named derivations to Locally Nameless derivations *)
+(** * Conversion from Named derivations to Locally Nameless derivations *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import RelationClasses Arith Omega.
 Require Import Defs NameProofs Equiv Alpha Alpha2 Meta.

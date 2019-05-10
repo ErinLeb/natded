@@ -1,5 +1,8 @@
 
-(** Notion of 1st order theories *)
+(** * First-order theories *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs NameProofs Mix Meta Countable.
 Import ListNotations.

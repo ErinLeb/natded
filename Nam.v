@@ -1,15 +1,8 @@
 
 (** * Natded : a toy implementation of Natural Deduction *)
 
-(** Pierre Letouzey, © 2019-today *)
-
-(** A signature : a list of function symbols (with their arity)
-    and a list of predicate symbols (with their arity).
-    Functions of arity zero are also called constants.
-
-    Note : in theory a signature could be infinite and hence not
-    representable by some lists, but we'll never do this in practice.
-*)
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs.
 Require DecimalString.

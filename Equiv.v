@@ -1,5 +1,8 @@
 
-(** Conversion from Named formulas to Locally Nameless formulas *)
+(** * Conversion from Named formulas to Locally Nameless formulas *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs NameProofs.
 Require Nam Mix.

@@ -1,5 +1,8 @@
 
-(** Equivalence between various substs and alpha for named formulas *)
+(** * Equivalence between various substs and alpha for named formulas *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs NameProofs Nam Alpha Meta Equiv.
 Import ListNotations.

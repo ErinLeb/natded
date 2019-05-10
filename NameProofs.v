@@ -1,4 +1,9 @@
 
+(** * Proofs about name sets *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
+
 Require Import Ascii MSetFacts MSetProperties StringUtils Defs.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.

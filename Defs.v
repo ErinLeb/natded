@@ -1,4 +1,9 @@
 
+(** * Initial definitions for Natural Deduction *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
+
 Require Export Setoid Morphisms RelationClasses Arith Omega Bool String
                MSetRBT StringOrder List Utils.
 Require DecimalString.
@@ -31,7 +36,11 @@ Bind Scope string_scope with name.
 
 (** Signatures *)
 
-(** Just in case, a signature that could be infinite *)
+(** A signature is a set of function symbols and predicate symbols
+    (with their arities). These sets are usually finite, but we'll
+    use an infinite signature at least once (during the proof of
+    the completeness theorem).
+    Note : Functions of arity zero are also called constants. *)
 
 Definition function_symbol := name.
 Definition predicate_symbol := name.
@@ -45,7 +54,7 @@ Record signature :=
   { funsymbs : function_symbol -> option arity;
     predsymbs : predicate_symbol -> option arity }.
 
-(** A finite version *)
+(** A finite version (using lists) *)
 
 Module Finite.
 
@@ -117,9 +126,6 @@ Fixpoint fresh_loop (names:Names.t) (id:string) n : variable :=
   end.
 
 Definition fresh names := fresh_loop names "x" (Names.cardinal names).
-
-(* Compute fresh (Names.add "x" (Names.add "y" (Names.singleton "xx"))). *)
-
 
 (** Misc types : operators, quantificators *)
 

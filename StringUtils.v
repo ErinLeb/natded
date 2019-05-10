@@ -1,3 +1,9 @@
+
+(** * Utilities about the String datatypes *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
+
 Require Import Ascii String.
 Local Open Scope string_scope.
 

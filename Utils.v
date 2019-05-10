@@ -1,3 +1,9 @@
+
+(** * Utilities : boolean equalities, list operators, ... *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
+
 Require Import Bool Arith Omega Ascii String AsciiOrder StringOrder List.
 Import ListNotations.
 Open Scope lazy_bool_scope.
@@ -24,7 +30,7 @@ Proof.
  reflexivity.
 Qed.
 
-(** A bit of overloading of notations (via Coq Classes) *)
+(** Generic boolean equalities (via Coq Classes) *)
 
 Delimit Scope eqb_scope with eqb.
 Local Open Scope eqb_scope.
@@ -73,6 +79,7 @@ Proof.
  - apply eqb_neq. auto.
 Qed.
 
+(** List stuff *)
 
 Fixpoint list_assoc {A B}`{Eqb A} x (l:list (A*B)) :=
  match l with

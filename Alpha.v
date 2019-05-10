@@ -1,5 +1,8 @@
 
-(** Alternative definitions of substs and alpha for named formulas *)
+(** * Alternative definitions of substs and alpha for named formulas *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs NameProofs Nam.
 Import ListNotations.

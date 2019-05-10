@@ -1,5 +1,8 @@
 
-(** Some Meta-properties (proved on the Mix encoding) *)
+(** * Some meta-properties of the Mix encoding *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs NameProofs Mix.
 Import ListNotations.

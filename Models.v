@@ -1,3 +1,9 @@
+
+(** * Models of theories *)
+
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
+
 Require Import Eqdep_dec Defs Mix NameProofs Meta Theories PreModels.
 Import ListNotations.
 Local Open Scope bool_scope.

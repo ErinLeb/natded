@@ -18,22 +18,22 @@ Trying to be faithful to the original document, we use first encode formulas usi
 
 Main files :
 
- - <Defs.v> : common basic structures (names, variables, signatures, ...)
- - <Nam.v> : encoding of Natural Deduction (terms, formulas, derivations ...) using names as binders
- - <Mix.v> : same, but using a Locally Nameless representation of binders
- - <Alpha.v>, <Alpha2.v> : equivalence between various definitions of substitutions and alpha-equivalences for <Nam.v>
- - <Equiv.v>, <Equiv2.v> : conversions between the <Nam.v> and <Mix.v> encodings
- - <Meta.v> : some meta-theoretical results about <Mix.v> (e.g. substitution lemma)
- - <Theories.v> : notion of 1st-order theory, consistency, extensions, Henkin theorem, completion, ...
- - <PreModels.v> : interpretation of formulas as Coq propositions, validity theorem
- - <Models.v> : notion of model, build of a syntactic model for a consistent theory, completeness theorem
+ - [Defs](Defs.v) : common basic structures (names, variables, signatures, ...)
+ - [Nam](Nam.v) : encoding of Natural Deduction (terms, formulas, derivations ...) using names as binders
+ - [Mix](Mix.v) : same, but using a Locally Nameless representation of binders
+ - [Alpha](Alpha.v), [Alpha2](Alpha2.v) : equivalence between various definitions of substitutions and alpha-equivalences for [Nam](Nam.v)
+ - [Equiv](Equiv.v), [Equiv2](Equiv2.v) : conversions between the [Nam](Nam.v) and [Mix](Mix.v) encodings
+ - [Meta](Meta.v) : some meta-theoretical results about [Mix](Mix.v) (e.g. substitution lemma)
+ - [Theories](Theories.v) : notion of 1st-order theory, consistency, extensions, Henkin theorem, completion, ...
+ - [PreModels](PreModels.v) : interpretation of formulas as Coq propositions, validity theorem
+ - [Models](Models.v) : notion of model, build of a syntactic model for a consistent theory, completeness theorem
  
 Auxiliary files :
 
- - <AsciiOrder.v> <StringOrder.v> <StringUtils.v> : ordering of chars and strings, plus a few things about strings
- - <Utils.v> : a generic notion of boolean equalities, some utility functions and proofs about lists, ...
- - <NameProofs.v> : proofs about name set (i.e. sets of strings)
- - <Countable.v> : explicit enumeration of countable types (such as strings or terms or formulas)
+ - [AsciiOrder](AsciiOrder.v) [StringOrder](StringOrder.v) [StringUtils](StringUtils.v) : ordering of chars and strings, plus a few things about strings
+ - [Utils](Utils.v) : a generic notion of boolean equalities, some utility functions and proofs about lists, ...
+ - [NameProofs](NameProofs.v) : proofs about name set (i.e. sets of strings)
+ - [Countable](Countable.v) : explicit enumeration of countable types (such as strings or terms or formulas)
 
 ## Usage
 
@@ -41,4 +41,4 @@ To be used with Coq 8.8. Just run `make` to compile.
 
 ## License
 
-This work is free software, released under the Creative Commons Zero License (CC0). See files [LICENSE](LICENSE) and [COPYING](COPYING) for more. 
+This work is free software, released under the Creative Commons Zero License (CC0). See files [](LICENSE](LICENSE) and [](COPYING](COPYING) for more. 

@@ -8,11 +8,11 @@ Pierre Letouzey (IRIF), 2019
 
 ## Description
 
-This Coq development is an attempt to formalize as directly as possible a typical logic course about 1st-order predicate calculus using the Natural Deduction style. We followed here a [logic course](http://www.irif.fr/~letouzey/preuves/cours.pdf) (in French) due to Alexandre Miquel. Showing parts of this Coq development to Master students (at least the definitions and proof statements and proof sketchs) is now an teaching alternative instead of using the original course pdf, or in complement of it.
+This Coq development is an attempt to formalize as directly as possible a typical logic course about 1st-order predicate calculus using the Natural Deduction style. I followed here a [logic course](http://www.irif.fr/~letouzey/preuves/cours.pdf) (in French) due to Alexandre Miquel. Showing parts of this Coq development to Master students (at least the definitions and proof statements and proof sketchs) is now an teaching alternative instead of using the original course pdf, or in complement of it.
 
 I have formalized Natural Deduction and some of its meta-theory (such as a subsitution lemma), including classical models (seen as Coq types + functions + propositions), and the completeness theorem (following the Henkin approach).
 
-Trying to be faithful to the original document, we use first encode formulas using names (i.e. strings) in quantifiers. As expected, this triggers difficulties (name capture) during substitutions, and leads to the use of alpha-equivalence. Then I switch to another encoding (locally nameless) which is immune to these issues, while avoiding most of the technicalities of the approach of De Bruijn indices. I provide a two-way conversion between these named and locally-nameless encodings, and prove it correct. The rest of the meta-theorical study is performed on the locally-nameless representation.
+Trying to be faithful to the original document, I first encode formulas using names (i.e. strings) in quantifiers. As expected, this triggers difficulties (name capture) during substitutions, and leads to the use of alpha-equivalence. Then I switch to another encoding (locally nameless) which is immune to these issues, while avoiding most of the technicalities of the approach of De Bruijn indices. I provide a two-way conversion between these named and locally-nameless encodings, and prove it correct. The rest of the meta-theorical study is performed on the locally-nameless representation.
 
 ## Summary
 

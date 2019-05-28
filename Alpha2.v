@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Nam Alpha Meta Equiv.
+Require Import Defs NameProofs Nam Alpha Meta Equiv Subst AltSubst.
 Import ListNotations.
 Import Nam.Form.
 Local Open Scope bool_scope.
@@ -56,7 +56,7 @@ Qed.
 (** Free variables after [substs] *)
 
 Lemma term_substs_vars h t :
- Names.Subset (Term.vars (Term.substs h t))
+ Names.Subset (Term.vars (Alt.term_substs h t))
              (Names.union (Names.diff (Term.vars t) (Subst.invars h))
                          (Subst.outvars h)).
 Proof.
@@ -81,7 +81,7 @@ Proof.
 Qed.
 
 Lemma substs_freevars h f :
- Names.Subset (freevars (substs h f))
+ Names.Subset (freevars (Alt.substs h f))
              (Names.union (Names.diff (freevars f) (Subst.invars h))
                          (Subst.outvars h)).
 Proof.
@@ -211,7 +211,7 @@ Qed.
 
 Lemma term_substs_notin h t :
  Names.Empty (Names.inter (Term.vars t) (Subst.invars h)) ->
- Term.substs h t = t.
+ Alt.term_substs h t = t.
 Proof.
  induction t as [v |f l IH] using term_ind'; intros EM; cbn in *.
  - rewrite list_assoc_dft_alt.
@@ -293,11 +293,19 @@ Proof.
    eapply unionmap_notin; eauto.
 Qed.
 
-Lemma nam2mix_partialsubst' stk stk' x z f :
+Lemma nam2mix0_partialsubst x u f :
+ IsSimple x u f ->
+ nam2mix [] (partialsubst x u f) =
+  Mix.fsubst x (nam2mix_term [] u) (nam2mix [] f).
+Proof.
+ apply nam2mix_partialsubst; auto.
+Qed.
+
+Lemma nam2mix_rename stk stk' x z f :
  ~In x stk ->
  ~In z stk ->
  ~Names.In z (allvars f) ->
- nam2mix (stk++z::stk') (partialsubst x (Var z) f) =
+ nam2mix (stk++z::stk') (rename x z f) =
  nam2mix (stk++x::stk') f.
 Proof.
  revert stk.
@@ -305,8 +313,7 @@ Proof.
  - injection (nam2mix_term_subst' stk stk' x z (Fun "" l)); easy.
  - intuition.
  - intuition.
- - rewrite mem_false by namedec.
-   case eqbspec; cbn.
+ - case eqbspec; cbn.
    + intros <-.
      symmetry.
      apply (nam2mix_shadowstack' (x::stk)). simpl; auto.
@@ -316,14 +323,6 @@ Proof.
      simpl. intuition.
      simpl. intuition.
      namedec.
-Qed.
-
-Lemma nam2mix0_partialsubst x u f :
- IsSimple x u f ->
- nam2mix [] (partialsubst x u f) =
-  Mix.fsubst x (nam2mix_term [] u) (nam2mix [] f).
-Proof.
- apply nam2mix_partialsubst; auto.
 Qed.
 
 Lemma term_subst_bsubst stk (x:variable) u t :
@@ -385,24 +384,24 @@ Proof.
  apply partialsubst_bsubst; auto.
 Qed.
 
-Lemma partialsubst_bsubst0_var x z f :
+Lemma rename_bsubst0 x z f :
  ~Names.In z (allvars f) ->
- nam2mix [] (partialsubst x (Var z) f) =
+ nam2mix [] (rename x z f) =
   Mix.bsubst 0 (Mix.FVar z) (nam2mix [x] f).
 Proof.
  intros.
+ rewrite rename_partialsubst by auto.
  apply (partialsubst_bsubst0 x (Var z)); auto.
 Qed.
 
 Lemma nam2mix_rename_iff z v v' f f' :
   ~ Names.In z (Names.union (allvars f) (allvars f')) ->
-  nam2mix [] (partialsubst v (Var z) f) =
-  nam2mix [] (partialsubst v' (Var z) f')
+  nam2mix [] (rename v z f) = nam2mix [] (rename v' z f')
   <->
   nam2mix [v] f = nam2mix [v'] f'.
 Proof.
  intros Hz.
- rewrite 2 partialsubst_bsubst0_var by namedec.
+ rewrite 2 rename_bsubst0 by namedec.
  split.
  - intros H. apply bsubst_fresh_inj in H; auto.
    rewrite !nam2mix_fvars. cbn. rewrite !freevars_allvars. namedec.
@@ -413,11 +412,14 @@ Lemma nam2mix_term_inj t t' : nam2mix_term [] t = nam2mix_term [] t' -> t = t'.
 Proof.
  intro E.
  apply (nam2mix_term_ok [] []) in E; auto.
- rewrite !term_substs_notin in E; cbn; auto with set.
 Qed.
 
+(* Ceci est une seconde preuve de nam2mix_canonical !!
+   (mais limité au cas stk=[].
+   TODO Nettoyage ? *)
+
 Lemma nam2mix_canonical' f f' :
- nam2mix [] f = nam2mix [] f' <-> Ind.AlphaEq f f'.
+ nam2mix [] f = nam2mix [] f' <-> AlphaEq f f'.
 Proof.
  split.
  - set (h := S (Nat.max (height f) (height f'))).
@@ -433,16 +435,18 @@ Proof.
    + intros [= <- E1 E2]; auto.
    + intros [= <- E].
      destruct (exist_fresh (Names.union (allvars f) (allvars f'))) as (z,Hz).
-     apply Ind.AEqQu with z; auto.
-     apply IH; try rewrite partialsubst_height; auto.
+     apply AEqQu with z; auto.
+     apply IH; try rewrite rename_height; auto.
      apply nam2mix_rename_iff; auto.
  - induction 1; cbn; f_equal; auto.
    apply (nam2mix_rename_iff z); auto.
 Qed.
 
-Lemma AlphaEq_equiv f f' : Form.AlphaEq f f' <-> Ind.AlphaEq f f'.
+(*
+Lemma AlphaEq_equiv f f' : Alt.AlphaEq f f' <-> AlphaEq f f'.
 Proof.
- now rewrite <- nam2mix_canonical', nam2mix_canonical.
+ rewrite <-nam2mix_canonical'. (* Vieille preuve!
+                                   nam2mix_canonical. *)
 Qed.
 
 Lemma AlphaEq_alt f f' :
@@ -455,10 +459,7 @@ Lemma αeq_alt f f' : Alt.αeq f f' = αeq f f'.
 Proof.
  apply eq_true_iff_eq. apply AlphaEq_alt.
 Qed.
-
-(** For the rest of the file, we use the [Ind.AlphaEq] variant. *)
-
-Import Ind.
+*)
 
 (** We've seen that [nam2mix []] maps alpha-equivalent formulas
     to equal formulas. This is actually also true for
@@ -473,8 +474,8 @@ Proof.
  intros H. revert stk.
  induction H; cbn; intros stk; f_equal; auto.
  generalize (IHAlphaEq (z::stk)).
- rewrite (nam2mix_partialsubst' [] stk v z) by (auto; namedec).
- rewrite (nam2mix_partialsubst' [] stk v' z) by (auto; namedec).
+ rewrite (nam2mix_rename [] stk v z) by (auto; namedec).
+ rewrite (nam2mix_rename [] stk v' z) by (auto; namedec).
  auto.
 Qed.
 
@@ -492,10 +493,10 @@ Proof.
  apply nam2mix_partialsubst; auto.
 Qed.
 
-Lemma nam2mix_altsubst_fsubst stk (x:variable) u f :
+Lemma nam2mix_subst_fsubst stk (x:variable) u f :
  ~In x stk ->
  (forall v, In v stk -> ~Names.In v (Term.vars u)) ->
- nam2mix stk (Alt.subst x u f) =
+ nam2mix stk (subst x u f) =
  Mix.fsubst x (nam2mix_term [] u) (nam2mix stk f).
 Proof.
  intros.
@@ -503,11 +504,11 @@ Proof.
  apply Subst_subst.
 Qed.
 
-Lemma nam2mix0_altsubst_fsubst x u f :
- nam2mix [] (Alt.subst x u f) =
+Lemma nam2mix0_subst_fsubst x u f :
+ nam2mix [] (subst x u f) =
   Mix.fsubst x (nam2mix_term [] u) (nam2mix [] f).
 Proof.
- apply nam2mix_altsubst_fsubst; auto.
+ apply nam2mix_subst_fsubst; auto.
 Qed.
 
 Lemma nam2mix_Subst_bsubst stk x u f f' :
@@ -525,10 +526,10 @@ Proof.
  now apply partialsubst_bsubst.
 Qed.
 
-Lemma nam2mix_altsubst_bsubst stk (x:variable) u f :
+Lemma nam2mix_subst_bsubst stk (x:variable) u f :
  ~In x stk ->
  (forall v, In v stk -> ~Names.In v (Term.vars u)) ->
- nam2mix stk (Alt.subst x u f) =
+ nam2mix stk (subst x u f) =
   Mix.bsubst (length stk) (nam2mix_term [] u)
              (nam2mix (stk++[x]) f).
 Proof.
@@ -537,61 +538,61 @@ Proof.
  apply Subst_subst.
 Qed.
 
-Lemma nam2mix_altsubst_bsubst0 x u f :
- nam2mix [] (Alt.subst x u f) =
+Lemma nam2mix_subst_bsubst0 x u f :
+ nam2mix [] (subst x u f) =
   Mix.bsubst 0 (nam2mix_term [] u) (nam2mix [x] f).
 Proof.
- apply nam2mix_altsubst_bsubst; auto.
+ apply nam2mix_subst_bsubst; auto.
 Qed.
 
 Lemma nam2mix_rename_iff2 z v v' f f' :
   ~ Names.In z (Names.union (freevars f) (freevars f')) ->
-  nam2mix [] (Alt.subst v (Var z) f) =
-  nam2mix [] (Alt.subst v' (Var z) f')
+  nam2mix [] (subst v (Var z) f) =
+  nam2mix [] (subst v' (Var z) f')
   <->
   nam2mix [v] f = nam2mix [v'] f'.
 Proof.
  intros Hz.
- rewrite 2 nam2mix_altsubst_bsubst0. cbn.
+ rewrite 2 nam2mix_subst_bsubst0. cbn.
  split.
  - intros H. apply bsubst_fresh_inj in H; auto.
    rewrite !nam2mix_fvars. cbn. namedec.
  - now intros ->.
 Qed.
 
-Lemma nam2mix_altsubst_nop x f :
-  nam2mix [] (Alt.subst x (Var x) f) = nam2mix [] f.
+Lemma nam2mix_subst_nop x f :
+  nam2mix [] (subst x (Var x) f) = nam2mix [] f.
 Proof.
- rewrite nam2mix0_altsubst_fsubst. simpl.
+ rewrite nam2mix0_subst_fsubst. simpl.
  unfold Mix.fsubst.
  apply form_vmap_id.
  intros y Hy. unfold Mix.varsubst.
  case eqbspec; intros; subst; auto.
 Qed.
 
-Lemma altsubst_nop x f :
-  AlphaEq (Alt.subst x (Var x) f) f.
+Lemma subst_nop x f :
+  AlphaEq (subst x (Var x) f) f.
 Proof.
  apply nam2mix_canonical'.
- apply nam2mix_altsubst_nop.
+ apply nam2mix_subst_nop.
 Qed.
 
 Lemma nam2mix_rename_iff3 (v x : variable) f f' :
   ~ Names.In x (Names.remove v (freevars f)) ->
-  nam2mix [] (Alt.subst v (Var x) f) = nam2mix [] f'
+  nam2mix [] (subst v (Var x) f) = nam2mix [] f'
   <->
   nam2mix [v] f = nam2mix [x] f'.
 Proof.
  intros Hx.
- rewrite nam2mix_altsubst_bsubst0. cbn.
+ rewrite nam2mix_subst_bsubst0. cbn.
  split.
- - rewrite <- (nam2mix_altsubst_nop x f').
-   rewrite nam2mix_altsubst_bsubst0. cbn.
+ - rewrite <- (nam2mix_subst_nop x f').
+   rewrite nam2mix_subst_bsubst0. cbn.
    apply bsubst_fresh_inj.
    rewrite !nam2mix_fvars. cbn. namedec.
  - intros ->.
-   rewrite <- (nam2mix_altsubst_bsubst0 x (Var x)).
-   apply nam2mix_altsubst_nop.
+   rewrite <- (nam2mix_subst_bsubst0 x (Var x)).
+   apply nam2mix_subst_nop.
 Qed.
 
 Lemma nam2mix_nostack stk f f' :
@@ -609,18 +610,20 @@ Proof.
      * rewrite 2 nam2mix_shadowstack; auto.
      * intros Eq.
        apply IH.
-       assert (E := altsubst_nop x f).
+       assert (E := subst_nop x f).
        apply AlphaEq_nam2mix_gen with (stk:=rev s) in E.
        rewrite <- E.
-       assert (E' := altsubst_nop x f').
+       assert (E' := subst_nop x f').
        apply AlphaEq_nam2mix_gen with (stk:=rev s) in E'.
        rewrite <- E'.
        clear E E'.
-       rewrite !nam2mix_altsubst_bsubst, Eq; simpl; auto.
+       rewrite !nam2mix_subst_bsubst, Eq; simpl; auto.
        intros v Hv. nameiff. now intros ->.
        intros v Hv. nameiff. now intros ->.
  - rewrite nam2mix_canonical'. apply AlphaEq_nam2mix_gen.
 Qed.
+
+(** TODO Again !! *)
 
 Lemma nam2mix_canonical_gen stk f f' :
  nam2mix stk f = nam2mix stk f' <-> AlphaEq f f'.
@@ -888,7 +891,7 @@ Qed.
 Lemma nam2mix_term_substs_rename stk (h:renaming) t :
  Inv (Names.union (Names.of_list stk) (Term.vars t)) h ->
  (forall a b, In (a,b) h -> In a stk) ->
- nam2mix_term (map (chgVar h) stk) (Term.substs (map putVar h) t) =
+ nam2mix_term (map (chgVar h) stk) (Alt.term_substs (map putVar h) t) =
  nam2mix_term stk t.
 Proof.
  revert t.
@@ -910,7 +913,7 @@ Qed.
 Lemma nam2mix_substs_rename stk (h:renaming) f:
  Inv (Names.union (Names.of_list stk) (allvars f)) h ->
  (forall a b, In (a,b) h -> In a stk) ->
- nam2mix (map (chgVar h) stk) (substs (map putVar h) f) =
+ nam2mix (map (chgVar h) stk) (Alt.substs (map putVar h) f) =
  nam2mix stk f.
 Proof.
  revert stk h.
@@ -960,7 +963,7 @@ Lemma nam2mix_term_substs stk h x u t:
  ~In x stk ->
  (forall v, In v stk -> ~Names.In (chgVar h v) (Term.vars u)) ->
  nam2mix_term (map (chgVar h) stk)
-              (Term.substs (map putVar h ++ [(x,u)]) t) =
+              (Alt.term_substs (map putVar h ++ [(x,u)]) t) =
  Mix.fsubst x (nam2mix_term [] u) (nam2mix_term stk t).
 Proof.
  intros IV SU NI CL.
@@ -1099,7 +1102,7 @@ Proof.
    rewrite H. intro. unfold vars. namedec00.
 Qed.
 
-Lemma nam2mix_substs_aux1
+Lemma nam2mix_altsubsts_aux1
   (x v z z' : variable)(t : term)(f : formula)
   (stk : list variable)(h g : renaming) g' :
   let vars := Names.union (Names.add v (allvars f))
@@ -1113,15 +1116,15 @@ Lemma nam2mix_substs_aux1
   (In v stk -> chgVar h v <> v) ->
   let stk' := map (fun a : variable => if a =? z then z' else a) stk in
   nam2mix (z :: map (chgVar h) stk)
-    (substs ((v, Var z) :: g' ++ [(x, t)]) f) =
+    (Alt.substs ((v, Var z) :: g' ++ [(x, t)]) f) =
   nam2mix (map (chgVar ((v, z) :: g)) (v :: stk'))
-    (substs (map putVar ((v, z) :: g) ++ [(x, t)]) f).
+    (Alt.substs (map putVar ((v, z) :: g) ++ [(x, t)]) f).
 Proof.
  intros vars IV Hg Hg' Hz Hz' Hz'' CL stk'.
  unfold Subst.vars in *; simpl in *.
  rewrite chgVar_some with (z:=z) by (simpl; now rewrite eqb_refl).
  rewrite <-Hg'.
- set (f' := substs _ f).
+ set (f' := Alt.substs _ f).
  unfold stk'. clear stk'. rewrite map_map.
  apply nam2mix_indep.
  intros y Hy.
@@ -1188,7 +1191,7 @@ Proof.
        apply chgVar_unassoc_else; auto. }
 Qed.
 
-Lemma form_substs_aux2
+Lemma form_altsubsts_aux2
   (x v : variable)(t : term)(f : formula)
   (stk : list variable)(h g : renaming) g' :
   let vars := Names.union (Names.add v (allvars f))
@@ -1196,7 +1199,7 @@ Lemma form_substs_aux2
   Inv vars h ->
   g = list_unassoc v h ->
   g' = map putVar g ->
-  let f' := substs (g' ++ [(x,t)]) f in
+  let f' := Alt.substs (g' ++ [(x,t)]) f in
   nam2mix (v :: map (chgVar h) stk) f' =
   nam2mix (map (chgVar g) (v::stk)) f'.
 Proof.
@@ -1232,7 +1235,7 @@ Proof.
    case eqbspec; auto. intros _. now f_equal.
 Qed.
 
-Lemma nam2mix_substs (stk:list variable) h (x:variable) t f:
+Lemma nam2mix_altsubsts (stk:list variable) h (x:variable) t f:
  Inv (Names.unions [Names.of_list stk;
                    allvars f;
                    Names.add x (Term.vars t)]) h ->
@@ -1240,7 +1243,7 @@ Lemma nam2mix_substs (stk:list variable) h (x:variable) t f:
  ~In x stk ->
  (forall v, In v stk -> ~Names.In (chgVar h v) (Term.vars t)) ->
  nam2mix (map (chgVar h) stk)
-         (substs (map putVar h ++ [(x,t)]) f) =
+         (Alt.substs (map putVar h ++ [(x,t)]) f) =
  Mix.fsubst x (nam2mix_term [] t) (nam2mix stk f).
 Proof.
  revert stk h.
@@ -1265,7 +1268,7 @@ Proof.
          intros <-. rewrite nam2mix_fvars. simpl. namedec. }
      change
        (nam2mix (map (chgVar h) stk)
-                (substs (map putVar h) (Quant q x f))
+                (Alt.substs (map putVar h) (Quant q x f))
         = nam2mix stk (Quant q x f)).
      apply nam2mix_substs_rename; auto.
      eapply Inv_subset; eauto. cbn. namedec.
@@ -1291,7 +1294,7 @@ Proof.
        simpl in Hz, Hz'.
        assert (CL' : In v stk -> chgVar h v <> v).
        { intros IN' EQ. apply (CL v IN'). now rewrite EQ. }
-       erewrite nam2mix_substs_aux1; eauto; fold stk'; fold g.
+       erewrite nam2mix_altsubsts_aux1; eauto; fold stk'; fold g.
        2:{clear -IV. eapply Inv_subset; eauto. simpl. intro. namedec00. }
        2:{revert Hz. unfold Subst.vars; simpl. namedec00. }
        2:{revert Hz'. unfold Subst.vars; simpl. namedec00. }
@@ -1325,7 +1328,7 @@ Proof.
        { simpl in MM. rewrite <-not_true_iff_false, Names.mem_spec in MM.
          namedec0. }
        clear MM.
-       rewrite form_substs_aux2 with (g:=g); auto.
+       rewrite form_altsubsts_aux2 with (g:=g); auto.
        2:{clear -IV. eapply Inv_subset; eauto. simpl. intro. namedec00. }
        rewrite Hg.
        apply IHf; clear IHf.
@@ -1341,29 +1344,23 @@ Proof.
            unfold g. rewrite chgVar_unassoc_else; auto. }
 Qed.
 
-Lemma nam2mix_substs_alt x t f:
- nam2mix [] (substs [(x,t)] f) = nam2mix [] (Alt.subst x t f).
-Proof.
- rewrite nam2mix0_altsubst_fsubst.
- apply (nam2mix_substs [] []); simpl; intuition.
-Qed.
-
 (** And at last : *)
 
-Lemma nam2mix_subst_alt x t f:
- nam2mix [] (subst x t f) = nam2mix [] (Alt.subst x t f).
+Lemma nam2mix_altsubst x t f:
+ nam2mix [] (Alt.subst x t f) = nam2mix [] (subst x t f).
 Proof.
- apply nam2mix_substs_alt.
+ rewrite nam2mix0_subst_fsubst.
+ apply (nam2mix_altsubsts [] []); simpl; intuition.
 Qed.
 
 Lemma subst_alt x t f:
- AlphaEq (subst x t f) (Alt.subst x t f).
+ AlphaEq (Alt.subst x t f) (subst x t f).
 Proof.
- apply nam2mix_canonical'.
- apply nam2mix_substs_alt.
+ apply nam2mix_canonical.
+ apply nam2mix_altsubst.
 Qed.
 
-Instance : Proper (eq ==> eq ==> AlphaEq ==> AlphaEq) subst.
+Instance : Proper (eq ==> eq ==> AlphaEq ==> AlphaEq) Alt.subst.
 Proof.
  intros x x' <- t t' <- f f' Hf.
  now rewrite !subst_alt, Hf.
@@ -1374,46 +1371,31 @@ Qed.
     See also [Alpha.partialsubst_partialsubst]. In fact, we won't
     reuse it afterwards. *)
 
-Lemma altsubst_altsubst x y u v f :
- x<>y -> ~Names.In x (Term.vars v) ->
- AlphaEq (Alt.subst y v (Alt.subst x u f))
-         (Alt.subst x (Term.subst y v u) (Alt.subst y v f)).
-Proof.
- intros NE NI.
- apply nam2mix_canonical'.
- rewrite !nam2mix0_altsubst_fsubst.
- rewrite nam2mix_term_subst by auto.
- apply form_fsubst_fsubst; auto.
- rewrite nam2mix_tvars. cbn. namedec.
-Qed.
-
 Lemma subst_subst x y u v f :
  x<>y -> ~Names.In x (Term.vars v) ->
  AlphaEq (subst y v (subst x u f))
          (subst x (Term.subst y v u) (subst y v f)).
 Proof.
+ intros NE NI.
+ apply nam2mix_canonical.
+ rewrite !nam2mix0_subst_fsubst.
+ rewrite nam2mix_term_subst by auto.
+ apply form_fsubst_fsubst; auto.
+ rewrite nam2mix_tvars. cbn. namedec.
+Qed.
+
+Lemma altsubst_altsubst x y u v f :
+ x<>y -> ~Names.In x (Term.vars v) ->
+ AlphaEq (Alt.subst y v (Alt.subst x u f))
+         (Alt.subst x (Term.subst y v u) (Alt.subst y v f)).
+Proof.
  intros.
  rewrite !subst_alt.
- apply altsubst_altsubst; auto.
+ apply subst_subst; auto.
 Qed.
 
 (** The general equation defining [subst] on a quantified formula,
     via renaming. *)
-
-Lemma altsubst_QuGen (x z:variable) t q v f :
- x<>v ->
- ~Names.In z (Names.add x (Names.union (freevars f) (Term.vars t))) ->
- AlphaEq (Alt.subst x t (Quant q v f))
-         (Quant q z (Alt.subst x t (Alt.subst v (Var z) f))).
-Proof.
- intros NE NI.
- apply nam2mix_canonical'. cbn - [Alt.subst].
- rewrite !nam2mix0_altsubst_fsubst. cbn - [Alt.subst].
- f_equal.
- rewrite nam2mix_altsubst_fsubst by (simpl; namedec).
- f_equal.
- apply nam2mix_rename_iff3; auto. namedec.
-Qed.
 
 Lemma subst_QuGen (x z:variable) t q v f :
  x<>v ->
@@ -1421,9 +1403,24 @@ Lemma subst_QuGen (x z:variable) t q v f :
  AlphaEq (subst x t (Quant q v f))
          (Quant q z (subst x t (subst v (Var z) f))).
 Proof.
+ intros NE NI.
+ apply nam2mix_canonical. cbn - [subst].
+ rewrite !nam2mix0_subst_fsubst. cbn - [subst].
+ f_equal.
+ rewrite nam2mix_subst_fsubst by (simpl; namedec).
+ f_equal.
+ apply nam2mix_rename_iff3; auto. namedec.
+Qed.
+
+Lemma altsubst_QuGen (x z:variable) t q v f :
+ x<>v ->
+ ~Names.In z (Names.add x (Names.union (freevars f) (Term.vars t))) ->
+ AlphaEq (Alt.subst x t (Quant q v f))
+         (Quant q z (Alt.subst x t (Alt.subst v (Var z) f))).
+Proof.
  intros.
  rewrite subst_alt.
- rewrite altsubst_QuGen with (z:=z); auto.
+ rewrite subst_QuGen with (z:=z); auto.
  apply AEqQu_nosubst.
  now rewrite !subst_alt.
 Qed.

@@ -129,14 +129,14 @@ Lemma nam2mix_valid_deriv_step logic (d:Nam.derivation) :
   Mix.valid_deriv_step logic (nam2mix_deriv d) =
   Nam.valid_deriv_step logic d.
 Proof.
- destruct d as [[ ] s ds]; cbn;
-  repeat (break; cbn -[αeq]; auto);
+ destruct d as [[ ] s ds]; cbn -[subst];
+  repeat (break; cbn -[αeq subst]; auto);
   rewrite ?andb_false_r, <- ?nam2mix_seq_eqb,
           <- ?nam2mix_ctx_eqb, <- ?nam2mix_eqb; auto.
  - unfold nam2mix_ctx.
    induction c as [|A c IH]; cbn; auto.
-   rewrite <- nam2mix_eqb.
-   case eqbspec; auto.
+   rewrite <-orb_lazy_alt. f_equal; auto.
+   now rewrite nam2mix_eqb.
  - now destruct d.
  - now destruct d.
  - now destruct d, d0.
@@ -153,20 +153,20 @@ Proof.
    rewrite !eqb_eq.
    split; intros ((U,V),W); split; try split; auto.
    + change (Mix.FVar x) with (nam2mix_term [] (Var x)) in V.
-     rewrite <- nam2mix_altsubst_bsubst0 in V.
+     rewrite <- nam2mix_subst_bsubst0 in V.
      apply nam2mix_rename_iff3; auto.
      rewrite nam2mix_fvars in W. simpl in W. namedec.
    + rewrite <- nam2mix_ctx_fvars. rewrite <- U. namedec.
    + rewrite V.
      change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
-     rewrite <- nam2mix_altsubst_bsubst0.
-     symmetry. apply nam2mix_altsubst_nop.
+     rewrite <- nam2mix_subst_bsubst0.
+     symmetry. apply nam2mix_subst_nop.
    + rewrite U, V, nam2mix_ctx_fvars.
      rewrite nam2mix_fvars. simpl. namedec.
- - rewrite nam2mix_subst_alt, nam2mix_altsubst_bsubst0.
+ - rewrite nam2mix_subst_bsubst0.
    rewrite nam2mix_term_bclosed, eqb_refl.
    apply andb_true_r.
- - rewrite nam2mix_subst_alt, nam2mix_altsubst_bsubst0.
+ - rewrite nam2mix_subst_bsubst0.
    rewrite nam2mix_term_bclosed, eqb_refl.
    apply andb_true_r.
  - cbn.
@@ -179,7 +179,7 @@ Proof.
    + intros (((U,V),W),X); repeat split; auto.
      * rewrite <-V in U; exact U.
      * change (Mix.FVar x) with (nam2mix_term [] (Var x)) in W.
-       rewrite <- nam2mix_altsubst_bsubst0 in W.
+       rewrite <- nam2mix_subst_bsubst0 in W.
        apply nam2mix_rename_iff3; auto.
        rewrite nam2mix_fvars in X. simpl in X. namedec.
      * revert X. destruct s. cbn in *. injection U as <- <-.
@@ -189,8 +189,8 @@ Proof.
      * rewrite U. f_equal; auto.
      * rewrite W.
        change (Mix.FVar x) with (nam2mix_term [] (Nam.Var x)).
-       rewrite <- nam2mix_altsubst_bsubst0.
-       symmetry. apply nam2mix_altsubst_nop.
+       rewrite <- nam2mix_subst_bsubst0.
+       symmetry. apply nam2mix_subst_nop.
      * revert Z. destruct s. cbn in *.
        rewrite V, W. injection U as <- <-.
        rewrite <-!nam2mix_ctx_fvars, !nam2mix_fvars.
@@ -340,7 +340,7 @@ Definition AlphaEq_seq (s s':Nam.sequent) := (s =? s') = true.
 Definition AlphaEq_rule (r r':Nam.rule_kind) := (r =? r') = true.
 Definition AlphaEq_deriv (d d':Nam.derivation) := (d =? d') = true.
 
-(** [nam2mix] is canonical for contexts, sequents, rules, derivatsions :
+(** [nam2mix] is canonical for contexts, sequents, rules, derivations :
     alpha-equivalent stuffs are converted to equal things. *)
 
 Lemma nam2mix_ctx_canonical c c' :
@@ -350,7 +350,7 @@ Proof.
  unfold AlphaEq_ctx.
  induction c as [|f c IH]; destruct c' as [|f' c']; cbn; try easy.
  rewrite !lazy_andb_iff.
- rewrite <- IH, <- (nam2mix_canonical f f').
+ rewrite <- IH. rewrite (AlphaEq_equiv f f'), <-nam2mix_canonical.
  change (map (nam2mix [])) with nam2mix_ctx.
  split.
  - now intros [= <- <-].
@@ -362,7 +362,8 @@ Lemma nam2mix_seq_canonical s s' :
 Proof.
  unfold AlphaEq_seq.
  destruct s, s'; cbn. rewrite !lazy_andb_iff.
- rewrite <- (nam2mix_ctx_canonical c c0), <- (nam2mix_canonical f f0).
+ rewrite <- (nam2mix_ctx_canonical c c0).
+ rewrite AlphaEq_equiv, <- (nam2mix_canonical f f0).
  split.
  - now intros [= <- <-].
  - now intros (<-,<-).

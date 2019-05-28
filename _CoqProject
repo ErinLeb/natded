@@ -11,6 +11,8 @@ Mix.v
 NameProofs.v
 Alpha.v
 Equiv.v
+Subst.v
+AltSubst.v
 Alpha2.v
 Equiv2.v
 Meta.v

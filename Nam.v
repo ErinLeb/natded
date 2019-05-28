@@ -28,15 +28,6 @@ Definition peano_term_example :=
   Fun "+" [Fun "S" [Cst "O"]; Var "x"].
 
 
-(** Simultaneous substitution of many variables by terms.
-    The bindings of this substitution will be handled in parallel,
-    not sequentially. In particular, the variables introduced
-    by a binding aren't modified by other bindings.
-    If the substitution contains several bindings of the same
-    variable, the leftmost binding wins (cf. [list_assoc]). *)
-
-Definition substitution := list (variable * term).
-
 (** In the case of Peano, numbers are coded as iterated successors of zero *)
 
 Fixpoint nat2term n :=
@@ -118,18 +109,14 @@ Fixpoint vars t :=
   | Fun _ args => Names.unionmap vars args
  end.
 
-(** Simultaneous substitution (see type [substs] above) *)
-
-Fixpoint substs (sub:substitution) t :=
-  match t with
-  | Var v => list_assoc_dft v sub t
-  | Fun f args => Fun f (List.map (substs sub) args)
-  end.
-
 (** Substitution of a variable in a term :
     in [t], [v] is replaced by [u] *)
 
-Definition subst v u t := substs [(v,u)] t.
+Fixpoint subst x u t :=
+  match t with
+  | Var v => if v =? x then u else t
+  | Fun f args => Fun f (List.map (subst x u) args)
+  end.
 
 (** Boolean equality over terms *)
 
@@ -143,21 +130,6 @@ Instance eqb : Eqb term :=
   end.
 
 End Term.
-
-Module Subst.
-
-Definition t := substitution.
-
-Definition invars (sub : substitution) :=
-  List.fold_right (fun p vs => Names.add (fst p) vs) Names.empty sub.
-
-Definition outvars (sub : substitution) :=
-  Names.unionmap (fun '(_,t) => Term.vars t) sub.
-
-Definition vars (sub : substitution) :=
-  Names.union (invars sub) (outvars sub).
-
-End Subst.
 
 (** Formulas *)
 
@@ -264,75 +236,7 @@ Fixpoint freevars f :=
   | Pred _ args => Names.unionmap Term.vars args
   end.
 
-(** Simultaneous substitution of many variables in a term.
-    Capture of bounded variables is correctly handled. *)
-
-Fixpoint substs (sub : substitution) f :=
- match f with
-  | True | False => f
-  | Pred p args => Pred p (List.map (Term.substs sub) args)
-  | Not f => Not (substs sub f)
-  | Op o f f' => Op o (substs sub f) (substs sub f')
-  | Quant q v f' =>
-    let sub := list_unassoc v sub in
-    let out_vars := Subst.outvars sub in
-    if negb (Names.mem v out_vars) then
-      Quant q v (substs sub f')
-    else
-      (* variable capture : we change v into a fresh variable first *)
-      let z := fresh (Names.unions [allvars f; out_vars; Subst.invars sub])
-      in
-      Quant q z (substs ((v,Var z)::sub) f')
- end.
-
-(** Substitution of a variable in a term :
-    in [t], [v] is replaced by [u] *)
-
-Definition subst v t f := substs [(v,t)] f.
-
-(** Alpha equivalence *)
-
-Fixpoint αeq_gen sub1 f1 sub2 f2 :=
-  match f1, f2 with
-  | True, True | False, False => true
-  | Pred p1 args1, Pred p2 args2 =>
-     (p1 =? p2) &&&
-      (List.map (Term.substs sub1) args1 =?
-       List.map (Term.substs sub2) args2)
-  | Not f1, Not f2 => αeq_gen sub1 f1 sub2 f2
-  | Op o1 f1 f1', Op o2 f2 f2' =>
-    (o1 =? o2) &&&
-    αeq_gen sub1 f1 sub2 f2 &&&
-    αeq_gen sub1 f1' sub2 f2'
-  | Quant q1 v1 f1', Quant q2 v2 f2' =>
-    (q1 =? q2) &&&
-    (let z := fresh
-                (Names.unions
-                   [allvars f1; Subst.vars sub1; allvars f2; Subst.vars sub2])
-     in
-     αeq_gen ((v1,Var z)::sub1) f1' ((v2,Var z)::sub2) f2')
-  | _,_ => false
-  end.
-
-Definition αeq f1 f2 := αeq_gen [] f1 [] f2.
-
-(** A propositional version *)
-
-Definition AlphaEq f f' := αeq f f' = true.
-
-(** This alpha equivalence can be see as a boolean equality,
-    with syntax [=?]. But it will not be a [EqbSpec]. *)
-
-Instance eqb_inst_form : Eqb formula := αeq.
-Arguments eqb_inst_form !_ !_.
-
-Compute αeq
-        (∀ "x", Pred "A" [Var "x"] -> Pred "A" [Var "x"])
-        (∀ "z", Pred "A" [Var "z"] -> Pred "A" [Var "z"]).
-
-(** Alternative definition of substitution,
-    closer to the initial document,
-    but needs induction over height, due to nested recursive calls *)
+(** The height of a formula *)
 
 Fixpoint height f :=
   match f with
@@ -342,34 +246,41 @@ Fixpoint height f :=
   | Quant _ _ f => S (height f)
   end.
 
-Module Alt.
+(** [rename x y f] replaces any free occurrence of [x] by [y] in [f].
+    Beware, we assume here that [y] does *not* occur anywhere (free or not)
+    in [f]. If it isn't the case, the result could be meaningless.
+    Note that [rename] doesn't change the structure of the formula,
+    and in particular its height. *)
 
-Fixpoint hsubst h x t f :=
- match h with
- | 0 => True
- | S h =>
-   match f with
-   | True | False => f
-   | Pred p args => Pred p (List.map (Term.subst x t) args)
-   | Not f => Not (hsubst h x t f)
-   | Op o f f' => Op o (hsubst h x t f) (hsubst h x t f')
-   | Quant q v f' =>
-     if x =? v then f
-     else
-       let out_vars := Term.vars t in
-       if negb (Names.mem v out_vars) then
-         Quant q v (hsubst h x t f')
-       else
-         (* variable capture : we change v into a fresh variable first *)
-         let z := fresh (Names.unions [allvars f; out_vars; Names.singleton x])
-         in
-         Quant q z (hsubst h x t (hsubst h v (Var z) f'))
-   end
- end.
+Fixpoint rename x y f :=
+  match f with
+  | True | False => f
+  | Pred p args => Pred p (List.map (Term.subst x (Var y)) args)
+  | Not f => Not (rename x y f)
+  | Op o f f' => Op o (rename x y f) (rename x y f')
+  | Quant q v f' => Quant q v (if x =? v then f' else rename x y f')
+  end.
 
-Definition subst x t f := hsubst (S (height f)) x t f.
+(** Thanks to rename, we could already define a first version of
+    alpha-equivalence *)
 
-(** Same for alpha_equivalence *)
+Inductive AlphaEq : formula -> formula -> Prop :=
+| AEqTr : AlphaEq True True
+| AEqFa : AlphaEq False False
+| AEqPred p l : AlphaEq (Pred p l) (Pred p l)
+| AEqNot f f' : AlphaEq f f' -> AlphaEq (Not f) (Not f')
+| AEqOp o f1 f2 f1' f2' :
+  AlphaEq f1 f1' -> AlphaEq f2 f2' ->
+  AlphaEq (Op o f1 f2) (Op o f1' f2')
+| AEqQu q v v' f f' (z:variable) :
+  ~Names.In z (Names.union (allvars f) (allvars f')) ->
+  AlphaEq (rename v z f) (rename v' z f') ->
+  AlphaEq (Quant q v f) (Quant q v' f').
+
+Hint Constructors AlphaEq.
+
+(** A computable version of alpha-equivalence, via induction
+    over height. We'll prove later that both versions match. *)
 
 Fixpoint hαeq h f1 f2 :=
   match h with
@@ -385,7 +296,7 @@ Fixpoint hαeq h f1 f2 :=
     | Quant q1 v1 f1', Quant q2 v2 f2' =>
       (q1 =? q2) &&&
       (let z := fresh (Names.union (allvars f1) (allvars f2)) in
-       hαeq h (subst v1 (Var z) f1') (subst v2 (Var z) f2'))
+       hαeq h (rename v1 z f1') (rename v2 z f2'))
     | _,_ => false
     end
   end.
@@ -393,29 +304,46 @@ Fixpoint hαeq h f1 f2 :=
 Definition αeq f1 f2 :=
  hαeq (S (Nat.max (height f1) (height f2))) f1 f2.
 
-Definition AlphaEq f1 f2 := αeq f1 f2 = true.
+(** This alpha equivalence can be see as a boolean equality,
+    with syntax [=?]. But it will not be a [EqbSpec]. *)
 
-End Alt.
+Instance eqb_inst_form : Eqb formula := αeq.
+Arguments eqb_inst_form !_ !_.
 
-(** Finally, a partial substitution, which does *not* handle
-    correctly variable capture (and just return [f] in this case).
-    This simpler definition is actually enough to define alpha
-    equivalence (and reason on it). *)
+Compute αeq
+        (∀ "x", Pred "A" [Var "x"] -> Pred "A" [Var "x"])
+        (∀ "z", Pred "A" [Var "z"] -> Pred "A" [Var "z"]).
 
-Fixpoint partialsubst x t f :=
-  match f with
-  | True | False => f
-  | Pred p args => Pred p (List.map (Term.subst x t) args)
-  | Not f => Not (partialsubst x t f)
-  | Op o f f' => Op o (partialsubst x t f) (partialsubst x t f')
-  | Quant q v f' =>
-    Quant q v
-     (if (x=?v) || Names.mem v (Term.vars t) then f'
-      else partialsubst x t f')
-  end.
+(** A first definition of substitution, close to the initial document.
+    It needs induction over height, due to possible on-the-fly
+    renaming of variables. *)
+
+Fixpoint hsubst h x t f :=
+ match h with
+ | 0 => True
+ | S h =>
+   match f with
+   | True | False => f
+   | Pred p args => Pred p (List.map (Term.subst x t) args)
+   | Not f => Not (hsubst h x t f)
+   | Op o f f' => Op o (hsubst h x t f) (hsubst h x t f')
+   | Quant q v f' =>
+     if x =? v then f
+     else
+       let vars_t := Term.vars t in
+       if negb (Names.mem v vars_t) then
+         Quant q v (hsubst h x t f')
+       else
+         (* variable capture : we change v into a fresh variable first *)
+         let z := fresh (Names.unions [allvars f; vars_t; Names.singleton x])
+         in
+         Quant q z (hsubst h x t (rename v z f'))
+   end
+ end.
+
+Definition subst x t f := hsubst (S (height f)) x t f.
 
 End Form.
-
 
 (** Contexts *)
 

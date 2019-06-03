@@ -300,16 +300,18 @@ Lemma nam2mix_subst_fsubst stk x u f :
  nam2mix stk (subst x u f) =
  Mix.fsubst x (nam2mix_term [] u) (nam2mix stk f).
 Proof.
- intros X U.
- destruct (subst_carac x u f) as (f' & EQ & SI & ->).
- apply (nam2mix_canonical_gen1 stk) in EQ. rewrite EQ. clear f EQ.
- revert stk X U SI.
- induction f'; cbn; intros stk X U IS; f_equal; auto.
+ set (h := S (height f)).
+ assert (LT : height f < h) by (unfold h; auto with *).
+ clearbody h. revert stk f LT.
+ induction h as [|h IH]; [inversion 1|].
+ intros stk f LT X U; rewrite subst_eqn; destruct f; simpl in LT;
+   simpl_height; cbn - [subst]; f_equal; try easy.
  - rewrite <- (nam2mix_term_nostack stk); auto.
    injection (nam2mix_term_subst stk x u (Fun "" l)); easy.
  - intuition.
  - intuition.
- - case eqbspec; cbn.
+ - intuition.
+ - case eqbspec.
    + intros ->.
      unfold Mix.fsubst.
      rewrite form_vmap_id; auto.
@@ -318,8 +320,15 @@ Proof.
      intros IN.
      case eqbspec; auto. intros <-. namedec.
    + intros NE.
-     destruct IS as [-> | (NI,IS)]; [easy|].
-     apply IHf'; simpl; intuition; subst; eauto.
+     destruct (Names.mem v (Term.vars u)) eqn:IN; simpl.
+     * f_equal.
+       setfresh vars z Hz.
+       rewrite IH; auto.
+       f_equal. apply (nam2mix_rename []); auto with set.
+       simpl; intuition.
+       simpl. intros y [<-|Hy]. namedec. auto.
+     * f_equal. rewrite <- NamesF.not_mem_iff in IN.
+       apply IH; simpl; intuition; subst; eauto.
 Qed.
 
 Lemma nam2mix0_subst_fsubst x u f :
@@ -347,26 +356,34 @@ Lemma nam2mix_subst_bsubst stk x u f :
   Mix.bsubst (length stk) (nam2mix_term [] u)
              (nam2mix (stk++[x]) f).
 Proof.
- intros NI H.
- destruct (subst_carac x u f) as (f' & EQ & SI & ->).
- apply (nam2mix_canonical_gen1 (stk++[x])) in EQ. rewrite EQ. clear f EQ.
- revert stk NI H SI.
- induction f'; cbn; intros stk X U IS; f_equal; auto.
+ set (h := S (height f)).
+ assert (LT : height f < h) by (unfold h; auto with *).
+ clearbody h. revert stk f LT.
+ induction h as [|h IH]; [inversion 1|].
+ intros stk f LT X U; rewrite subst_eqn; destruct f; simpl in LT;
+   simpl_height; cbn - [subst]; f_equal; try easy.
  - injection (term_subst_bsubst stk x u (Fun "" l)); auto.
- - destruct IS as (IS1,IS2); auto.
- - destruct IS as (IS1,IS2); auto.
- - case eqbspec; cbn.
+ - intuition.
+ - intuition.
+ - intuition.
+ - case eqbspec; simpl.
    + intros <-.
+     f_equal.
      change (x::stk++[x]) with ((x::stk)++[x]).
      rewrite nam2mix_shadowstack by (simpl; auto).
      symmetry.
      apply form_level_bsubst_id.
      now rewrite nam2mix_level.
    + intros NE.
-     destruct IS as [->|(NI,IS)]; [easy|].
-     apply IHf'; simpl; auto.
-     intuition.
-     intros y [<-|Hy]; auto.
+     destruct (Names.mem v (Term.vars u)) eqn:IN; simpl.
+     * f_equal.
+       setfresh vars z Hz.
+       rewrite IH; auto.
+       f_equal. simpl. apply (nam2mix_rename []); auto with set.
+       simpl; intuition.
+       simpl. intros y [<-|Hy]. namedec. auto.
+     * f_equal. rewrite <- NamesF.not_mem_iff in IN.
+       apply IH; simpl; intuition; subst; eauto.
 Qed.
 
 Lemma nam2mix_subst_bsubst0 x u f :

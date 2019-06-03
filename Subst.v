@@ -138,8 +138,9 @@ Proof.
 Qed.
 
 
-(** A partial substitution, which does *not* handle
-    correctly variable capture (and just return [f] in this case). *)
+(** A partial substitution, which does *not* handle correctly
+    variable capture. It is meant to be used only when
+    [Term.vars t] aren't bound in [f]. *)
 
 Fixpoint partialsubst x t f :=
   match f with
@@ -148,16 +149,14 @@ Fixpoint partialsubst x t f :=
   | Not f => Not (partialsubst x t f)
   | Op o f f' => Op o (partialsubst x t f) (partialsubst x t f')
   | Quant q v f' =>
-    Quant q v
-     (if (x=?v) || Names.mem v (Term.vars t) then f'
-      else partialsubst x t f')
+    Quant q v (if x =? v then f' else partialsubst x t f')
   end.
 
 Lemma partialsubst_height x t f :
  height (partialsubst x t f) = height f.
 Proof.
  induction f; cbn; auto. f_equal.
- destruct orb; auto.
+ destruct eqb; auto.
 Qed.
 
 Lemma partialsubst_height_lt x t f h :
@@ -269,17 +268,14 @@ Proof.
  induction f; cbn; auto.
  - intuition.
  - case eqbspec; cbn; intros Hxv IS; subst; auto.
-   destruct IS as [->|(NI,IS)]; [easy|].
-   rewrite mem_false; auto.
+   destruct IS as [->|(NI,IS)]; [easy|auto].
 Qed.
 
 Lemma rename_partialsubst x y f :
- RenOk y f ->
  rename x y f = partialsubst x (Var y) f.
 Proof.
- induction f; cbn; intros; f_equal; auto with set.
- case eqbspec; simpl; auto.
- rewrite mem_false; auto with set.
+ induction f; cbn; intros; f_equal; auto.
+ case eqbspec; auto.
 Qed.
 
 Lemma partialsubst_subst x t f :
@@ -308,9 +304,6 @@ Lemma IsSimple_partialsubst x t v t' f :
   IsSimple x t (partialsubst v t' f).
 Proof.
  induction f; cbn; try (intuition; fail).
- intros [->|(NI,IS)]; [now left| right].
- split; auto.
- destruct orb; auto.
 Qed.
 
 (** No-op substitutions *)
@@ -322,8 +315,7 @@ Proof.
  induction f; cbn; intros NI; f_equal; auto with set.
  - apply map_id_iff. intros a Ha. apply term_subst_notin.
    eapply unionmap_notin; eauto.
- - case eqbspec; cbn; auto.
-   intros NE. case Names.mem; f_equal; auto with set.
+ - case eqbspec; cbn; auto with set.
 Qed.
 
 (** Free variables and substitutions *)
@@ -334,7 +326,7 @@ Lemma allvars_partialsubst x t f :
 Proof.
  induction f; cbn; try namedec.
  - generalize (term_vars_subst x t (Fun "" l)). cbn. namedec.
- - destruct orb; cbn; namedec.
+ - destruct eqb; cbn; namedec.
 Qed.
 
 Lemma allvars_partialsubst_2 x t f :
@@ -351,9 +343,7 @@ Proof.
    rewrite (IHf2 IS2 IN). namedec.
  - case eqbspec; cbn. namedec.
    nameiff. intros NE (IN,_).
-   destruct IS as [->|(NI,IS)]; [easy|].
-   specialize (IHf IS IN).
-   rewrite mem_false by trivial. cbn. namedec.
+   destruct IS as [->|(NI,IS)]; [easy|auto with set].
 Qed.
 
 Lemma freevars_partialsubst_in x t f :
@@ -377,7 +367,6 @@ Proof.
     namedec.
  - case eqbspec; cbn. namedec.
    intros. destruct IS as [->|(NI,IS)]; [easy|].
-   rewrite mem_false by trivial.
    rewrite (IHf IS); namedec.
 Qed.
 
@@ -396,9 +385,7 @@ Proof.
    specialize (IHf1 IS1). specialize (IHf2 IS2). namedec.
  - case eqbspec; cbn. namedec.
    intros. destruct IS as [->|(NI,IS)]; [easy|].
-   specialize (IHf IS).
-   rewrite mem_false by trivial.
-   cbn. namedec.
+   specialize (IHf IS). namedec.
 Qed.
 
 Lemma freevars_partialsubst_subset2 x t f :
@@ -440,12 +427,7 @@ Proof.
  - repeat (case eqbspec; cbn; auto); intros; subst; try easy.
    + clear IS2. destruct IS1 as [->|(NI',IS)]; [easy|].
      rewrite term_subst_notin; auto.
-   + destruct IS1 as [->|(NI1,IS1)]; [easy|].
-     destruct IS2 as [->|(NI2,IS2)]; [easy|].
-     assert (~Names.In v (Term.vars (Term.subst x' u' u))).
-     { rewrite term_vars_subst. namedec. }
-     repeat (rewrite mem_false by trivial).
-     auto.
+   + intuition.
 Qed.
 
 (** When defined, [partialsubst] is compatible with alpha-equivalence *)
@@ -471,7 +453,6 @@ Proof.
      apply AEqQu with z; auto.
    + subst v. clear IS1.
      destruct IS2 as [->|(NI,IS2)]; [easy|].
-     rewrite mem_false by trivial.
      rewrite partialsubst_notin. apply AEqQu with z; auto.
      { case (eqbspec x z).
        - intros ->; rewrite freevars_allvars; namedec.
@@ -481,7 +462,6 @@ Proof.
          rewrite freevars_rename_subset. namedec. }
    + subst v'. clear IS2.
      destruct IS1 as [->|(NI,IS1)]; [easy|].
-     rewrite mem_false by trivial.
      rewrite partialsubst_notin. apply AEqQu with z; auto.
      { case (eqbspec x z).
        - intros ->; rewrite freevars_allvars; namedec.
@@ -491,7 +471,6 @@ Proof.
          rewrite freevars_rename_subset. namedec. }
    + destruct IS1 as [->|(NI1,IS1)]; [easy|].
      destruct IS2 as [->|(NI2,IS2)]; [easy|].
-     rewrite !mem_false by trivial.
      set (vars :=
             Names.add x (Names.add v (Names.add v'
               (Names.unions
@@ -508,8 +487,6 @@ Proof.
      try (rewrite !term_subst_notin by namedec);
      try (apply IH; auto); cbn; try namedec;
      try apply IsSimple_partialsubst; auto with set.
-     rewrite allvars_partialsubst. namedec.
-     rewrite allvars_partialsubst. namedec.
 Qed.
 
 Lemma AEq_SimpleSubst f1 f2 f1' f2' x t :
@@ -539,7 +516,6 @@ Proof.
      rewrite !rename_partialsubst.
      rewrite partialsubst_partialsubst; cbn; auto with set.
      now rewrite eqb_refl, (partialsubst_notin z).
-     rewrite allvars_partialsubst. simpl. namedec. namedec.
 Qed.
 
 (** The full substitution, first as a relation *)
@@ -650,7 +626,7 @@ Proof.
        apply Subst_Qu3 with (rename v z f); auto.
        { rewrite freevars_allvars. namedec. }
        { exists f. split. reflexivity.
-         rewrite rename_partialsubst by namedec.
+         rewrite rename_partialsubst.
          apply SimpleSubst_partialsubst; auto with set. }
        { apply Subst_Qu2; auto; try namedec. }
      * apply Subst_Qu2; auto.
@@ -708,5 +684,4 @@ Proof.
 Qed.
 
 (* TODO:
-    - faire sans partialsubst ?
-    - essayer une version simplifiée (sans Names.mem ...) *)
+    - faire sans partialsubst ? *)

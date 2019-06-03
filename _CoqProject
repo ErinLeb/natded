@@ -10,12 +10,11 @@ Nam.v
 Mix.v
 NameProofs.v
 Alpha.v
-Equiv.v
 Subst.v
-AltSubst.v
-Alpha2.v
-Equiv2.v
 Meta.v
+Equiv.v
+Equiv2.v
+AltSubst.v
 Countable.v
 Theories.v
 PreModels.v

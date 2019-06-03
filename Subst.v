@@ -664,6 +664,15 @@ Proof.
  apply (Subst_compat x t f f'); auto using Subst_subst.
 Qed.
 
+Lemma subst_carac x u f :
+ exists f',
+   AlphaEq f f' /\ IsSimple x u f' /\ subst x u f = partialsubst x u f'.
+Proof.
+ destruct (Subst_subst x u f) as (f' & H & H').
+ exists f'. split; auto.
+ apply SimpleSubst_carac in H'. intuition.
+Qed.
+
 (** Substitution of a quantifier, general equation via a fresh
     variable. *)
 

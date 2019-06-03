@@ -94,6 +94,7 @@ Definition AlphaEq f1 f2 := αeq f1 f2 = true.
 
 End Alt.
 
+(** Properties of [Subst.invars] and [Subst.outvars] *)
 
 Lemma invars_in sub v :
   Names.In v (Subst.invars sub) <-> In v (map fst sub).
@@ -201,8 +202,241 @@ Proof.
    rewrite unionmap_in. now exists a.
 Qed.
 
+(** ALPHA EQUIVALENCE *)
 
-(** Let's show that [Alt.substs] produce alpha-equivalent results.
+(** Let's prove that [Alt.αeq] is the same as [Nam.Form.αeq].
+    We do that by showing that alpha-equivalent formulas are the
+    ones that are equal via [nam2mix]. *)
+
+(** The invariant used during the proof *)
+
+Module AltAlphaInvariant.
+
+Inductive Inv (vars:Names.t) : Subst.t -> Subst.t -> Prop :=
+ | InvNil : Inv vars [] []
+ | InvCons v v' z sub sub' :
+   Inv vars sub sub' ->
+   ~Names.In z vars ->
+   ~Names.In z (Subst.vars sub) ->
+   ~Names.In z (Subst.vars sub') ->
+   Inv vars ((v,Var z)::sub) ((v',Var z)::sub').
+
+End AltAlphaInvariant.
+Import AltAlphaInvariant.
+
+Hint Constructors Inv.
+
+Lemma Inv_sym vars sub sub' :
+ Inv vars sub sub' -> Inv vars sub' sub.
+Proof.
+ induction 1; auto.
+Qed.
+
+Lemma Inv_notIn sub sub' vars v :
+ Inv vars sub sub' ->
+  ~(Names.In v vars /\ Names.In v (Subst.outvars sub)).
+Proof.
+ induction 1; unfold Subst.vars in *; simpl; namedec.
+Qed.
+
+Lemma Inv_weak sub sub' vars vars' :
+  Names.Subset vars' vars -> Inv vars sub sub' -> Inv vars' sub sub'.
+Proof.
+ induction 2; auto.
+Qed.
+
+Lemma Inv_listassoc_var vars sub sub' :
+  Inv vars sub sub' ->
+  forall v t, list_assoc v sub = Some t -> exists z, t = Var z.
+Proof.
+ induction 1.
+ - easy.
+ - simpl. intros x t.
+   case eqbspec; eauto.
+   intros -> [= <-]. now exists z.
+Qed.
+
+Lemma list_assoc_some_in v sub z :
+  list_assoc v sub = Some (Var z) -> Names.In z (Subst.outvars sub).
+Proof.
+ induction sub as [|(v',t) sub IH]; try easy.
+ simpl.
+ case eqbspec.
+ - intros <- [= ->]. simpl. namedec.
+ - intros _ E. apply IH in E. simpl. namedec.
+Qed.
+
+Lemma list_assoc_index vars v v' sub sub' z :
+Inv vars sub sub' ->
+list_assoc v sub = Some (Var z) ->
+list_assoc v' sub' = Some (Var z) ->
+exists k,
+list_index v (map fst sub) = Some k /\
+list_index v' (map fst sub') = Some k.
+Proof.
+ induction 1; try easy.
+ simpl.
+ do 2 case eqbspec.
+ - intros. now exists 0.
+ - intros NE <- [= <-] E. apply list_assoc_some_in in E.
+   unfold Subst.vars in *. namedec.
+ - intros <- NE E [= <-]. apply list_assoc_some_in in E.
+   unfold Subst.vars in *. namedec.
+ - intros _ _ E E'. destruct (IHInv E E') as (k & Hk & Hk').
+   exists (S k). simpl in *. now rewrite Hk, Hk'.
+Qed.
+
+Lemma list_index_assoc vars v v' sub sub' n :
+Inv vars sub sub' ->
+list_index v (map fst sub) = Some n ->
+list_index v' (map fst sub') = Some n ->
+exists t,
+list_assoc v sub = Some t /\
+list_assoc v' sub' = Some t.
+Proof.
+ intros inv.
+ revert n.
+ induction inv; try easy.
+ simpl.
+ do 2 case eqbspec.
+ - intros <- <- n [= <-] _. now exists (Nam.Var z).
+ - intros _ <- n [= <-]. clear IHinv.
+   destruct list_index; simpl; congruence.
+ - intros <- _ n E [= <-]. clear IHinv.
+   destruct list_index; simpl in *; congruence.
+ - intros _ _ [|n].
+   destruct list_index; simpl; congruence.
+   intros E E'.
+   apply (IHinv n).
+   destruct (list_index v); simpl in *; congruence.
+   destruct (list_index v'); simpl in *; congruence.
+Qed.
+
+Lemma nam2mix_term_ok sub sub' t t' :
+ Inv (Names.union (Term.vars t) (Term.vars t')) sub sub' ->
+ Alt.term_substs sub t = Alt.term_substs sub' t' <->
+ nam2mix_term (map fst sub) t = nam2mix_term (map fst sub') t'.
+Proof.
+ revert t t' sub sub'.
+ fix IH 1. destruct t as [v|f a], t' as [v'|f' a']; intros sub sub' inv;
+   simpl; rewrite ?list_assoc_dft_alt.
+ - simpl in *. split.
+   + destruct (list_assoc v sub) eqn:E, (list_assoc v' sub') eqn:E'.
+     * intros <-.
+       destruct (Inv_listassoc_var _ _ _ inv v t E) as (z, ->).
+       destruct (list_assoc_index _ v v' sub sub' z inv E E') as (k & Hk & Hk').
+       simpl in Hk, Hk'.
+       now rewrite Hk, Hk'.
+     * intros ->.
+       apply list_assoc_some_in in E.
+       destruct (Inv_notIn _ _ _ v' inv). namedec.
+     * intros <-.
+       apply list_assoc_some_in in E'.
+       apply Inv_sym in inv.
+       destruct (Inv_notIn _ _ _ v inv). namedec.
+     * intros [= <-].
+       rewrite list_assoc_index_none in E, E'.
+       simpl in *. now rewrite E, E'.
+   + destruct (list_index v) eqn:E, (list_index v') eqn:E'; intros [= <-].
+     * destruct (list_index_assoc _ _ _ _ _ _ inv E E') as (k & Hk & Hk').
+       simpl in *. now rewrite Hk, Hk'.
+     * rewrite <- list_assoc_index_none in E, E'.
+       simpl in *. now rewrite E,E'.
+ - split.
+   + generalize (Inv_listassoc_var _ _ _ inv v).
+     destruct list_assoc as [t|]; try easy.
+     intros E. destruct (E t) as (v', ->); easy.
+   + destruct list_index; easy.
+ - split.
+   + apply Inv_sym in inv.
+     generalize (Inv_listassoc_var _ _ _ inv v').
+     destruct list_assoc as [t'|]; try easy.
+     intros E. destruct (E t') as (v, ->); easy.
+   + destruct list_index; easy.
+ - split. intros [= <- E]. f_equal.
+   + simpl in inv.
+     clear f. revert a a' E inv.
+     fix IH' 1. destruct a as [|t a], a' as [|t' a']; try easy.
+     simpl.
+     intros [= E E'] inv. f_equal.
+     * apply IH; auto. eapply Inv_weak; eauto. namedec.
+     * apply IH'; auto. eapply Inv_weak; eauto. namedec.
+   + intros [= <- E]. f_equal.
+     simpl in inv.
+     clear f. revert a a' E inv.
+     fix IH' 1. destruct a as [|t a], a' as [|t' a']; try easy.
+     simpl.
+     intros [= E E'] inv. f_equal.
+     * apply IH; auto. eapply Inv_weak; eauto. namedec.
+     * apply IH'; auto. eapply Inv_weak; eauto. namedec.
+Qed.
+
+Lemma term_substs_nil t :
+ Alt.term_substs [] t = t.
+Proof.
+ induction t using term_ind'; simpl; f_equal; auto.
+ apply map_id_iff; auto.
+Qed.
+
+Lemma substs_nil f :
+ Alt.substs [] f = f.
+Proof.
+ induction f; cbn - [fresh]; f_equal; auto.
+ apply map_id_iff. intros a _. apply term_substs_nil.
+Qed.
+
+Lemma nam2mix_term_inj t t' :
+ nam2mix_term [] t = nam2mix_term [] t' <-> t = t'.
+Proof.
+ split; [|now intros ->].
+ rewrite <- (nam2mix_term_ok [] []), !term_substs_nil; auto.
+Qed.
+
+Lemma nam2mix_canonical_gen sub sub' f f' :
+ Inv (Names.union (allvars f) (allvars f')) sub sub' ->
+ Alt.αeq_gen sub f sub' f' = true <->
+ nam2mix (List.map fst sub) f = nam2mix (List.map fst sub') f'.
+Proof.
+ revert f' sub sub'.
+ induction f; destruct f'; intros sub sub'; simpl; intros IV; try easy.
+ - rewrite lazy_andb_iff, !eqb_eq.
+   assert (H := nam2mix_term_ok sub sub' (Nam.Fun "" l) (Nam.Fun "" l0) IV).
+   simpl.
+   split.
+   + intros (<-,E). f_equal. injection (proj1 H); simpl; f_equal; auto.
+   + intros [= <- E]. split; auto. injection (proj2 H); simpl; f_equal; auto.
+ - rewrite IHf by auto.
+   split; [intros <- | intros [=]]; easy.
+ - rewrite !lazy_andb_iff, !eqb_eq.
+   rewrite IHf1, IHf2 by (eapply Inv_weak; eauto; namedec).
+   split; [intros ((<-,<-),<-)|intros [= <- <- <-]]; easy.
+ - rewrite lazy_andb_iff, !eqb_eq.
+   setfresh vars z Hz.
+   rewrite IHf by (constructor; try (eapply Inv_weak; eauto); namedec).
+   simpl.
+   split; [intros (<-,<-) | intros [=]]; easy.
+Qed.
+
+Lemma nam2mix_canonical (f f' : Nam.formula) :
+ nam2mix [] f = nam2mix [] f' <-> Alt.AlphaEq f f'.
+Proof.
+ symmetry. now apply nam2mix_canonical_gen.
+Qed.
+
+Lemma AlphaEq_alt f f' : Alt.AlphaEq f f' <-> AlphaEq f f'.
+Proof.
+ now rewrite <- nam2mix_canonical, Equiv.nam2mix_canonical.
+Qed.
+
+Lemma αeq_alt f f' : Alt.αeq f f' = Form.αeq f f'.
+Proof.
+ apply eq_true_iff_eq. rewrite AlphaEq_equiv. apply AlphaEq_alt.
+Qed.
+
+(** SUBSTS *)
+
+(** We show that [Alt.subst] is equivalent to [Form.subst].
+    For that, we'll use [nam2mix].
     This is surprinsingly painful to prove, we'll need quite
     some tooling first.
 *)
@@ -942,7 +1176,7 @@ Qed.
 Lemma subst_alt x t f:
  AlphaEq (Alt.subst x t f) (subst x t f).
 Proof.
- apply nam2mix_canonical.
+ apply Equiv.nam2mix_canonical.
  apply nam2mix_altsubst.
 Qed.
 
@@ -951,45 +1185,3 @@ Proof.
  intros x x' <- t t' <- f f' Hf.
  now rewrite !subst_alt, Hf.
 Qed.
-
-Lemma altsubst_altsubst x y u v f :
- x<>y -> ~Names.In x (Term.vars v) ->
- AlphaEq (Alt.subst y v (Alt.subst x u f))
-         (Alt.subst x (Term.subst y v u) (Alt.subst y v f)).
-Proof.
- intros.
- rewrite !subst_alt.
- apply subst_subst; auto.
-Qed.
-
-Lemma altsubst_QuGen (x z:variable) t q v f :
- x<>v ->
- ~Names.In z (Names.add x (Names.union (freevars f) (Term.vars t))) ->
- AlphaEq (Alt.subst x t (Quant q v f))
-         (Quant q z (Alt.subst x t (Alt.subst v (Var z) f))).
-Proof.
- intros.
- rewrite subst_alt.
- rewrite subst_QuGen with (z:=z); auto.
- apply AEqQu_nosubst.
- now rewrite !subst_alt.
-Qed.
-
-(*
-Lemma AlphaEq_equiv f f' : Alt.AlphaEq f f' <-> AlphaEq f f'.
-Proof.
- rewrite <-nam2mix_canonical'. (* Vieille preuve!
-                                   nam2mix_canonical. *)
-Qed.
-
-Lemma AlphaEq_alt f f' :
-  Form.Alt.AlphaEq f f' <-> Form.AlphaEq f f'.
-Proof.
- now rewrite AlphaEq_equiv, Alpha.AlphaEq_equiv.
-Qed.
-
-Lemma αeq_alt f f' : Alt.αeq f f' = αeq f f'.
-Proof.
- apply eq_true_iff_eq. apply AlphaEq_alt.
-Qed.
-*)

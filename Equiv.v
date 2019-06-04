@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Nam Alpha Subst Meta.
+Require Import Defs NameProofs Nam Subst Meta.
 Import ListNotations.
 Import Nam.Form.
 Local Open Scope bool_scope.
@@ -300,12 +300,13 @@ Lemma nam2mix_subst_fsubst stk x u f :
  nam2mix stk (subst x u f) =
  Mix.fsubst x (nam2mix_term [] u) (nam2mix stk f).
 Proof.
+ unfold subst.
  set (h := S (height f)).
- assert (LT : height f < h) by (unfold h; auto with *).
+ assert (LT : height f < h) by (unfold h; auto with * ).
  clearbody h. revert stk f LT.
  induction h as [|h IH]; [inversion 1|].
- intros stk f LT X U; rewrite subst_eqn; destruct f; simpl in LT;
-   simpl_height; cbn - [subst]; f_equal; try easy.
+ intros stk f LT X U; destruct f; simpl in LT;
+   simpl_height; cbn; f_equal; try easy.
  - rewrite <- (nam2mix_term_nostack stk); auto.
    injection (nam2mix_term_subst stk x u (Fun "" l)); easy.
  - intuition.
@@ -314,7 +315,7 @@ Proof.
  - case eqbspec.
    + intros ->.
      unfold Mix.fsubst.
-     rewrite form_vmap_id; auto.
+     rewrite Meta.form_vmap_id; auto.
      intros x. rewrite nam2mix_fvars. simpl.
      unfold Mix.varsubst.
      intros IN.
@@ -344,7 +345,7 @@ Lemma nam2mix_subst_nop x stk f :
 Proof.
  intros NI.
  rewrite nam2mix_subst_fsubst; auto.
- - cbn. unfold Mix.fsubst. rewrite form_vmap_id; auto.
+ - cbn. unfold Mix.fsubst. rewrite Meta.form_vmap_id; auto.
    intros v Hv. unfold Mix.varsubst. case eqbspec; auto. now intros ->.
  - intros v Hv. cbn. nameiff. now intros ->.
 Qed.
@@ -356,12 +357,13 @@ Lemma nam2mix_subst_bsubst stk x u f :
   Mix.bsubst (length stk) (nam2mix_term [] u)
              (nam2mix (stk++[x]) f).
 Proof.
+ unfold subst.
  set (h := S (height f)).
- assert (LT : height f < h) by (unfold h; auto with *).
+ assert (LT : height f < h) by (unfold h; auto with * ).
  clearbody h. revert stk f LT.
  induction h as [|h IH]; [inversion 1|].
- intros stk f LT X U; rewrite subst_eqn; destruct f; simpl in LT;
-   simpl_height; cbn - [subst]; f_equal; try easy.
+ intros stk f LT X U; destruct f; simpl in LT;
+   simpl_height; cbn; f_equal; try easy.
  - injection (term_subst_bsubst stk x u (Fun "" l)); auto.
  - intuition.
  - intuition.
@@ -372,7 +374,7 @@ Proof.
      change (x::stk++[x]) with ((x::stk)++[x]).
      rewrite nam2mix_shadowstack by (simpl; auto).
      symmetry.
-     apply form_level_bsubst_id.
+     apply Meta.form_level_bsubst_id.
      now rewrite nam2mix_level.
    + intros NE.
      destruct (Names.mem v (Term.vars u)) eqn:IN; simpl.
@@ -401,7 +403,7 @@ Proof.
  intros Hz.
  rewrite 2 nam2mix_subst_bsubst0. cbn.
  split.
- - intros H. apply bsubst_fresh_inj in H; auto.
+ - intros H. apply Meta.bsubst_fresh_inj in H; auto.
    rewrite !nam2mix_fvars. cbn. namedec.
  - now intros ->.
 Qed.
@@ -421,7 +423,7 @@ Proof.
  rewrite nam2mix_subst_bsubst0. cbn.
  rewrite <- (nam2mix_bsubst0_var x f').
  split.
- - apply bsubst_fresh_inj.
+ - apply Meta.bsubst_fresh_inj.
    rewrite !nam2mix_fvars. cbn. namedec.
  - now intros ->.
 Qed.
@@ -435,8 +437,8 @@ Lemma nam2mix_canonical f f' :
 Proof.
  split; [ | apply nam2mix_canonical_gen1 ].
  set (h := S (Nat.max (height f) (height f'))).
- assert (LT : height f < h) by (unfold h; auto with *).
- assert (LT' : height f' < h) by (unfold h; auto with *).
+ assert (LT : height f < h) by (unfold h; auto with * ).
+ assert (LT' : height f' < h) by (unfold h; auto with * ).
  clearbody h. revert f f' LT LT'.
  induction h as [|h IH]; [inversion 1|].
  destruct f, f'; simpl; intros LT LT'; simpl_height; try easy.
@@ -448,7 +450,7 @@ Proof.
  - intros [= <- E].
    destruct (exist_fresh (Names.union (allvars f) (allvars f'))) as (z,Hz).
    apply AEqQu with z; auto.
-   apply IH; try rewrite rename_height; auto.
+   apply IH; auto.
    rewrite !rename_subst by auto with set.
    apply nam2mix_rename_iff; auto.
    rewrite !freevars_allvars. namedec.
@@ -475,6 +477,110 @@ Proof.
      * intros v Hv. nameiff. now intros ->.
 Qed.
 
+(** Some consequences about [AlphaEq] *)
+
+Instance AEq_equiv : Equivalence AlphaEq.
+Proof.
+ split; [ intros x | intros x y | intros x y z ];
+  rewrite <- !nam2mix_canonical; congruence.
+Qed.
+
+Instance : Proper (eq ==> eq ==> AlphaEq ==> AlphaEq) subst.
+Proof.
+ intros x x' <- t t' <- f f' Hf.
+ apply nam2mix_canonical.
+ rewrite !nam2mix_subst_bsubst0. f_equal.
+ now apply nam2mix_canonical_gen.
+Qed.
+
+Lemma AEq_freevars f f' :
+  AlphaEq f f' -> Names.Equal (freevars f) (freevars f').
+Proof.
+ rewrite <- nam2mix_canonical.
+ assert (Hf := nam2mix_fvars [] f).
+ assert (Hf' := nam2mix_fvars [] f').
+ simpl in *. intros EQ. rewrite <- EQ in *. namedec.
+Qed.
+
+Lemma AEq_rename_any f f' x x' z z' :
+  ~Names.In z (Names.union (allvars f) (allvars f')) ->
+  ~Names.In z' (Names.union (allvars f) (allvars f')) ->
+  AlphaEq (rename x z f) (rename x' z f') ->
+  AlphaEq (rename x z' f) (rename x' z' f').
+Proof.
+ intros Hz Hz'. rewrite <- !nam2mix_canonical.
+ rewrite !rename_subst by namedec.
+ rewrite !nam2mix_rename_iff by (rewrite !freevars_allvars; namedec).
+ auto.
+Qed.
+
+Lemma AEqQu_iff q v v' f f' z :
+  ~Names.In z (Names.union (allvars f) (allvars f')) ->
+  AlphaEq (Quant q v f) (Quant q v' f') <->
+  AlphaEq (rename v z f) (rename v' z f').
+Proof.
+ intros Hz. rewrite <- !nam2mix_canonical. simpl.
+ rewrite !rename_subst by namedec.
+ rewrite nam2mix_rename_iff by (rewrite !freevars_allvars; namedec).
+ split. now injection 1. now intros <-.
+Qed.
+
+Lemma AEq_rename f f' :
+ AlphaEq f f' ->
+ forall x y,
+ ~Names.In y (allvars f) -> ~Names.In y (allvars f') ->
+ AlphaEq (rename x y f) (rename x y f').
+Proof.
+ intros EQ x y Hf Hf'. apply nam2mix_canonical.
+ rewrite !rename_subst by namedec.
+ rewrite nam2mix_rename_iff by (rewrite !freevars_allvars; namedec).
+ now apply nam2mix_canonical_gen.
+Qed.
+
+Lemma AEqQu_nosubst f f' q v :
+ AlphaEq f f' -> AlphaEq (Quant q v f) (Quant q v f').
+Proof.
+ intros EQ. apply nam2mix_canonical. simpl. f_equal.
+ now apply nam2mix_canonical_gen.
+Qed.
+
+Lemma AEqQu_rename f q v z :
+ ~Names.In z (allvars f) ->
+ AlphaEq (Quant q v f) (Quant q z (rename v z f)).
+Proof.
+ intros Hz. apply nam2mix_canonical. simpl. f_equal.
+ rewrite !rename_subst by namedec.
+ apply nam2mix_rename_iff2; auto.
+ rewrite freevars_allvars. namedec.
+Qed.
+
+Lemma AlphaEq_equiv f f' :
+  αeq f f' = true <-> AlphaEq f f'.
+Proof.
+ unfold αeq.
+ set (h := S _).
+ assert (LT : height f < h) by (unfold h; auto with * ).
+ assert (LT' : height f' < h) by (unfold h; auto with * ).
+ clearbody h. revert f f' LT LT'.
+ induction h as [|h IH]; [inversion 1|].
+ destruct f, f'; simpl; intros LT LT'; simpl_height; try easy.
+ - rewrite lazy_andb_iff, !eqb_eq.
+   split.
+   + now intros (<-,<-).
+   + now inversion_clear 1.
+ - rewrite IH by auto. split; auto. inversion_clear 1; auto.
+ - rewrite !lazy_andb_iff, !eqb_eq, 2 IH by auto.
+   split.
+   + intros ((<-,?),?); auto.
+   + now inversion_clear 1.
+ - setfresh vars z Hz.
+   rewrite !lazy_andb_iff, !eqb_eq, IH by auto with set.
+   split.
+   + intros (<-,?). apply AEqQu with z; auto with set.
+   + inversion_clear 1. split; trivial.
+     apply AEq_rename_any with z0; auto. namedec.
+Qed.
+
 Lemma nam2mix_eqb (f f' : Nam.formula) :
  (nam2mix [] f =? nam2mix [] f') = (f =? f').
 Proof.
@@ -484,10 +590,10 @@ Proof.
    symmetry. exact (not_true_is_false _ H).
 Qed.
 
+
 (** Swapping substitutions.
     This technical lemma is described in Alexandre's course notes.
-    See also [Alpha.partialsubst_partialsubst]. In fact, we won't
-    use it afterwards. *)
+    In fact, we won't use it afterwards. *)
 
 Lemma subst_subst x x' u u' f :
  x<>x' -> ~Names.In x (Term.vars u') ->
@@ -498,7 +604,7 @@ Proof.
  apply nam2mix_canonical.
  rewrite !nam2mix0_subst_fsubst.
  rewrite nam2mix_term_subst by auto.
- apply form_fsubst_fsubst; auto.
+ apply Meta.form_fsubst_fsubst; auto.
  rewrite nam2mix_tvars. cbn. namedec.
 Qed.
 

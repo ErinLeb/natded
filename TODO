@@ -1,4 +1,3 @@
- - Update README.md (Subst.v, AltSubst.v)
 
  - plus de doc et de commentaires dans les .v
  - paquet opam ?
@@ -20,9 +19,9 @@ General
 
 (x) setfresh au lieu des assert + set ?
 
-(x) essayer preuves de Equiv et Equiv2 directement sur hsubst
-    (et avoir substs simultanée que en def alternative).
- - se debarasser de partialsubst ?
+(x) preuves de Equiv et Equiv2 directement sur hsubst
+    (et substs simultanée que en def alternative (AltSubst)).
+(x) se debarasser de partialsubst ?
 
 (x) unionmap_in à revoir, plus gal pourquoi autant de in_map_iff
 

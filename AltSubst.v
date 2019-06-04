@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Nam Alpha Equiv Meta.
+Require Import Defs NameProofs Nam Subst Equiv Meta.
 Import ListNotations.
 Import Nam.Form.
 Local Open Scope bool_scope.
@@ -815,6 +815,13 @@ Proof.
    apply IH; auto. eapply Inv_subset; eauto. simpl. namedec.
    apply IH'; auto. eapply Inv_subset; eauto. simpl. namedec.
 Qed.
+
+(** Some weaker but faster versions of namedec *)
+
+Ltac namedec0 :=
+  repeat (rewrite ?Names.add_spec, ?Names.union_spec,
+                  ?Names.remove_spec, ?Names.singleton_spec in *);
+  intuition auto.
 
 Ltac namedec00 := clear; nameiff; intuition auto.
 

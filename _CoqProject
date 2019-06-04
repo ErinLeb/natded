@@ -9,7 +9,6 @@ Defs.v
 Nam.v
 Mix.v
 NameProofs.v
-Alpha.v
 Subst.v
 Meta.v
 Equiv.v

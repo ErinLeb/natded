@@ -5,7 +5,7 @@
     This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import RelationClasses Arith Omega.
-Require Import Defs NameProofs Alpha Equiv Meta.
+Require Import Defs NameProofs Equiv Meta.
 Require Nam Mix.
 Import ListNotations.
 Import Nam Nam.Form.

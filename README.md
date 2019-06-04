@@ -21,7 +21,7 @@ Main files :
  - [Defs](Defs.v) : common basic structures (names, variables, signatures, ...)
  - [Nam](Nam.v) : encoding of Natural Deduction (terms, formulas, derivations ...) using names as binders
  - [Mix](Mix.v) : same, but using a Locally Nameless representation of binders
- - [Alpha](Alpha.v) : equivalence between various definitions of substitutions and alpha-equivalences for [Nam](Nam.v)
+ - [Subst](Subst.v) : basic properties of renamings and substitutions for [Nam](Nam.v)
  - [Equiv](Equiv.v), [Equiv2](Equiv2.v) : conversions between the [Nam](Nam.v) and [Mix](Mix.v) encodings
  - [Meta](Meta.v) : some meta-theoretical results about [Mix](Mix.v) (e.g. substitution lemma)
  - [Theories](Theories.v) : notion of 1st-order theory, consistency, extensions, Henkin theorem, completion, ...
@@ -34,6 +34,7 @@ Auxiliary files :
  - [Utils](Utils.v) : a generic notion of boolean equalities, some utility functions and proofs about lists, ...
  - [NameProofs](NameProofs.v) : proofs about name set (i.e. sets of strings)
  - [Countable](Countable.v) : explicit enumeration of countable types (such as strings or terms or formulas)
+ - [AltSubst](AltSubst.v) : an earlier substitution and alpha-equivalence for [Nam](Nam.v) via structural simultaneous definitions.
 
 ## Usage
 

@@ -18,3 +18,5 @@ Countable.v
 Theories.v
 PreModels.v
 Models.v
+parser.v
+FormulaReader.v

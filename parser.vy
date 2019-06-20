@@ -1,6 +1,6 @@
 (* Grammar for 1st-order formulas *)
 (* To be used with a recent menhir (with Coq backend). *)
-(* /!\ NOT FINISHED YET : lacks a lexer + resync with the rest of the project *)
+(*  menhir --coq --coq-no-complete parser.vy *)
 
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)

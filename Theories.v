@@ -19,20 +19,29 @@ Definition Wf (sign:signature) (A:formula) :=
 
 Hint Unfold Wf.
 
-Lemma Wf_dec sign A :
-  { Wf sign A }+{ ~Wf sign A}.
+Definition isWf sign (A:formula) :=
+  check sign A && (level A =? 0) && Names.is_empty (fvars A).
+
+Lemma Wf_spec sign A : reflect (Wf sign A) (isWf sign A).
 Proof.
- destruct (check sign A) eqn:C.
- - destruct (level A =? 0) eqn:L.
-   + destruct (Names.is_empty (fvars A)) eqn:E.
-     * left. repeat split; auto.
-       now apply eqb_eq.
-       now apply Names.is_empty_spec.
-     * right; intros (_ & _ & E').
-       apply Names.is_empty_spec in E'. congruence.
-   + right; intros (_ & L' & _).
-     apply eqb_eq in L'. congruence.
- - right; intros (C' & _ & _). congruence.
+ unfold Wf, isWf, BClosed, FClosed.
+ destruct check; simpl; [ | constructor; easy].
+ case eqbspec; simpl; intros; [ | constructor; easy ].
+ destruct (Names.is_empty (fvars A)) eqn:E.
+ - rewrite Names.is_empty_spec in E. now constructor.
+ - constructor. rewrite <- Names.is_empty_spec, E. easy.
+Qed.
+
+Lemma Wf_iff sign A : Wf sign A <-> isWf sign A = true.
+Proof.
+ apply reflect_iff, Wf_spec.
+Qed.
+
+Lemma Wf_dec sign A : { Wf sign A }+{ ~Wf sign A}.
+Proof.
+ destruct (isWf sign A) eqn:E; [left|right].
+ - now apply Wf_iff.
+ - now rewrite Wf_iff, E.
 Qed.
 
 Lemma False_wf sign : Wf sign False.
@@ -816,14 +825,13 @@ Fixpoint HenkinAxList th (nc : NewCsts th) n :=
  | S n =>
    let axs := HenkinAxList th nc n in
    let A := decode_form n in
-   match Wf_dec (HenkinAll_sign th nc) (∃A) with
-   | left CL =>
+   if isWf (HenkinAll_sign th nc) (∃A)
+   then
      let used := Names.union (form_funs A)
                              (Names.unionmap form_funs axs) in
      let c := fresh_cst used nc in
      ((∃A)-> bsubst 0 (Cst c) A)%form :: axs
-   | right _ => axs
-   end
+   else axs
  end.
 
 Lemma equivtheories_thm th th' :
@@ -872,7 +880,7 @@ Proof.
  - intros A [HA|IN]; auto.
    simpl in IN.
    set (f := decode_form n) in *.
-   destruct Wf_dec as [CL|_]; auto.
+   destruct (Wf_spec (HenkinAll_sign th nc) (∃ f)); auto.
    set (used := Names.union _ _) in *.
    destruct (fresh_cst_in_cands used nc) as (m,Hm).
    assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
@@ -913,7 +921,8 @@ Proof.
  - rewrite IHn.
    unfold Consistent, IsTheorem. simpl.
    set (f := decode_form n) in *.
-   destruct Wf_dec as [WF|WF] eqn:Ew; [|reflexivity].
+   destruct isWf eqn:Ew; [|reflexivity].
+   assert (WF : Wf (HenkinAll_sign th nc) (∃ f)) by now apply Wf_iff.
    set (used := Names.union _ _) in *.
    destruct (fresh_cst_in_cands used nc) as (m,Hm).
    assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
@@ -965,7 +974,7 @@ Proof.
  induction 1; auto.
  intros Hn. specialize (IHle Hn). clear Hn.
  simpl.
- destruct Wf_dec; [|auto].
+ destruct isWf; [|auto].
  simpl.
  cbn in IHle. intuition.
 Qed.
@@ -1039,8 +1048,7 @@ Proof.
  cbn - [decode_form code_form] in Ax.
  assert (HA : decode_form n = A) by apply decode_code_form.
  rewrite HA in Ax.
- cbn in CL.
- destruct Wf_dec; [|easy].
+ cbn in CL. apply Wf_iff in CL. rewrite CL in Ax.
  set (used := Names.union _ _) in *.
  destruct (fresh_cst_in_cands used nc) as (m,Hm).
  assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).

@@ -219,6 +219,13 @@ Instance term_eqb : Eqb term :=
   | _, _ => false
   end.
 
+Fixpoint lift t :=
+ match t with
+ | BVar n => BVar (S n)
+ | FVar v => FVar v
+ | Fun f args => Fun f (List.map lift args)
+ end.
+
 (** Formulas *)
 
 Inductive formula :=
@@ -319,13 +326,12 @@ Instance form_level : Level formula :=
   | Pred _ args => list_max (map level args)
   end.
 
-(** Important note : [bsubst] below is only intended to be
-    used with a replacement term [t] with no bounded variables !
-    In a full De Bruijn implementation, we would tweak [t]
-    (i.e. "lift" it) when entering a quantified part of a formula.
-    Here it's much simpler to *not* do it, but this may lead to
-    unexpected results if [t] still has some bounded variables,
-    see later the treatment of rules ∀e and ∃i. *)
+(** Substitution of a bounded variable by a term [t] in a formula [f].
+    Note : we try to do something sensible when [t] has itself some
+    bounded variables (we lift them when entering [f]'s quantifiers).
+    But this situtation is nonetheless to be used with caution.
+    Actually, we'll almost always use [bsubst] when [t] is [BClosed],
+    except in [Peano.v]. *)
 
 Instance form_bsubst : BSubst formula :=
  fix form_bsubst n t f :=
@@ -334,7 +340,7 @@ Instance form_bsubst : BSubst formula :=
   | Pred p args => Pred p (List.map (bsubst n t) args)
   | Not f => Not (form_bsubst n t f)
   | Op o f f' => Op o (form_bsubst n t f) (form_bsubst n t f')
-  | Quant q f' => Quant q (form_bsubst (S n) t f')
+  | Quant q f' => Quant q (form_bsubst (S n) (lift t) f')
  end.
 
 Instance form_fvars : FVars formula :=

@@ -383,6 +383,25 @@ Proof.
  apply max_mono; auto.
 Qed.
 
+Lemma list_max_in l a : In a l -> a <= list_max l.
+Proof.
+ induction l; simpl.
+ - intros [ ].
+ - intros [-> | IN].
+   + omega with *.
+   + transitivity (list_max l); auto. omega with *.
+Qed.
+
+Lemma list_max_map_in {A} (f:A->nat) l a :
+  In a l -> f a <= list_max (map f l).
+Proof.
+ induction l; simpl.
+ - intros [ ].
+ - intros [-> | IN].
+   + omega with *.
+   + transitivity (list_max (map f l)); auto. omega with *.
+Qed.
+
 (** Map *)
 
 Lemma map_ext_iff {A B} (f g : A -> B) l :
@@ -405,4 +424,28 @@ Lemma forallb_map {A B} (f: B -> bool) (g: A -> B) l :
  forallb f (map g l) = forallb (fun x => f (g x)) l.
 Proof.
  induction l; simpl; f_equal; auto.
+Qed.
+
+(** Nth *)
+
+Lemma nth_error_some_nth {A} (l:list A) n a d :
+  nth_error l n = Some a -> nth n l d = a.
+Proof.
+ revert l; induction n; destruct l as [|x l]; cbn; try easy; auto.
+ congruence.
+Qed.
+
+Lemma nth_error_none_nth {A} (l:list A) n d :
+  nth_error l n = None -> nth n l d = d.
+Proof.
+ revert l; induction n; destruct l as [|x l]; cbn; try easy; auto.
+Qed.
+
+Lemma nth_error_ext {A} (l l':list A) n d :
+ nth_error l n = nth_error l' n -> nth n l d = nth n l' d.
+Proof.
+ revert l l'; induction n; destruct l as [|x l], l' as [|x' l']; cbn;
+  try easy; auto. congruence.
+ - intros H. symmetry. now apply nth_error_none_nth.
+ - now apply nth_error_none_nth.
 Qed.

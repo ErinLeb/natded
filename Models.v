@@ -656,7 +656,7 @@ Fixpoint height f :=
 Lemma height_bsubst n t f :
  height (bsubst n t f) = height f.
 Proof.
- revert n.
+ revert n t.
  induction f; cbn; f_equal; auto.
 Qed.
 

@@ -10,7 +10,30 @@ Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
+Implicit Type t u : term.
+Implicit Type f : formula.
+
+(** [lift] does nothing on a [BClosed] term *)
+
+Lemma lift_nop t : BClosed t -> lift t = t.
+Proof.
+ unfold BClosed.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ - easy.
+ - rewrite list_max_map_0. intros H. f_equal. apply map_id_iff; auto.
+Qed.
+
 (** [bsubst] and [check] *)
+
+Lemma check_lift sign t :
+ check sign (lift t) = check sign t.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ destruct funsymbs; auto.
+ rewrite map_length. case eqb; auto.
+ apply eq_true_iff_eq. rewrite forallb_map, !forallb_forall.
+ split; intros H x Hx. rewrite <- IH; auto. rewrite IH; auto.
+Qed.
 
 Lemma check_bsubst_term sign n (u t:term) :
  check sign u = true -> check sign t = true ->
@@ -28,17 +51,26 @@ Lemma check_bsubst sign n u (f:formula) :
  check sign u = true -> check sign f = true ->
  check sign (bsubst n u f) = true.
 Proof.
- revert n.
- induction f; cbn; intros n Hu Hf; auto.
+ revert n u.
+ induction f; cbn; intros n u Hu Hf; auto.
  - destruct predsymbs; auto.
    rewrite !lazy_andb_iff in *. rewrite map_length.
    destruct Hf as (Hl,Hl'); split; auto.
    rewrite forallb_map, forallb_forall in *.
    auto using check_bsubst_term.
  - rewrite !lazy_andb_iff in *; intuition.
+ - apply IHf; auto. now rewrite check_lift.
 Qed.
 
 (** [bsubst] and [level] *)
+
+Lemma level_lift t : level (lift t) <= S (level t).
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto with arith.
+ rewrite map_map.
+ apply list_max_map_le. intros a Ha. transitivity (S (level a)); auto.
+ rewrite <- Nat.succ_le_mono. now apply list_max_map_in.
+Qed.
 
 Lemma level_bsubst_term n (u t:term) :
  level t <= S n -> level u <= n ->
@@ -54,14 +86,43 @@ Lemma level_bsubst n u (f:formula) :
  level f <= S n -> level u <= n ->
  level (bsubst n u f) <= n.
 Proof.
- revert n.
- induction f; cbn; intros n Hf Hu; auto with arith.
+ revert n u.
+ induction f; cbn; intros n u Hf Hu; auto with arith.
  - apply (level_bsubst_term n u (Fun "" l)); auto.
  - rewrite max_le in *; intuition.
- - specialize (IHf (S n)). omega.
+ - change n with (Nat.pred (S n)) at 2. apply Nat.pred_le_mono.
+   apply IHf. omega. transitivity (S (level u)). apply level_lift.
+   omega.
 Qed.
 
-(** [bsubst] and [fvars] *)
+Lemma level_bsubst_term' n (u t : term) :
+  level u <= S n -> level (bsubst n u t) <= level t.
+Proof.
+ intro Hu. revert t. fix IH 1. destruct t; cbn; auto.
+ - case eqbspec; intros; subst; auto.
+ - revert l. fix IH' 1. destruct l; cbn; auto.
+   apply Nat.max_le_compat; auto.
+Qed.
+
+Lemma level_bsubst' n u (f:formula) :
+  level u <= S n -> level (bsubst n u f) <= level f.
+Proof.
+ revert n u. induction f; cbn; intros n u Hu; auto with arith.
+ - now apply (level_bsubst_term' n u (Fun "" l)).
+ - apply Nat.max_le_compat; auto.
+ - apply Nat.pred_le_mono; auto with arith.
+   apply IHf. transitivity (S (level u)). apply level_lift. omega.
+Qed.
+
+(** [bsubst] and [fvars] : over-approximations *)
+
+Lemma lift_fvars t : fvars (lift t) = fvars t.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
+ induction l; simpl; auto.
+ rewrite IH, IHl; simpl; auto.
+ intros x Hx. apply IH. simpl; auto.
+Qed.
 
 Lemma bsubst_term_fvars n (u t:term) :
  Names.Subset (fvars (bsubst n u t)) (Names.union (fvars u) (fvars t)).
@@ -73,10 +134,11 @@ Qed.
 Lemma bsubst_fvars n u (f:formula) :
  Names.Subset (fvars (bsubst n u f)) (Names.union (fvars u) (fvars f)).
 Proof.
- revert n.
+ revert n u.
  induction f; cbn; intros; auto with *.
  - apply (bsubst_term_fvars n u (Fun "" l)).
  - rewrite IHf1, IHf2. namedec.
+ - rewrite IHf. now rewrite lift_fvars.
 Qed.
 
 Lemma bsubst_ctx_fvars n u (c:context) :
@@ -84,6 +146,29 @@ Lemma bsubst_ctx_fvars n u (c:context) :
 Proof.
  induction c as [|f c IH]; cbn; auto with *.
  rewrite bsubst_fvars, IH. namedec.
+Qed.
+
+(** [bsubst] and [fvars] : under-approximations *)
+
+Lemma bsubst_term_fvars' n (u t : term) :
+  Names.Subset (fvars t) (fvars (bsubst n u t)).
+Proof.
+ revert t. fix IH 1. destruct t; cbn; auto with set.
+ clear f.
+ revert l. fix IH' 1. destruct l; cbn; auto with set.
+ intro x. NamesF.set_iff. intros [IN|IN].
+ - left; now apply IH.
+ - right. now apply IH'.
+Qed.
+
+Lemma bsubst_fvars' n u (f:formula) :
+  Names.Subset (fvars f) (fvars (bsubst n u f)).
+Proof.
+ revert n u; induction f; cbn; intros n u; auto with set.
+ - apply (bsubst_term_fvars' n u (Fun "" l)).
+ - intro x. NamesF.set_iff. intros [IN|IN].
+   left; now apply IHf1.
+   right; now apply IHf2.
 Qed.
 
 (** [bsubst] above the level does nothing *)
@@ -100,8 +185,8 @@ Qed.
 Lemma form_level_bsubst_id n u (f:formula) :
  level f <= n -> bsubst n u f = f.
 Proof.
- revert n.
- induction f; cbn; intros n LE; f_equal; auto.
+ revert n u.
+ induction f; cbn; intros n u LE; f_equal; auto.
  - injection (term_level_bsubst_id n u (Fun "" l)); cbn; auto.
  - apply IHf1. omega with *.
  - apply IHf2. omega with *.
@@ -114,7 +199,7 @@ Proof.
  unfold BClosed. intros. apply term_level_bsubst_id. auto with *.
 Qed.
 
-(** [bsubst] to a fesh variable is injective *)
+(** [bsubst] to a fresh variable is injective *)
 
 Lemma term_bsubst_fresh_inj n z (t t':term):
  ~ Names.In z (Names.union (fvars t) (fvars t')) ->
@@ -313,6 +398,21 @@ Qed.
 Definition BClosed_sub (h:variable->term) :=
  forall v, BClosed (h v).
 
+Lemma lift_vmap (h:variable->term) t :
+ lift (vmap h t) = vmap (fun v => lift (h v)) (lift t).
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ f_equal. rewrite !map_map. apply map_ext_iff; auto.
+Qed.
+
+Lemma lift_vmap' (h:variable->term) t :
+ BClosed_sub h ->
+ lift (vmap h t) = vmap h (lift t).
+Proof.
+ intros CL. rewrite lift_vmap.
+ apply term_vmap_ext. intros v _. now apply lift_nop.
+Qed.
+
 Lemma term_vmap_bsubst h n u (t:term) :
  BClosed_sub h ->
  vmap h (bsubst n u t) = bsubst n (vmap h u) (vmap h t).
@@ -328,9 +428,10 @@ Lemma form_vmap_bsubst h n u (f:formula) :
  BClosed_sub h ->
  vmap h (bsubst n u f) = bsubst n (vmap h u) (vmap h f).
 Proof.
- intros CL. revert n.
- induction f; cbn; intros n; f_equal; auto.
- injection (term_vmap_bsubst h n u (Fun "" l)); auto.
+ intros CL. revert n u.
+ induction f; cbn; intros n u; f_equal; auto.
+ - injection (term_vmap_bsubst h n u (Fun "" l)); auto.
+ - now rewrite IHf, lift_vmap'.
 Qed.
 
 Definition sub_set (x:variable)(t:term)(h:variable->term) :=
@@ -1249,11 +1350,21 @@ Proof.
    f_equal. rewrite !map_map. apply map_ext_iff; auto.
 Qed.
 
+Lemma restrict_lift sign x t :
+ restrict_term sign x (lift t) = lift (restrict_term sign x t).
+Proof.
+ induction t as [ | |f l IH] using term_ind'; cbn; auto.
+ destruct funsymbs; cbn; auto with *.
+ rewrite map_length.
+ case eqbspec; cbn; auto.
+ intros _. f_equal. rewrite !map_map. apply map_ext_iff; auto.
+Qed.
+
 Lemma restrict_bsubst sign x n t f :
   restrict sign x (bsubst n t f) =
   bsubst n (restrict_term sign x t) (restrict sign x f).
 Proof.
- revert n.
+ revert n t.
  induction f; cbn; intros; f_equal; auto.
  destruct predsymbs; cbn; auto with *.
  rewrite map_length.
@@ -1261,6 +1372,7 @@ Proof.
  intros _.
  f_equal. rewrite !map_map.
  apply map_ext_iff; auto using restrict_term_bsubst.
+ rewrite <- restrict_lift. auto.
 Qed.
 
 Ltac solver :=
@@ -1620,10 +1732,11 @@ Lemma forcelevel_bsubst n x u f :
   forcelevel n x (bsubst n u f) =
   bsubst n u (forcelevel (S n) x f).
 Proof.
- revert n.
+ revert n u.
  induction f; cbn; intros; f_equal; auto.
  rewrite !map_map. apply map_ext_iff.
  auto using forcelevel_bsubst_term'.
+ apply IHf. transitivity (S (level u)). apply level_lift. omega.
 Qed.
 
 Ltac solver' :=

@@ -377,13 +377,16 @@ Proof.
      apply Meta.form_level_bsubst_id.
      now rewrite nam2mix_level.
    + intros NE.
+     rewrite lift_nop.
+     2:{ unfold Mix.BClosed.
+         generalize (nam2mix_term_level [] u). simpl. omega. }
      destruct (Names.mem v (Term.vars u)) eqn:IN; simpl.
      * f_equal.
        setfresh vars z Hz.
        rewrite IH; auto.
-       f_equal. simpl. apply (nam2mix_rename []); auto with set.
-       simpl; intuition.
-       simpl. intros y [<-|Hy]. namedec. auto.
+       { f_equal. apply (nam2mix_rename []); auto with set. }
+       { simpl; intuition. }
+       { simpl. intros y [<-|Hy]. namedec. auto. }
      * f_equal. rewrite <- NamesF.not_mem_iff in IN.
        apply IH; simpl; intuition; subst; eauto.
 Qed.

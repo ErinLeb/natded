@@ -42,7 +42,12 @@ Record PreModel (M:Type)(sign:signature) :=
   }.
 
 (** Note: actually, we're not using [sign], [funsOk], [predsOK]
-    anywhere in this file (yet?) !! *)
+    anywhere in this file !! See [BogusPoint] below :
+    if an interpretation hasn't the right arity, we'll proceed
+    nonetheless, ending up with dummy formulas that won't allow
+    later to prove that the axioms of our theory are valid in
+    our model. We leave [funsOk] and [predsOk] here nonetheless,
+    as a remainder againts obvious goofs. *)
 
 Section PREMODEL.
  Variable sign : signature.
@@ -173,6 +178,62 @@ Proof.
  apply (interp_term_more_lenv genv [] lenv). simpl. auto with *.
 Qed.
 
+Lemma interp_form_more_lenv genv lenv lenv' f :
+ level f <= List.length lenv ->
+ interp_form genv (lenv++lenv') f <-> interp_form genv lenv f.
+Proof.
+ revert lenv.
+ induction f; cbn; intros lenv LE; try tauto.
+ - case (Mo.(preds) p) as [(k,fk)|]; cbn; [|reflexivity]; clear p.
+   f_equiv.
+   apply map_ext_in. intros a Ha.
+   apply interp_term_more_lenv.
+   transitivity (list_max (map level l)); auto.
+   now apply list_max_map_in.
+ - now rewrite (IHf lenv).
+ - apply Nat.max_lub_iff in LE.
+   destruct o; cbn; rewrite (IHf1 lenv), (IHf2 lenv); intuition.
+ - destruct q.
+   + split; intros Hm' m'.
+     * rewrite <-(IHf (m'::lenv)); simpl; auto. omega.
+     * rewrite (IHf (m'::lenv)); simpl; auto. omega.
+   + split; intros (m',Hm'); exists m'.
+     * rewrite (IHf (m'::lenv)) in Hm'; simpl; auto. omega.
+     * rewrite (IHf (m'::lenv)); simpl; auto. omega.
+Qed.
+
+Lemma interp_form_closed genv lenv f :
+ BClosed f ->
+ interp_form genv lenv f <-> interp_form genv [] f.
+Proof.
+ unfold BClosed. intros E.
+ apply (interp_form_more_lenv genv [] lenv). simpl. omega.
+Qed.
+
+Lemma interp_lift genv lenv m t :
+ interp_term genv (m :: lenv) (lift t) = interp_term genv lenv t.
+Proof.
+ induction t as [ | |f l IH] using term_ind'; cbn; auto.
+ case (funs Mo f) as [(k,fk)|]; cbn; auto. f_equal.
+ rewrite map_map. apply map_ext_iff; auto.
+Qed.
+
+Lemma interp_term_bsubst_gen genv lenv lenv' u m n t :
+ interp_term genv lenv u = m ->
+ nth_error lenv' n = Some m ->
+ (forall k, k<>n -> nth_error lenv' k = nth_error lenv k) ->
+ interp_term genv lenv (bsubst n u t) = interp_term genv lenv' t.
+Proof.
+ revert u.
+ induction t as [ | |f l IH] using term_ind'; cbn; intros u Hm Hn Hk.
+ - trivial.
+ - case eqbspec; intros; subst; auto.
+   + symmetry. now apply nth_error_some_nth.
+   + cbn. apply nth_error_ext; auto. symmetry; auto.
+ - case (Mo.(funs) f) as [(k,fk)|]; cbn; auto. f_equal.
+   rewrite map_map. apply map_ext_in; auto.
+Qed.
+
 Lemma interp_term_bsubst genv lenv u m n t :
  level t <= S n ->
  List.length lenv = n ->
@@ -181,17 +242,45 @@ Lemma interp_term_bsubst genv lenv u m n t :
  interp_term genv (lenv++[m]) t =
   interp_term genv lenv (bsubst n u t).
 Proof.
- induction t as [ | |f l IH] using term_ind'; cbn;
-  intros LE Hn CL Hu.
- - trivial.
- - case eqbspec; intros.
-   + rewrite app_nth2; try omega.
-     replace (n0 - length lenv) with 0 by omega. cbn.
-     now rewrite interp_term_closed.
-   + apply app_nth1. omega.
- - case (Mo.(funs) f) as [(k,fk)|]; cbn; auto. f_equal.
-   rewrite list_max_map_le in LE.
-   rewrite map_map. apply map_ext_in; auto.
+ intros LE Len BC Hu.
+ symmetry. eapply interp_term_bsubst_gen; eauto.
+ - rewrite nth_error_app2; rewrite Len; auto.
+   rewrite Nat.sub_diag; simpl. f_equal. rewrite <- Hu. symmetry.
+   apply interp_term_closed; auto.
+ - intro k. rewrite Nat.lt_gt_cases. intros [LT|GT].
+   + rewrite nth_error_app1; auto. omega.
+   + rewrite !(proj2 (nth_error_None _ _)); simpl; auto. omega.
+     rewrite app_length; simpl. omega.
+Qed.
+
+Lemma interp_form_bsubst_gen genv lenv lenv' u m n f :
+ interp_term genv lenv u = m ->
+ nth_error lenv' n = Some m ->
+ (forall k, k<>n -> nth_error lenv' k = nth_error lenv k) ->
+ interp_form genv lenv (bsubst n u f) <-> interp_form genv lenv' f.
+Proof.
+ revert n u lenv lenv'.
+ induction f; cbn; auto; intros; f_equal; auto; try reflexivity.
+ - case (Mo.(preds) p) as [(k,fk)|]; cbn; [|reflexivity]; clear p.
+   f_equiv.
+   rewrite map_map. apply map_ext_in. intros a _.
+   eapply interp_term_bsubst_gen; eauto.
+ - rewrite (IHf n u lenv lenv'); intuition.
+ - destruct o; cbn;
+    rewrite (IHf1 n u lenv lenv'), (IHf2 n u lenv lenv'); intuition.
+ - destruct q.
+   + split; intros Hm' m'; specialize (Hm' m').
+     * rewrite IHf in Hm'; eauto.
+       now rewrite interp_lift.
+       intros [|k]; simpl; auto.
+     * rewrite (IHf _ _ _ (m'::lenv')); auto. now rewrite interp_lift.
+       intros [|k]; simpl; auto.
+   + split; intros (m',Hm'); exists m'.
+     * rewrite (IHf _ _ _ (m'::lenv')) in Hm'; auto.
+       now rewrite interp_lift.
+       intros [|k]; simpl; auto.
+     * rewrite (IHf _ _ _ (m'::lenv')); auto. now rewrite interp_lift.
+       intros [|k]; simpl; auto.
 Qed.
 
 Lemma interp_form_bsubst genv lenv u m n f :
@@ -201,24 +290,15 @@ Lemma interp_form_bsubst genv lenv u m n f :
  interp_term genv [] u = m ->
  interp_form genv (lenv++[m]) f <-> interp_form genv lenv (bsubst n u f).
 Proof.
- revert n lenv.
- induction f; cbn; auto; intros; f_equal; auto with set.
- - case (Mo.(preds) p) as [(k,fk)|]; cbn; [|reflexivity]; clear p.
-   f_equiv.
-   rewrite list_max_map_le in H.
-   rewrite map_map. apply map_ext_in.
-   auto using interp_term_bsubst.
- - rewrite (IHf n); intuition.
- - destruct o; cbn; rewrite (IHf1 n), (IHf2 n); intuition; omega with *.
- - destruct q.
-   + split; intros Hm' m'.
-     * rewrite <-IHf; cbn; auto with set. omega with *.
-     * change (m'::(lenv++[m]))%list with ((m'::lenv)++[m])%list.
-       rewrite IHf; auto with set. omega with *. simpl; auto.
-   + split; intros (m',Hm'); exists m'.
-     * rewrite <-IHf; cbn; auto with set. omega with *.
-     * change (m'::(lenv++[m]))%list with ((m'::lenv)++[m])%list.
-       erewrite IHf; eauto with set. omega with *. simpl; auto.
+ intros LE Len BC Hu.
+ symmetry. eapply interp_form_bsubst_gen; eauto.
+ - rewrite nth_error_app2; rewrite Len; auto.
+   rewrite Nat.sub_diag; simpl. f_equal. rewrite <- Hu. symmetry.
+   apply interp_term_closed; auto.
+ - intro k. rewrite Nat.lt_gt_cases. intros [LT|GT].
+   + rewrite nth_error_app1; auto. omega.
+   + rewrite !(proj2 (nth_error_None _ _)); simpl; auto. omega.
+     rewrite app_length; simpl. omega.
 Qed.
 
 Lemma interp_form_bsubst0 genv u m f :
@@ -335,3 +415,52 @@ Proof.
 Qed.
 
 End PREMODEL.
+
+
+(** An n-ary forall construction and its interpretation.
+    This will be used in [Peano.v]. *)
+
+Fixpoint nForall n A :=
+  match n with
+  | 0 => A
+  | S n => (∀ (nForall n A))%form
+  end.
+
+Lemma nForall_check sign n A :
+ check sign (nForall n A) = check sign A.
+Proof.
+ induction n; simpl; auto.
+Qed.
+
+Lemma nForall_fclosed n A :
+ FClosed A -> FClosed (nForall n A).
+Proof.
+ induction n; simpl; auto.
+Qed.
+
+Lemma nForall_level n A :
+ level (nForall n A) = level A - n.
+Proof.
+ induction n; cbn; auto with arith.
+ rewrite IHn. omega.
+Qed.
+
+Lemma interp_nforall {sign}{M}(Mo : PreModel M sign) genv lenv n f :
+  interp_form Mo genv lenv (nForall n f) <->
+  (forall stk, length stk = n -> interp_form Mo genv (stk++lenv) f).
+Proof.
+ revert lenv.
+ induction n; simpl.
+ - split.
+   + now intros H [| ].
+   + intros H. now apply (H []).
+ - split.
+   + intros H stk.
+     rewrite <- (rev_involutive stk).
+     destruct (rev stk) as [|m rstk]; simpl; try easy.
+     rewrite app_length. simpl. rewrite Nat.add_1_r. intros [= E].
+     rewrite <- app_assoc. simpl. apply IHn; auto.
+   + intros H m. apply IHn. intros stk Len.
+     change (m::lenv) with ([m]++lenv)%list. rewrite app_assoc.
+     apply H. rewrite app_length. simpl. omega.
+Qed.

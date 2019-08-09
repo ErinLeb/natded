@@ -27,6 +27,7 @@ Main files :
  - [Theories](Theories.v) : notion of 1st-order theory, consistency, extensions, Henkin theorem, completion, ...
  - [PreModels](PreModels.v) : interpretation of formulas as Coq propositions, validity theorem
  - [Models](Models.v) : notion of model, build of a syntactic model for a consistent theory, completeness theorem
+ - [Peano](Peano.v) : example theory (Peano Arithmetic) and its Coq model
  
 Auxiliary files :
 

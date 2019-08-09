@@ -30,10 +30,15 @@ KO : PreModel : revoir a se passer de BClosed general,
      --> Non, ou alors il faudrait revoir bsubst avec des -1 pour
          les bvars au delà de celle qu'on substitue.
 
-- PreModel : funsOk et predsOk sont-ils vraiment utiles ?
-   ou bien sinon est-ce que AxOk suffit ?
+(x) PreModel : funsOk et predsOk sont-ils vraiment utiles ?
+    ou bien sinon est-ce que AxOk suffit ?
+    --> si on viole funsOk et predsOk, on finit avec des BogusPoint
+        et des False dans les interpretations. Pas grave tant que
+	AxOk doit être prouvé plus tard pour avoir un modele.
+	Mais autant laisser funsOk et predsOk quand meme, ca permet
+	de reperer des idioties plus tot.
 
-- Axiomes de Peano + exos + modèle Coq
+(x) Axiomes de Peano + exos + modèle Coq
 - Idem pour ZF
 - Skolem
 

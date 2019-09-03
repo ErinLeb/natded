@@ -1,93 +1,95 @@
-% Certification Coq d'un cours de logique de master
+% Coq Certification of a Master logic course
 % Pierre Letouzey
-% 3 septembre 2019
+% 3 September 2019
 
-## L'informatique, ça peut être assez fumeux...
+## Off-topic : a pipe-related business in Italy ...
 
 \includegraphics[width=\linewidth]{tabacchi.jpg}
 
-## En cas de doute, suivre le chemin canonique ...
+\pause
+
+Désolé, c'est un peu fumeux...
+
+## Off-topic : if lost in Italy, follow the canonical way ...
 
 \includegraphics[width=\linewidth]{piombino_via_canonica.jpg}
 
-## Pointeurs
+## Pointers
 
- - Le cours de "preuves assistées par ordinateur" (Master 1 ici) : <https://www.irif.fr/users/letouzey/edu/preuves>
+ - My course "preuves assistées par ordinateur" (Master 1 here) : <https://www.irif.fr/users/letouzey/edu/preuves>
 
- - Le poly d'Alexandre Miquel : <https://www.irif.fr/~letouzey/preuves/cours.pdf>
+ - The course pdf by Alexandre Miquel : <https://www.irif.fr/~letouzey/preuves/cours.pdf>
 
- - Le nouveau développement Coq (et cet exposé) : <https://gitlab.math.univ-paris-diderot.fr/letouzey/natded>
+ - The new Coq development (and this talk) : <https://gitlab.math.univ-paris-diderot.fr/letouzey/natded>
 
-## Réalisation de cette année
+## This year's contribution
 
-Encodage "profond" d'un calcul des prédicats en Coq
+Deep encoding of a predicate calculus in Coq
 
- - Déduction naturelle (avec contextes), 1er ordre
- - Visée pédagogique (rien de révolutionnaire, mais ...)
- - Basé sur le poly d'Alexandre Miquel
- - Modèles classiques (Coq) et théorème de complétude\footnote{cas dénombrable}
+ - Natural Deduction style (with contexts), first order
+ - Pedagogical aim (no pioneer work, but not so obvious either)
+ - Based as much as possible on Alexandre Miquel document
+ - Classical models (Coq) and completeness theorem\footnote{countable case}
 
-## Pourquoi ?
+## Why ?
 
-Pas de doute envers ces résultats très standards. Mais:
+Pretty unlikely to find bugs in such standard results. But:
 
- - Montrer aux étudiants un usage réaliste de Coq
- - Venir en appui des preuves méta répétitives **et** délicates
- - Illustrer l'aspect mécanisable (un micro prouveur exécutable ?)
- - Différentes expérimentations (alpha, locally-nameless, ...)
- - A terme : Coq pour corriger les TD de déduction naturelle ?
+ - Shows a realistic usage of Coq to students
+ - Helps meta proofs (boring **and** tedious)
+ - Highlights the computability (an executable micro prover ?)
+ - Different experiments (alpha, locally-nameless, ...)
+ - Coq to proof-check students homework on natural deduction ?
 
-## Littérature
+## Related Works
 
- - Des encodages profonds de logique à la pelle
-   - Exemple: logique linéaire par O. Laurent
+ - Deep encodings of logics are commonplace
+   - Example: linear logic by O. Laurent
  
- - Cf aussi le POPLmark Challenge pour le codage des lieurs
-
- - J. Margetson, 2004 : théorème de complétude en Isabelle
+ - See also POPLmark Challenge concering the binder encoding
+ 
+ - J. Margetson, 2004 : completeness theorem in Isabelle
    <https://www.isa-afp.org/entries/Completeness-paper.pdf>
 
 
-## Un aperçu du poly d'origine
+## A glimpse of the reference document
 
 Cf <https://www.irif.fr/~letouzey/preuves/cours.pdf>
 
-En particulier :
+In particular :
 
- - la définition récursive des termes et formules
- - la définition de l'alpha-équivalence
- - la définition des dérivations de preuves
- - les théories de Peano et de ZF
- - un example de méta-théorie : le théorème de complétude
+ - Definition of terms and formulas
+ - Definition of alpha-equivalence
+ - Definition of proof derivations
+ - Concrete theories : Peano, ZF
+ - Some meta-theory, for instance the incompleteness theorem
 
-## Pourquoi ce style de logique ?
+## Why this choice of logic ?
 
- - Certes pas de propriété de la sous-formule
- - Certes pas propice à l'élimination des coupures
- - Mais usage **et** méta-théorie relativement simples
- - Prolongement vers Curry-Howard, ordre supérieur, Coq ...
+ - Ok, no sub-formula property (bad for proof search)
+ - Ok, problematic cut elimination
+ - But both usage and meta-theory are relatively simple
+ - Extension-friendly : Curry-Howard, higher order, Coq ...
 
-## Points délicats pour les étudiants
+## Difficult points for students
 
- - Les variables et l'alpha-équivalence
- - Les conditions de bord dans $\forall$-intro et $\exists$-elim
- - Lemme de substitution
- - Plus généralement preuves méta répétitives **et** subtiles
+ - Variables and alpha-equivalence
+ - Side-conditions in $\forall$-intro and $\exists$-elim
+ - Substitution lemma
+ - More generally : repetitive **and** subtle meta-proofs
 
   
-## Superficiel / Profond ?
+## Shallow Embedding / Deep Embedding ? 
 
-Shallow Embedding / Deep Embedding ? 
+## How to encode binders (quantifiers) ?
 
-## Comment coder les lieurs ?
-
-  - nommé
-  - indice de De Bruijn
+  - Named
+  - De Bruijn indices
   - HOAS
-  - locally nameless
+  - Locally nameless
   - ...
 
-## Lignes de code Coq
+## LoC (Lines of Coq)
 
 ```
    201 AsciiOrder.v + StringOrder.v
@@ -110,16 +112,16 @@ Shallow Embedding / Deep Embedding ?
  10884 total
 ```
 
-## Visite guidée des fichiers Coq
+## Guided tour of Coq files
 
-## Conclusions & Perspectives
+## Future
 
-A faire:
+To do:
 
- - Un binaire autonome (micro assistant de preuve)
- - Finir quelques bricoles (Théorème de Skolem) 
- - Théorème d'incomplétude de Gödel ?
- - Aspect pédagogique à améliorer (un atelier de preuve ?)
+ - A standalone executable program (micro proof-assistant)
+ - Skolem theorem (should be obvious now)
+ - Gödel incompleteness theorems ?
+ - Improve pedagogical aspects (a proof "workshop" ?)
  - ZF ?
 
-Plus long terme : d'autres cours Coq-ifiables ?
+More generally, which other courses could benefit from Coq ?

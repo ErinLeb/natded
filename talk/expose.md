@@ -28,7 +28,7 @@ Deep encoding of a predicate calculus in Coq
 
  - Natural Deduction style (with contexts), first order
  - Pedagogical aim (no pioneer work, but not so obvious either)
- - Based as much as possible on Alexandre Miquel document
+ - Based as much as possible on Alexandre Miquel's document
  - Classical models (Coq) and completeness theorem\footnote{countable case}
 
 ## Why ?
@@ -64,7 +64,7 @@ In particular :
  - Concrete theories : Peano, ZF
  - Some meta-theory, for instance the incompleteness theorem
 
-## Why this choice of logic ?
+## Btw, why this logic ?
 
  - Ok, no sub-formula property (bad for proof search)
  - Ok, problematic cut elimination
@@ -95,13 +95,13 @@ In particular :
    201 AsciiOrder.v + StringOrder.v
    526 StringUtils.v + Utils.v
    424 NameProofs.v
-   562 Countable.v
    187 Defs.v
    542 Nam.v
    934 Mix.v
    258 Subst.v
   1175 Equiv.v + Equiv2.v
   1842 Meta.v
+   562 Countable.v
   1334 Theories.v
    466 PreModels.v
    956 Models.v

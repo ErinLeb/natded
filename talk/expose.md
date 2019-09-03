@@ -2,6 +2,14 @@
 % Pierre Letouzey
 % 3 septembre 2019
 
+## L'informatique, ça peut être assez fumeux...
+
+\includegraphics[width=\linewidth]{tabacchi.jpg}
+
+## En cas de doute, suivre le chemin canonique ...
+
+\includegraphics[width=\linewidth]{piombino_via_canonica.jpg}
+
 ## Pointeurs
 
  - Le cours de "preuves assistées par Ordinateur" (Master1 ici) : <https://www.irif.fr/users/letouzey/edu/preuves>
@@ -39,29 +47,6 @@ Pas de doute envers ces résultats très standards. Mais:
  - Une preuve du théorème de complétude en Isabelle:
    <https://www.isa-afp.org/entries/Completeness-paper.pdf>
 
-
-## Lignes de code Coq
-
-```
-   201 AsciiOrder.v + StringOrder.v
-   526 StringUtils.v + Utils.v
-   424 NameProofs.v
-   562 Countable.v
-   187 Defs.v
-   542 Nam.v
-   934 Mix.v
-   258 Subst.v
-  1175 Equiv.v + Equiv2.v
-  1842 Meta.v
-  1334 Theories.v
-   466 PreModels.v
-   956 Models.v
-   167 Peano.v
-   116 FormulaReader.v
-  1194 AltSubst.v
-
- 10884 total
-```
 
 ## Un aperçu du poly d'origine
 
@@ -101,6 +86,29 @@ Shallow Embedding / Deep Embedding ?
   - HOAS
   - locally nameless
   - ...
+
+## Lignes de code Coq
+
+```
+   201 AsciiOrder.v + StringOrder.v
+   526 StringUtils.v + Utils.v
+   424 NameProofs.v
+   562 Countable.v
+   187 Defs.v
+   542 Nam.v
+   934 Mix.v
+   258 Subst.v
+  1175 Equiv.v + Equiv2.v
+  1842 Meta.v
+  1334 Theories.v
+   466 PreModels.v
+   956 Models.v
+   167 Peano.v
+   116 FormulaReader.v
+  1194 AltSubst.v
+
+ 10884 total
+```
 
 ## Visite guidée des fichiers Coq
 

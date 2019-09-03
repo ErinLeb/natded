@@ -12,11 +12,11 @@
 
 ## Pointeurs
 
- - Le cours de "preuves assistées par Ordinateur" (Master1 ici) : <https://www.irif.fr/users/letouzey/edu/preuves>
+ - Le cours de "preuves assistées par ordinateur" (Master 1 ici) : <https://www.irif.fr/users/letouzey/edu/preuves>
 
  - Le poly d'Alexandre Miquel : <https://www.irif.fr/~letouzey/preuves/cours.pdf>
 
- - Le code Coq (et cet exposé) : <https://gitlab.math.univ-paris-diderot.fr/letouzey/natded>
+ - Le nouveau développement Coq (et cet exposé) : <https://gitlab.math.univ-paris-diderot.fr/letouzey/natded>
 
 ## Réalisation de cette année
 
@@ -32,8 +32,8 @@ Encodage "profond" d'un calcul des prédicats en Coq
 Pas de doute envers ces résultats très standards. Mais:
 
  - Montrer aux étudiants un usage réaliste de Coq
- - Venir en appui des preuves méta répétitives *et* délicates
- - Illustrer l'aspect mécanisable (un micro prouveur ?)
+ - Venir en appui des preuves méta répétitives **et** délicates
+ - Illustrer l'aspect mécanisable (un micro prouveur exécutable ?)
  - Différentes expérimentations (alpha, locally-nameless, ...)
  - A terme : Coq pour corriger les TD de déduction naturelle ?
 
@@ -42,9 +42,9 @@ Pas de doute envers ces résultats très standards. Mais:
  - Des encodages profonds de logique à la pelle
    - Exemple: logique linéaire par O. Laurent
  
- - Cf aussi le POPLMark Challenge pour le codage des lieurs
+ - Cf aussi le POPLmark Challenge pour le codage des lieurs
 
- - Une preuve du théorème de complétude en Isabelle:
+ - J. Margetson, 2004 : théorème de complétude en Isabelle
    <https://www.isa-afp.org/entries/Completeness-paper.pdf>
 
 
@@ -64,7 +64,7 @@ En particulier :
 
  - Certes pas de propriété de la sous-formule
  - Certes pas propice à l'élimination des coupures
- - Mais méta-théorie relativement simple
+ - Mais usage **et** méta-théorie relativement simples
  - Prolongement vers Curry-Howard, ordre supérieur, Coq ...
 
 ## Points délicats pour les étudiants
@@ -72,8 +72,8 @@ En particulier :
  - Les variables et l'alpha-équivalence
  - Les conditions de bord dans $\forall$-intro et $\exists$-elim
  - Lemme de substitution
- - Plus généralement preuves méta ennuyantes *et* subtiles
-  
+ - Plus généralement preuves méta répétitives **et** subtiles
+
   
 ## Superficiel / Profond ?
 
@@ -119,9 +119,7 @@ A faire:
  - Un binaire autonome (micro assistant de preuve)
  - Finir quelques bricoles (Théorème de Skolem) 
  - Théorème d'incomplétude de Gödel ?
- - Aspect pédagogique à améliorier (un atelier de preuve ?)
+ - Aspect pédagogique à améliorer (un atelier de preuve ?)
  - ZF ?
 
 Plus long terme : d'autres cours Coq-ifiables ?
-
-## Photos

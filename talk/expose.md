@@ -114,6 +114,15 @@ In particular :
 
 ## Guided tour of Coq files
 
+## Coq difficulties
+
+ - `list term` in the definition of `term`, same in `derivation`
+   - either `fix 1` or an adhoc induction principle
+
+ - A bit of dependent types in models :
+   - is this graspable by (good) students ?
+
+
 ## Future
 
 To do:

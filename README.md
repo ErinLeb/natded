@@ -44,4 +44,3 @@ To be used with Coq 8.8. Just run `make` to compile.
 ## License
 
 This work is released under the Creative Commons Zero License (CC0). See files [LICENSE](LICENSE) and [COPYING](COPYING) for more.
-blabla

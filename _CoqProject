@@ -19,5 +19,5 @@ Theories.v
 PreModels.v
 Models.v
 Peano.v
-parser.v
-FormulaReader.v
+# parser.v
+# FormulaReader.v

@@ -96,6 +96,14 @@ Qed.
 End PeanoAx.
 
 Local Open Scope string.
+Local Open Scope formula_scope.
+
+(** Some basic proofs in Peano arithmetics. *)
+
+Lemma Comm : Pr intuiti (∀∀ (#0 + #1 = #1 + #0)).
+Proof.
+  
+Qed.
 
 Definition PeanoTheory :=
  {| sign := PeanoSign;

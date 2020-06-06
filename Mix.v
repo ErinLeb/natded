@@ -907,6 +907,83 @@ Proof.
  - intros (d & Hd & <-). now apply Valid_Pr.
 Qed.
 
+(* A few examples of proofs in NJ1 and NK1. *)
+
+Lemma ex1 f1 f2 : Provable Intuiti ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
+Proof.
+  apply Provable_alt.
+  apply R_Imp_i.
+  apply R_Or_i1.
+  apply R_And_e1 with (B := f2).
+  apply R_Ax.
+  apply in_eq.
+Qed.
+
+Lemma ex2 f1 f2 f3 : Provable Intuiti ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
+Proof.
+  apply Provable_alt.
+  apply R_And_i.
+  + apply R_Imp_i.
+    apply R_Imp_i.
+    apply R_Imp_e with (A := f2).
+    - apply R_Imp_e with (A := f1).
+      * apply R_Ax. apply in_cons. apply in_eq.
+      * apply R_And_e1 with (B := f2). apply R_Ax. apply in_eq.
+    - apply R_And_e2 with (A := f1). apply R_Ax. apply in_eq.
+  + apply R_Imp_i.
+    apply R_Imp_i.
+    apply R_Imp_i.
+    apply R_Imp_e with (A := (f1 /\ f2)%form).
+    - apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
+    - apply R_And_i; apply R_Ax.
+      * apply in_cons. apply in_eq.
+      * apply in_eq.
+Qed.
+
+Lemma Weakening f1 Γ f2 lg : Pr lg (Γ ⊢ f1) -> Pr lg (f2::Γ ⊢ f1).
+Admitted.
+
+Lemma RAA f1 Γ : Pr Classic (Γ ⊢ ~~f1) -> Pr Classic (Γ ⊢ f1).
+Proof.
+  intro.
+  apply R_Absu.
+  + reflexivity.
+  + apply R_Not_e with (A := (~ f1)%form).
+    - apply R_Ax. apply in_eq.
+    - apply Weakening. exact H.
+Qed.
+
+Lemma DeMorgan f1 f2 Γ : Pr Classic (Γ ⊢ ~(~f1 /\ f2)) -> Pr Classic (Γ ⊢ ~~(f1 \/ ~f2)).
+Proof.
+  intro.
+  apply R_Not_i.
+  apply R_Not_e with (A := (~f1 /\ f2)%form).
+  + apply RAA with (f1 := (~f1 /\ f2)%form).
+    apply R_Not_i.
+    apply R_Not_e with (A := (~~f1\/~f2)%form).
+    - apply R_Or_i1.
+      apply R_Not_i.
+      apply R_Not_e with (A := (~~f1\/~f2)%form).
+      * apply R_Or_i2. apply R_Not_i. apply R_Not_e with (A := (~f1 /\ f2)%form).
+        ++ apply R_And_i.
+           -- apply R_Ax. apply in_cons. apply in_eq.
+           -- apply R_Ax. apply in_eq.
+        ++ apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
+      *
+
+Lemma ExcludedMiddle f1 : Provable Classic ([] ⊢ f1 \/ ~f1).
+Proof.
+  apply Provable_alt.
+  apply RAA.
+  apply DeMorgan with (f2 := f1) (Γ := []).
+  apply R_Not_i.
+  apply R_Not_e with (A := f1).
+  + apply R_And_e2 with (A := (~f1)%form). apply R_Ax. apply in_eq.
+  + apply R_And_e1 with (B := f1). apply R_Ax. apply in_eq.
+Qed.
+      
+(* Some usefull statements. *)
+
 Lemma Pr_intuit_classic s : Pr Intuiti s -> Pr Classic s.
 Proof.
  induction 1; eauto 2.

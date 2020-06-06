@@ -940,7 +940,7 @@ Proof.
       * apply in_eq.
 Qed.
 
-Lemma Weakening f1 Γ f2 lg : Pr lg (Γ ⊢ f1) -> Pr lg (f2::Γ ⊢ f1).
+Lemma Weakening Γ f2 lg : forall f1, Pr lg (Γ ⊢ f1) -> Pr lg (f2::Γ ⊢ f1).
 Admitted.
 
 Lemma RAA f1 Γ : Pr Classic (Γ ⊢ ~~f1) -> Pr Classic (Γ ⊢ f1).
@@ -960,16 +960,20 @@ Proof.
   apply R_Not_e with (A := (~f1 /\ f2)%form).
   + apply RAA with (f1 := (~f1 /\ f2)%form).
     apply R_Not_i.
-    apply R_Not_e with (A := (~~f1\/~f2)%form).
+    apply R_Not_e with (A := (f1\/~f2)%form).
     - apply R_Or_i1.
+      apply RAA.
       apply R_Not_i.
-      apply R_Not_e with (A := (~~f1\/~f2)%form).
+      apply R_Not_e with (A := (f1\/~f2)%form).
       * apply R_Or_i2. apply R_Not_i. apply R_Not_e with (A := (~f1 /\ f2)%form).
         ++ apply R_And_i.
            -- apply R_Ax. apply in_cons. apply in_eq.
            -- apply R_Ax. apply in_eq.
         ++ apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
-      *
+      * apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
+    - apply R_Ax. apply in_cons. apply in_eq.
+  + apply Weakening. exact H.
+Qed.
 
 Lemma ExcludedMiddle f1 : Provable Classic ([] ⊢ f1 \/ ~f1).
 Proof.

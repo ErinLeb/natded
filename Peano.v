@@ -98,17 +98,23 @@ End PeanoAx.
 Local Open Scope string.
 Local Open Scope formula_scope.
 
-(** Some basic proofs in Peano arithmetics. *)
-
-Lemma Comm : Pr intuiti (∀∀ (#0 + #1 = #1 + #0)).
-Proof.
-  
-Qed.
-
 Definition PeanoTheory :=
  {| sign := PeanoSign;
     IsAxiom := PeanoAx.IsAx;
     WfAxiom := PeanoAx.WfAx |}.
+
+(** Some basic proofs in Peano arithmetics. *)
+
+Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
+Proof.
+  unfold IsTheorem.
+  split.
+  + unfold Wf. split; [ auto | split; auto ].
+  + exists ((induction_schema (#0 = #0 + Zero))::axioms_list).
+
+Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).
+Proof.
+  Admitted.
 
 (** A Coq model of this Peano theory, based on the [nat] type *)
 

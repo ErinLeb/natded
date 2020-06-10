@@ -42,7 +42,7 @@ Definition ax13 := ∀∀ (Succ(#1) = Succ(#0) -> #1 = #0).
 Definition ax14 := ∀ ~(Succ(#0) = Zero).
 
 Definition axioms_list :=
-  [ ax1; ax2; ax3; ax4; ax5; ax6; ax7; ax8;
+ [ ax1; ax2; ax3; ax4; ax5; ax6; ax7; ax8;
     ax9; ax10; ax11; ax12; ax13; ax14 ].
 
 (** Beware, [bsubst] is ok below for turning [#0] into [Succ #0], but
@@ -105,12 +105,38 @@ Definition PeanoTheory :=
 
 (** Some basic proofs in Peano arithmetics. *)
 
+Import PeanoAx.
+
 Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
 Proof.
   unfold IsTheorem.
   split.
   + unfold Wf. split; [ auto | split; auto ].
-  + exists ((induction_schema (#0 = #0 + Zero))::axioms_list).
+  + exists ((PeanoAx.induction_schema (#0 = #0 + Zero))::axioms_list).
+    split.
+    - apply Forall_forall. intros. destruct H.
+      * simpl. unfold IsAx. right. exists (#0 = #0 + Zero). split; [ auto | split ; [ auto | auto ] ].
+      * simpl. unfold IsAx. left. exact H.
+    - apply R_Imp_e with (A := (nForall (Nat.pred (level (# 0 = # 0 + Zero)))
+       ((∀ bsubst 0 Zero (# 0 = # 0 + Zero)) /\
+        (∀ # 0 = # 0 + Zero -> bsubst 0 (Succ (# 0)) (# 0 = # 0 + Zero))))).
+      * apply R_Ax. unfold induction_schema. apply in_eq.
+      * simpl. apply R_And_i. cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "x").
+        ++ compute. inversion 1. (* ATROCE *)
+        ++ cbn. change (Fun "O" []) with Zero. eapply R_Imp_e. set (hyp := (_ -> _)%form).
+           assert ( sym : Pr Intuiti (hyp::axioms_list ⊢ ∀∀ (#1 = #0 -> #0 = #1))).
+           { apply R_Ax. compute; intuition. }
+           apply R_All_e with (t := Zero + Zero) in sym. cbn in sym. apply R_All_e with (t := Zero) in sym. cbn in sym. exact sym.
+           -- reflexivity.
+           -- reflexivity.
+           -- set (hyp := (_ -> _)%form). change (Fun "O" []) with Zero. change (Zero + Zero = Zero) with (bsubst 0 Zero (Zero + #0 = #0)). apply R_All_e. reflexivity. apply R_Ax. compute; intuition.
+       ++ cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "x").  (* ax4 et ax10 +- sym *)
+          -- compute. inversion 1.
+          -- cbn. change (Fun "O" []) with Zero. apply R_Imp_i. set (H1 := FVar _ = _). set (H2 := _ -> _).
+             assert (hyp : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ Fun "S" [FVar "x"] = Fun "S" [FVar "x" + Zero] /\ Fun "S" [FVar "x" + Zero] = Fun "S" [FVar "x" + Zero])).
+             { admit. }
+             apply R_Imp_e with (A :=  Fun "S" [FVar "x"] = Fun "S" [FVar "x" + Zero] /\ Fun "S" [FVar "x" + Zero] = Fun "S" [FVar "x" + Zero]).
+             ** apply R_All_i with (x := Fun "S" [FVar "x"]).
 
 Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).
 Proof.

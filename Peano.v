@@ -130,14 +130,19 @@ Proof.
            -- reflexivity.
            -- reflexivity.
            -- set (hyp := (_ -> _)%form). change (Fun "O" []) with Zero. change (Zero + Zero = Zero) with (bsubst 0 Zero (Zero + #0 = #0)). apply R_All_e. reflexivity. apply R_Ax. compute; intuition.
-       ++ cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "y").  (* ax4 et ax10 +- sym *)
+       ++ cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "y").
           -- compute. inversion 1.
           -- cbn. change (Fun "O" []) with Zero. apply R_Imp_i. set (H1 := FVar _ = _). set (H2 := _ -> _).
              assert (hyp : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\ Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero)).
              { apply R_And_i.
-               + apply R_Imp_e with (A := (FVar "y" = FVar "y" + Zero)%form); [ | apply R_Ax; compute; intuition ]. apply R_All_e with (t := FVar "y"). }
+               + assert (AX4 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax4)). { apply R_Ax. compute; intuition. } apply R_Imp_e with (A := (FVar "y" = FVar "y" + Zero)%form); [ | apply R_Ax; compute; intuition ]. unfold ax4 in AX4. apply R_All_e with (t := FVar "y") in AX4; [ | auto ]. apply R_All_e with (t := FVar "y" + Zero) in AX4; [ | auto ]. cbn in AX4. exact AX4. 
+             + apply R_Imp_e with (A := Fun "S" [FVar "y"] + Zero = Fun "S" [FVar "y" + Zero]).
+               - assert (AX2 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax2)). { apply R_Ax. compute; intuition. } unfold ax2 in AX2. apply R_All_e with (t := Fun "S" [FVar "y"] + Zero) in AX2; [ | auto ]. apply R_All_e with (t := Fun "S" [FVar "y" + Zero]) in AX2; [ | auto ]. cbn in AX2. exact AX2.
+               - assert (AX10 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax10)). { apply R_Ax. compute; intuition. } unfold ax10 in AX10. apply R_All_e with (t:= FVar "y") in AX10; [ | auto ]. apply R_All_e with (t := Zero) in AX10; [ | auto ]. cbn in AX10. exact AX10. }
              apply R_Imp_e with (A :=  Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\ Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero).
-             ** apply R_All_i with (x := "Fun "" ++ "S" ++  ""[FVar"" ++ "y" ++ ""]").
+             ** assert (AX3 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax3)). { apply R_Ax. compute; intuition. } unfold ax3 in AX3. apply R_All_e with (t:= Fun "S" [FVar "y"]) in AX3; [ | auto ]. apply R_All_e with (t := Fun "S" [FVar "y" + Zero]) in AX3; [ | auto ]. apply R_All_e with (t := Fun "S" [FVar "y"] + Zero) in AX3; [ | auto ]. cbn in AX3. exact AX3.
+             ** exact hyp.
+Qed.
 
 Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).
 Proof.

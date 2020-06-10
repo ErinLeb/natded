@@ -130,13 +130,14 @@ Proof.
            -- reflexivity.
            -- reflexivity.
            -- set (hyp := (_ -> _)%form). change (Fun "O" []) with Zero. change (Zero + Zero = Zero) with (bsubst 0 Zero (Zero + #0 = #0)). apply R_All_e. reflexivity. apply R_Ax. compute; intuition.
-       ++ cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "x").  (* ax4 et ax10 +- sym *)
+       ++ cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "y").  (* ax4 et ax10 +- sym *)
           -- compute. inversion 1.
           -- cbn. change (Fun "O" []) with Zero. apply R_Imp_i. set (H1 := FVar _ = _). set (H2 := _ -> _).
-             assert (hyp : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ Fun "S" [FVar "x"] = Fun "S" [FVar "x" + Zero] /\ Fun "S" [FVar "x" + Zero] = Fun "S" [FVar "x" + Zero])).
-             { admit. }
-             apply R_Imp_e with (A :=  Fun "S" [FVar "x"] = Fun "S" [FVar "x" + Zero] /\ Fun "S" [FVar "x" + Zero] = Fun "S" [FVar "x" + Zero]).
-             ** apply R_All_i with (x := Fun "S" [FVar "x"]).
+             assert (hyp : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\ Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero)).
+             { apply R_And_i.
+               + apply R_Imp_e with (A := (FVar "y" = FVar "y" + Zero)%form); [ | apply R_Ax; compute; intuition ]. apply R_All_e with (t := FVar "y"). }
+             apply R_Imp_e with (A :=  Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\ Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero).
+             ** apply R_All_i with (x := "Fun "" ++ "S" ++  ""[FVar"" ++ "y" ++ ""]").
 
 Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).
 Proof.

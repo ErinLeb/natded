@@ -236,9 +236,26 @@ Proof.
            bsubst 0 (Succ (# 0)) (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0))))).
       * apply R_Ax. unfold induction_schema. apply in_eq.
       * simpl. apply R_And_i.
-        ++ assert ((∀ bsubst 0 Zero (∀ Succ (#1 + #0) = #1 + Succ (#0))) = (∀ Succ (#0 + Zero) = #0 + Succ (Zero))).
-           { auto. (* EST-CE QUE C'EST AU MOINS VRAI ??? *)
-
+        ++ compute. change (Fun "O" []) with Zero.
+           apply R_All_i with (x := "x"); [ | compute; change (Fun "O" []) with Zero ].
+           -- unfold Names.In. compute. inversion 1.
+           -- apply R_All_i with (x := "y"); [ compute; inversion 1 | ]. compute. change (Fun "O" []) with Zero. set (Γ := [(∀ ∀ Fun "S" [Zero + # 0] = Zero + Fun "S" [# 0]) /\
+      (∀ (∀ Fun "S" [# 1 + # 0] = # 1 + Fun "S" [# 0]) ->
+         ∀ Fun "S" [Fun "S" [# 1] + # 0] = Fun "S" [# 1] + Fun "S" [# 0]) ->
+      ∀ ∀ Fun "S" [# 1 + # 0] = # 1 + Fun "S" [# 0]; ∀ # 0 = # 0; ∀ ∀ 
+     # 1 = # 0 -> # 0 = # 1; ∀ ∀ ∀ # 2 = # 1 /\ # 1 = # 0 -> # 2 = # 0;
+     ∀ ∀ # 1 = # 0 -> Fun "S" [# 1] = Fun "S" [# 0]; ∀ ∀ ∀ # 2 = # 1 -> # 2 + # 0 = # 1 + # 0;
+     ∀ ∀ ∀ # 1 = # 0 -> # 2 + # 1 = # 2 + # 0; ∀ ∀ ∀ # 2 = # 1 -> # 2 * # 0 = # 1 * # 0;
+     ∀ ∀ ∀ # 1 = # 0 -> # 2 * # 1 = # 2 * # 0; ∀ Zero + # 0 = # 0;
+     ∀ ∀ Fun "S" [# 1] + # 0 = Fun "S" [# 1 + # 0]; ∀ Zero * # 0 = Zero;
+     ∀ ∀ Fun "S" [# 1] * # 0 = # 1 * # 0 + # 0; ∀ ∀ Fun "S" [# 1] = Fun "S" [# 0] -> # 1 = # 0;
+     ∀ ~ Fun "S" [# 0] = Zero]).  assert (Pr Intuiti (Γ ⊢ Zero + FVar "y" = FVar "y")). 
+              { assert (AX9 : Pr Intuiti (Γ ⊢ ax9)). { apply R_Ax. compute; intuition. }
+                unfold ax9 in AX9.
+                apply R_All_e with (t := FVar "y") in AX9; [ | auto ].
+                compute in AX9. assumption. }
+              Print bsubst. apply 
+           
 Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).
 Admitted.
 

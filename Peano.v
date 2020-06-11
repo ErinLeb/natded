@@ -107,10 +107,9 @@ Definition PeanoTheory :=
 
 Import PeanoAx.
 
-Lemma Symmetry : forall logic A B Γ, BClosed A /\ BClosed B /\ In ax2 Γ /\ Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ B = A).
+Lemma Symmetry : forall logic A B Γ, BClosed A -> BClosed B -> In ax2 Γ -> Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ B = A).
 Proof.
   intros.
-  destruct H. destruct H0. destruct H1.
   apply R_Imp_e with (A := A = B); [ | assumption ].
   assert (AX2 : Pr logic (Γ ⊢ ax2)).
   { apply R_Ax. exact H1. }
@@ -181,6 +180,8 @@ Proof.
   assumption.
 Qed.
 
+Ltac axiom := apply R_Ax; compute; intuition.
+
 (** Some basic proofs in Peano arithmetics. *)
 
 Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
@@ -201,7 +202,7 @@ Proof.
         ++ compute. inversion 1. (* ATROCE *)
         ++ cbn. change (Fun "O" []) with Zero. eapply R_Imp_e. set (hyp := (_ -> _)%form).
            assert ( sym : Pr Intuiti (hyp::axioms_list ⊢ ∀∀ (#1 = #0 -> #0 = #1))).
-           { apply R_Ax. compute; intuition. }
+           { axiom. }
            apply R_All_e with (t := Zero + Zero) in sym. cbn in sym. apply R_All_e with (t := Zero) in sym. cbn in sym. exact sym.
            -- reflexivity.
            -- reflexivity.
@@ -236,26 +237,53 @@ Proof.
            bsubst 0 (Succ (# 0)) (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0))))).
       * apply R_Ax. unfold induction_schema. apply in_eq.
       * simpl. apply R_And_i.
-        ++ compute. change (Fun "O" []) with Zero.
-           apply R_All_i with (x := "x"); [ | compute; change (Fun "O" []) with Zero ].
-           -- unfold Names.In. compute. inversion 1.
-           -- apply R_All_i with (x := "y"); [ compute; inversion 1 | ]. compute. change (Fun "O" []) with Zero. set (Γ := [(∀ ∀ Fun "S" [Zero + # 0] = Zero + Fun "S" [# 0]) /\
-      (∀ (∀ Fun "S" [# 1 + # 0] = # 1 + Fun "S" [# 0]) ->
-         ∀ Fun "S" [Fun "S" [# 1] + # 0] = Fun "S" [# 1] + Fun "S" [# 0]) ->
-      ∀ ∀ Fun "S" [# 1 + # 0] = # 1 + Fun "S" [# 0]; ∀ # 0 = # 0; ∀ ∀ 
-     # 1 = # 0 -> # 0 = # 1; ∀ ∀ ∀ # 2 = # 1 /\ # 1 = # 0 -> # 2 = # 0;
-     ∀ ∀ # 1 = # 0 -> Fun "S" [# 1] = Fun "S" [# 0]; ∀ ∀ ∀ # 2 = # 1 -> # 2 + # 0 = # 1 + # 0;
-     ∀ ∀ ∀ # 1 = # 0 -> # 2 + # 1 = # 2 + # 0; ∀ ∀ ∀ # 2 = # 1 -> # 2 * # 0 = # 1 * # 0;
-     ∀ ∀ ∀ # 1 = # 0 -> # 2 * # 1 = # 2 * # 0; ∀ Zero + # 0 = # 0;
-     ∀ ∀ Fun "S" [# 1] + # 0 = Fun "S" [# 1 + # 0]; ∀ Zero * # 0 = Zero;
-     ∀ ∀ Fun "S" [# 1] * # 0 = # 1 * # 0 + # 0; ∀ ∀ Fun "S" [# 1] = Fun "S" [# 0] -> # 1 = # 0;
-     ∀ ~ Fun "S" [# 0] = Zero]).  assert (Pr Intuiti (Γ ⊢ Zero + FVar "y" = FVar "y")). 
+        ++ cbn. change (Fun "O" []) with Zero.
+           apply R_All_i with (x := "x"); [ | cbn; change (Fun "O" []) with Zero ].
+           -- rewrite<- Names.mem_spec. now compute.
+           -- apply R_All_i with (x := "y"); [ compute; inversion 1 | ]. cbn. change (Fun "O" []) with Zero. set (AxRec := (_ -> _)%form).  assert (Pr Intuiti (AxRec :: axioms_list ⊢ Zero + FVar "y" = FVar "y")). set (Γ := AxRec :: axioms_list).
               { assert (AX9 : Pr Intuiti (Γ ⊢ ax9)). { apply R_Ax. compute; intuition. }
                 unfold ax9 in AX9.
                 apply R_All_e with (t := FVar "y") in AX9; [ | auto ].
                 compute in AX9. assumption. }
-              Print bsubst. apply 
-           
+              assert (Pr Intuiti (AxRec :: axioms_list ⊢ Succ (Zero + FVar "y") = Succ (FVar "y"))).
+              { apply Hereditarity; [ auto | auto | compute; intuition | assumption ]. }
+              assert (Pr Intuiti (AxRec :: axioms_list ⊢ ax9)).
+              { apply R_Ax. compute; intuition. }
+              unfold ax9 in H1.
+              apply R_All_e with (t := Succ (FVar "y")) in H1; [ | auto ].
+              cbn in H1. apply Symmetry in H1; [ | auto | auto | compute; intuition ].
+              apply Transitivity with (B := Succ (FVar "y")); [ auto | auto | auto | compute; intuition | assumption | assumption ].
+        ++ apply R_All_i with (x := "x"); [ rewrite<- Names.mem_spec; now compute | ].
+           cbn.
+           apply R_Imp_i.
+           apply R_All_i with (x := "y"); [ rewrite<- Names.mem_spec; now compute | ].
+           cbn.
+           set (h2 := (_ -> _)%form). set (h1 := (∀ _ = _)%form). set (Γ := h1::h2::axioms_list).
+           assert (Pr Intuiti (Γ ⊢ h1)).
+           { apply R_Ax. compute ; intuition. }
+           unfold h1 in H.
+           apply R_All_e with (t := FVar "y") in H; [ | auto ].
+           cbn in H.
+           apply Hereditarity in H; [ | auto | auto | compute; intuition ].
+           assert (Pr Intuiti (Γ ⊢ ax10)).
+           { apply R_Ax. compute; intuition. }
+           unfold ax10 in H0.
+           apply R_All_e with (t := FVar "x") in H0; [ | auto ].
+           apply R_All_e with (t := Succ (FVar "y")) in H0; [ | auto ].
+           cbn in H0.
+           apply Symmetry in H0; [ | auto | auto | compute; intuition ].
+           assert (Eq1 : Pr Intuiti (Γ ⊢ Succ (Succ (FVar "x" + FVar "y")) = Succ (FVar "x") + Succ (FVar "y"))).
+           { apply Transitivity with (B := Succ (FVar "x" + Succ (FVar "y"))); [ auto | auto | auto | compute; intuition | assumption | assumption ]. }
+           assert (Pr Intuiti (Γ ⊢ ax10)).
+           { apply R_Ax. compute; intuition. }
+           unfold ax10 in H1.
+           apply R_All_e with (t := FVar "x") in H1; [ | auto ].
+           apply R_All_e with (t := FVar "y") in H1; [ | auto ].
+           cbn in H1.
+           apply Hereditarity in H1; [ | auto | auto | compute; intuition ].
+           apply Transitivity with (B := Succ (Succ ( FVar "x" + FVar "y"))); [ auto | auto | auto | compute; intuition | assumption | assumption ].
+Qed.
+ 
 Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).
 Admitted.
 

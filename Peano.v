@@ -103,9 +103,85 @@ Definition PeanoTheory :=
     IsAxiom := PeanoAx.IsAx;
     WfAxiom := PeanoAx.WfAx |}.
 
-(** Some basic proofs in Peano arithmetics. *)
+(** Useful lemmas so as to be able to write proofs that take less than 1000 lines. *)
 
 Import PeanoAx.
+
+Lemma Symmetry : forall logic A B Γ, BClosed A /\ BClosed B /\ In ax2 Γ /\ Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ B = A).
+Proof.
+  intros.
+  destruct H. destruct H0. destruct H1.
+  apply R_Imp_e with (A := A = B); [ | assumption ].
+  assert (AX2 : Pr logic (Γ ⊢ ax2)).
+  { apply R_Ax. exact H1. }
+  unfold ax2 in AX2.
+  apply R_All_e with (t := A) in AX2; [ | assumption ].
+  apply R_All_e with (t := B) in AX2; [ | assumption ].
+  cbn in AX2.
+  assert (bsubst 0 B (lift A) = A).
+  { assert (lift A = A). { apply lift_nop. exact H. } rewrite H3. apply bclosed_bsubst_id. exact H. }
+  rewrite H3 in AX2.
+  exact AX2.
+Qed.
+
+Lemma Transitivity : forall logic A B C Γ, BClosed A -> BClosed B -> BClosed C -> In ax3 Γ -> Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ B = C) -> Pr logic (Γ ⊢ A = C).
+Proof.
+  intros.
+  apply R_Imp_e with (A := A = B /\ B = C); [ | apply R_And_i; assumption ].
+  assert (AX3 : Pr logic (Γ ⊢ ax3)).
+  { apply R_Ax. exact H2. }
+  unfold ax3 in AX3.
+  apply R_All_e with (t := A) in AX3; [ | assumption ].
+  apply R_All_e with (t := B) in AX3; [ | assumption ].
+  apply R_All_e with (t := C) in AX3; [ | assumption ].
+  cbn in AX3.
+  assert (bsubst 0 C (lift B) = B).
+  { assert (lift B = B). {apply lift_nop. assumption. } rewrite H5. apply bclosed_bsubst_id. assumption. }
+  rewrite H5 in AX3.
+  assert (bsubst 0 C (bsubst 1 (lift B) (lift (lift A))) = A).
+  { assert (lift A = A). { apply lift_nop. assumption. } rewrite H6. rewrite H6.
+    assert (lift B = B). { apply lift_nop. assumption. } rewrite H7.
+    assert (bsubst 1 B A = A). { apply bclosed_bsubst_id. assumption. } rewrite H8.
+    apply bclosed_bsubst_id. assumption. }
+  rewrite H6 in AX3.
+  assumption.
+Qed.
+
+Lemma Hereditarity : forall logic A B Γ, BClosed A -> BClosed B -> In ax4 Γ -> Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ Succ A = Succ B).
+Proof.
+  intros.
+  apply R_Imp_e with (A := A = B); [ | assumption ].
+  assert (AX4 : Pr logic (Γ ⊢ ax4)).
+  { apply R_Ax. assumption. }
+  unfold ax4 in AX4.
+  apply R_All_e with (t := A) in AX4; [ | assumption ].
+  apply R_All_e with (t := B) in AX4; [ | assumption ].
+  cbn in AX4.
+  assert (bsubst 0 B (lift A) = A).
+  { assert (lift A = A). { apply lift_nop. assumption. } rewrite H3.
+    apply bclosed_bsubst_id. assumption. }
+  rewrite H3 in AX4.
+  assumption.
+Qed.
+
+Lemma AntiHereditarity : forall logic A B Γ, BClosed A -> BClosed B -> In ax13 Γ -> Pr logic (Γ ⊢ Succ A = Succ B) -> Pr logic (Γ ⊢ A = B).
+Proof.
+  intros.
+  apply R_Imp_e with (A := Succ A = Succ B); [ | assumption ].
+  assert (AX13 : Pr logic (Γ ⊢ ax13)).
+  { apply R_Ax. assumption. }
+  unfold ax13 in AX13.
+  apply R_All_e with (t := A) in AX13; [ | assumption ].
+  apply R_All_e with (t := B) in AX13; [ | assumption ].
+  cbn in AX13.
+  assert (bsubst 0 B (lift A) = A).
+  { assert (lift A = A). { apply lift_nop. assumption. } rewrite H3.
+    apply bclosed_bsubst_id. assumption. }
+  rewrite H3 in AX13.
+  assumption.
+Qed.
+
+(** Some basic proofs in Peano arithmetics. *)
 
 Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
 Proof.
@@ -144,9 +220,27 @@ Proof.
              ** exact hyp.
 Qed.
 
-Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).
+Lemma SuccRight : IsTheorem Intuiti PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Succ(#0))).
 Proof.
-  Admitted.
+  unfold IsTheorem.
+  split.
+  + unfold Wf. split; [ auto | split; auto ].
+  + exists (induction_schema ( ∀ Succ (#1 + #0) = (#1 + Succ (#0)) ) :: axioms_list).
+    split.
+    - apply Forall_forall. intros. destruct H.
+      * simpl. unfold IsAx. right. exists (∀ Succ (#1 + #0) = #1 + Succ (#0)). split; [ auto | split; [ auto | auto ]].
+      * simpl. unfold IsAx. left. assumption.
+    - apply R_Imp_e with ( A:= nForall (Nat.pred (level (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0))))
+       ((∀ bsubst 0 Zero (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0))) /\
+        (∀ (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0)) ->
+           bsubst 0 (Succ (# 0)) (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0))))).
+      * apply R_Ax. unfold induction_schema. apply in_eq.
+      * simpl. apply R_And_i.
+        ++ assert ((∀ bsubst 0 Zero (∀ Succ (#1 + #0) = #1 + Succ (#0))) = (∀ Succ (#0 + Zero) = #0 + Succ (Zero))).
+           { auto. (* EST-CE QUE C'EST AU MOINS VRAI ??? *)
+
+Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).
+Admitted.
 
 (** A Coq model of this Peano theory, based on the [nat] type *)
 

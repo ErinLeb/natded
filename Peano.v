@@ -182,6 +182,16 @@ Qed.
 
 Ltac axiom := apply R_Ax; compute; intuition.
 
+Ltac app_R_All_i t := apply R_All_i with (x := t); [ rewrite<- Names.mem_spec; now compute | ].
+
+Ltac sym := apply Symmetry; [ auto | auto | compute; intuition | ].
+
+Ltac hered := apply Hereditarity; [ auto | auto | compute; intuition | ].
+
+Ltac ahered := apply AntiHereditarity; [ auto | auto | compute; intuition | ].
+
+Ltac trans b := apply Transitivity with (B := b); [ auto | auto | auto | compute; intuition | assumption | assumption ].
+ 
 (** Some basic proofs in Peano arithmetics. *)
 
 Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
@@ -246,7 +256,7 @@ Proof.
                 apply R_All_e with (t := FVar "y") in AX9; [ | auto ].
                 compute in AX9. assumption. }
               assert (Pr Intuiti (AxRec :: axioms_list ⊢ Succ (Zero + FVar "y") = Succ (FVar "y"))).
-              { apply Hereditarity; [ auto | auto | compute; intuition | assumption ]. }
+              { hered. assumption. }
               assert (Pr Intuiti (AxRec :: axioms_list ⊢ ax9)).
               { apply R_Ax. compute; intuition. }
               unfold ax9 in H1.
@@ -281,7 +291,7 @@ Proof.
            apply R_All_e with (t := FVar "y") in H1; [ | auto ].
            cbn in H1.
            apply Hereditarity in H1; [ | auto | auto | compute; intuition ].
-           apply Transitivity with (B := Succ (Succ ( FVar "x" + FVar "y"))); [ auto | auto | auto | compute; intuition | assumption | assumption ].
+           trans (Succ (Succ ( FVar "x" + FVar "y" ))).
 Qed.
  
 Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).

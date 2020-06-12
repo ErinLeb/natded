@@ -194,9 +194,9 @@ Ltac trans b := apply Transitivity with (B := b); [ auto | auto | auto | compute
 
 Ltac thm := unfold IsTheorem; split; [ unfold Wf; split; [ auto | split; auto ] | ].
 
-(*Ltac rec :=
+Ltac rec :=
   match goal with
-    | |- exists ?ax (Forall (IsAxiom PeanoTheory) ?ax /\ (Pr ?log (?ctxt ⊢ ∀ ?formula))) => 
+    | |- exists axs, (Forall (IsAxiom PeanoTheory) axs /\ Pr ?l (axs ⊢ (∀ ?form))) => 
       exists (induction_schema formula :: axioms_list); set (Γ := induction_schema formula :: axioms_list); split;
       [ apply Forall_forall; intros x H; destruct H;
         [ simpl; unfold IsAx; right; exists formula ; split;
@@ -205,8 +205,8 @@ Ltac thm := unfold IsTheorem; split; [ unfold Wf; split; [ auto | split; auto ] 
         eapply R_Imp_e;
         [ apply R_Ax; unfold induction_schema; apply in_eq | simpl; apply R_And_i; cbn ]
       ]
-    | _ => idtac
-  end.*)
+    (*| _ => idtac*)
+  end.
 
 (** Some basic proofs in Peano arithmetics. *)
 

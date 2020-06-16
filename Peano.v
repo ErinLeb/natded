@@ -180,111 +180,74 @@ Proof.
   assumption.
 Qed.
 
-Ltac axiom := apply R_Ax; compute; intuition.
+Ltac axiom ax name :=
+  match goal with
+    | |- Pr ?l (?ctx ⊢ _) => assert (name : Pr l (ctx ⊢ ax)); [ apply R_Ax; compute; intuition | ]; unfold ax in name
+  end.
 
 Ltac app_R_All_i t := apply R_All_i with (x := t); [ rewrite<- Names.mem_spec; now compute | ].
+Ltac eapp_R_All_i := eapply R_All_i; [ rewrite<- Names.mem_spec; now compute | ].
 
 Ltac sym := apply Symmetry; [ auto | auto | compute; intuition | ].
 
-Ltac hered := apply Hereditarity; [ auto | auto | compute; intuition | ].
+Ltac ahered := apply Hereditarity; [ auto | auto | compute; intuition | ].
 
-Ltac ahered := apply AntiHereditarity; [ auto | auto | compute; intuition | ].
+Ltac hered := apply AntiHereditarity; [ auto | auto | compute; intuition | ].
 
-Ltac trans b := apply Transitivity with (B := b); [ auto | auto | auto | compute; intuition | assumption | assumption ].
+Ltac trans b := apply Transitivity with (B := b); [ auto | auto | auto | compute; intuition | | ].
 
 Ltac thm := unfold IsTheorem; split; [ unfold Wf; split; [ auto | split; auto ] | ].
 
+Ltac change_succ :=
+  match goal with
+  | |- context[ Fun "S" [?t] ] => change (Fun "S" [t]) with (Succ (t)); change_succ
+  | _ => idtac
+  end.
+
+Ltac cbm := cbn; change (Fun "O" []) with Zero; change_succ.
+
 Ltac rec :=
   match goal with
-    | |- exists axs, (Forall (IsAxiom PeanoTheory) axs /\ Pr ?l (axs ⊢ (∀ ?form))) => 
-      exists (induction_schema formula :: axioms_list); set (Γ := induction_schema formula :: axioms_list); split;
+    | |- exists axs, (Forall (IsAxiom PeanoTheory) axs /\ Pr ?l (axs ⊢ (∀ ?form)))%type => 
+      exists (induction_schema form :: axioms_list); set (Γ := induction_schema form :: axioms_list); set (rec := induction_schema form); split;
       [ apply Forall_forall; intros x H; destruct H;
-        [ simpl; unfold IsAx; right; exists formula ; split;
+        [ simpl; unfold IsAx; right; exists form ; split;
           [ auto | split; [ auto | auto ]] | 
         simpl; unfold IsAx; left; assumption ] |
         eapply R_Imp_e;
         [ apply R_Ax; unfold induction_schema; apply in_eq | simpl; apply R_And_i; cbn ]
-      ]
-    (*| _ => idtac*)
+      ]; cbm
+    (* | _ => idtac *)
   end.
-
+            
 (** Some basic proofs in Peano arithmetics. *)
 
 Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
 Proof.
-  unfold IsTheorem.
-  split.
-  + unfold Wf. split; [ auto | split; auto ].
-  + exists ((PeanoAx.induction_schema (#0 = #0 + Zero))::axioms_list).
-    split.
-    - apply Forall_forall. intros. destruct H.
-      * simpl. unfold IsAx. right. exists (#0 = #0 + Zero). split; [ auto | split ; [ auto | auto ] ].
-      * simpl. unfold IsAx. left. exact H.
-    - apply R_Imp_e with (A := (nForall (Nat.pred (level (# 0 = # 0 + Zero)))
-       ((∀ bsubst 0 Zero (# 0 = # 0 + Zero)) /\
-        (∀ # 0 = # 0 + Zero -> bsubst 0 (Succ (# 0)) (# 0 = # 0 + Zero))))).
-      * apply R_Ax. unfold induction_schema. apply in_eq.
-      * simpl. apply R_And_i. cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "x").
-        ++ compute. inversion 1. (* ATROCE *)
-        ++ cbn. change (Fun "O" []) with Zero. eapply R_Imp_e. set (hyp := (_ -> _)%form).
-           assert ( sym : Pr Intuiti (hyp::axioms_list ⊢ ∀∀ (#1 = #0 -> #0 = #1))).
-           { axiom. }
-           apply R_All_e with (t := Zero + Zero) in sym. cbn in sym. apply R_All_e with (t := Zero) in sym. cbn in sym. exact sym.
-           -- reflexivity.
-           -- reflexivity.
-           -- set (hyp := (_ -> _)%form). change (Fun "O" []) with Zero. change (Zero + Zero = Zero) with (bsubst 0 Zero (Zero + #0 = #0)). apply R_All_e. reflexivity. apply R_Ax. compute; intuition.
-       ++ cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "y").
-          -- compute. inversion 1.
-          -- cbn. change (Fun "O" []) with Zero. apply R_Imp_i. set (H1 := FVar _ = _). set (H2 := _ -> _).
-             assert (hyp : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\ Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero)).
-             { apply R_And_i.
-               + assert (AX4 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax4)). { apply R_Ax. compute; intuition. } apply R_Imp_e with (A := (FVar "y" = FVar "y" + Zero)%form); [ | apply R_Ax; compute; intuition ]. unfold ax4 in AX4. apply R_All_e with (t := FVar "y") in AX4; [ | auto ]. apply R_All_e with (t := FVar "y" + Zero) in AX4; [ | auto ]. cbn in AX4. exact AX4. 
-             + apply R_Imp_e with (A := Fun "S" [FVar "y"] + Zero = Fun "S" [FVar "y" + Zero]).
-               - assert (AX2 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax2)). { apply R_Ax. compute; intuition. } unfold ax2 in AX2. apply R_All_e with (t := Fun "S" [FVar "y"] + Zero) in AX2; [ | auto ]. apply R_All_e with (t := Fun "S" [FVar "y" + Zero]) in AX2; [ | auto ]. cbn in AX2. exact AX2.
-               - assert (AX10 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax10)). { apply R_Ax. compute; intuition. } unfold ax10 in AX10. apply R_All_e with (t:= FVar "y") in AX10; [ | auto ]. apply R_All_e with (t := Zero) in AX10; [ | auto ]. cbn in AX10. exact AX10. }
-             apply R_Imp_e with (A :=  Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\ Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero).
-             ** assert (AX3 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax3)). { apply R_Ax. compute; intuition. } unfold ax3 in AX3. apply R_All_e with (t:= Fun "S" [FVar "y"]) in AX3; [ | auto ]. apply R_All_e with (t := Fun "S" [FVar "y" + Zero]) in AX3; [ | auto ]. apply R_All_e with (t := Fun "S" [FVar "y"] + Zero) in AX3; [ | auto ]. cbn in AX3. exact AX3.
-             ** exact hyp.
-Qed.
-
-Lemma ZeroRightBis : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
-Proof.
  thm.
  rec.
-  + exists ((PeanoAx.induction_schema (#0 = #0 + Zero))::axioms_list).
-    split.
-    - apply Forall_forall. intros. destruct H.
-      * simpl. unfold IsAx. right. exists (#0 = #0 + Zero). split; [ auto | split ; [ auto | auto ] ].
-      * simpl. unfold IsAx. left. exact H.
-    - apply R_Imp_e with (A := (nForall (Nat.pred (level (# 0 = # 0 + Zero)))
-       ((∀ bsubst 0 Zero (# 0 = # 0 + Zero)) /\
-        (∀ # 0 = # 0 + Zero -> bsubst 0 (Succ (# 0)) (# 0 = # 0 + Zero))))).
-      * apply R_Ax. unfold induction_schema. apply in_eq.
-      * simpl. apply R_And_i. cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "x").
-        ++ compute. inversion 1. (* ATROCE *)
-        ++ cbn. change (Fun "O" []) with Zero. eapply R_Imp_e. set (hyp := (_ -> _)%form).
-           assert ( sym : Pr Intuiti (hyp::axioms_list ⊢ ∀∀ (#1 = #0 -> #0 = #1))).
-           { axiom. }
-           apply R_All_e with (t := Zero + Zero) in sym. cbn in sym. apply R_All_e with (t := Zero) in sym. cbn in sym. exact sym.
-           -- reflexivity.
-           -- reflexivity.
-           -- set (hyp := (_ -> _)%form). change (Fun "O" []) with Zero. change (Zero + Zero = Zero) with (bsubst 0 Zero (Zero + #0 = #0)). apply R_All_e. reflexivity. apply R_Ax. compute; intuition.
-       ++ cbn. change (Fun "O" []) with Zero. apply R_All_i with (x := "y").
-          -- compute. inversion 1.
-          -- cbn. change (Fun "O" []) with Zero. apply R_Imp_i. set (H1 := FVar _ = _). set (H2 := _ -> _).
-             assert (hyp : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\ Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero)).
-             { apply R_And_i.
-               + assert (AX4 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax4)). { apply R_Ax. compute; intuition. } apply R_Imp_e with (A := (FVar "y" = FVar "y" + Zero)%form); [ | apply R_Ax; compute; intuition ]. unfold ax4 in AX4. apply R_All_e with (t := FVar "y") in AX4; [ | auto ]. apply R_All_e with (t := FVar "y" + Zero) in AX4; [ | auto ]. cbn in AX4. exact AX4. 
-             + apply R_Imp_e with (A := Fun "S" [FVar "y"] + Zero = Fun "S" [FVar "y" + Zero]).
-               - assert (AX2 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax2)). { apply R_Ax. compute; intuition. } unfold ax2 in AX2. apply R_All_e with (t := Fun "S" [FVar "y"] + Zero) in AX2; [ | auto ]. apply R_All_e with (t := Fun "S" [FVar "y" + Zero]) in AX2; [ | auto ]. cbn in AX2. exact AX2.
-               - assert (AX10 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax10)). { apply R_Ax. compute; intuition. } unfold ax10 in AX10. apply R_All_e with (t:= FVar "y") in AX10; [ | auto ]. apply R_All_e with (t := Zero) in AX10; [ | auto ]. cbn in AX10. exact AX10. }
-             apply R_Imp_e with (A :=  Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\ Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero).
-             ** assert (AX3 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax3)). { apply R_Ax. compute; intuition. } unfold ax3 in AX3. apply R_All_e with (t:= Fun "S" [FVar "y"]) in AX3; [ | auto ]. apply R_All_e with (t := Fun "S" [FVar "y" + Zero]) in AX3; [ | auto ]. apply R_All_e with (t := Fun "S" [FVar "y"] + Zero) in AX3; [ | auto ]. cbn in AX3. exact AX3.
-             ** exact hyp.
+ + eapp_R_All_i. cbm.
+   sym.
+   axiom ax9 AX9.
+   apply R_All_e with (t := Zero) in AX9; auto.
+ + app_R_All_i "y". cbm.
+   apply R_Imp_i. set (H1 := FVar _ = _).
+   sym.
+   trans (Succ ((FVar "y") + Zero)).
+   - axiom ax10 AX10.
+     apply R_All_e with (t := FVar "y") in AX10; auto.
+     apply R_All_e with (t := Zero) in AX10; auto.
+   - ahered.
+     sym.
+     apply R_Ax.
+     apply in_eq.
 Qed.
 
 Lemma SuccRight : IsTheorem Intuiti PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Succ(#0))).
 Proof.
+  thm.
+  rec.
+
   unfold IsTheorem.
   split.
   + unfold Wf. split; [ auto | split; auto ].

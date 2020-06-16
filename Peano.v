@@ -226,7 +226,7 @@ Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
 Proof.
  thm.
  rec.
- + eapp_R_All_i. cbm.
+ + app_R_All_i "y". cbm.
    sym.
    axiom ax9 AX9.
    apply R_All_e with (t := Zero) in AX9; auto.
@@ -247,66 +247,36 @@ Lemma SuccRight : IsTheorem Intuiti PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Su
 Proof.
   thm.
   rec.
-
-  unfold IsTheorem.
-  split.
-  + unfold Wf. split; [ auto | split; auto ].
-  + exists (induction_schema ( ∀ Succ (#1 + #0) = (#1 + Succ (#0)) ) :: axioms_list).
-    split.
-    - apply Forall_forall. intros. destruct H.
-      * simpl. unfold IsAx. right. exists (∀ Succ (#1 + #0) = #1 + Succ (#0)). split; [ auto | split; [ auto | auto ]].
-      * simpl. unfold IsAx. left. assumption.
-    - apply R_Imp_e with ( A:= nForall (Nat.pred (level (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0))))
-       ((∀ bsubst 0 Zero (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0))) /\
-        (∀ (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0)) ->
-           bsubst 0 (Succ (# 0)) (∀ Succ (# 1 + # 0) = # 1 + Succ (# 0))))).
-      * apply R_Ax. unfold induction_schema. apply in_eq.
-      * simpl. apply R_And_i.
-        ++ cbn. change (Fun "O" []) with Zero.
-           apply R_All_i with (x := "x"); [ | cbn; change (Fun "O" []) with Zero ].
-           -- rewrite<- Names.mem_spec. now compute.
-           -- apply R_All_i with (x := "y"); [ compute; inversion 1 | ]. cbn. change (Fun "O" []) with Zero. set (AxRec := (_ -> _)%form).  assert (Pr Intuiti (AxRec :: axioms_list ⊢ Zero + FVar "y" = FVar "y")). set (Γ := AxRec :: axioms_list).
-              { assert (AX9 : Pr Intuiti (Γ ⊢ ax9)). { apply R_Ax. compute; intuition. }
-                unfold ax9 in AX9.
-                apply R_All_e with (t := FVar "y") in AX9; [ | auto ].
-                compute in AX9. assumption. }
-              assert (Pr Intuiti (AxRec :: axioms_list ⊢ Succ (Zero + FVar "y") = Succ (FVar "y"))).
-              { hered. assumption. }
-              assert (Pr Intuiti (AxRec :: axioms_list ⊢ ax9)).
-              { apply R_Ax. compute; intuition. }
-              unfold ax9 in H1.
-              apply R_All_e with (t := Succ (FVar "y")) in H1; [ | auto ].
-              cbn in H1. apply Symmetry in H1; [ | auto | auto | compute; intuition ].
-              apply Transitivity with (B := Succ (FVar "y")); [ auto | auto | auto | compute; intuition | assumption | assumption ].
-        ++ apply R_All_i with (x := "x"); [ rewrite<- Names.mem_spec; now compute | ].
-           cbn.
-           apply R_Imp_i.
-           apply R_All_i with (x := "y"); [ rewrite<- Names.mem_spec; now compute | ].
-           cbn.
-           set (h2 := (_ -> _)%form). set (h1 := (∀ _ = _)%form). set (Γ := h1::h2::axioms_list).
-           assert (Pr Intuiti (Γ ⊢ h1)).
-           { apply R_Ax. compute ; intuition. }
-           unfold h1 in H.
-           apply R_All_e with (t := FVar "y") in H; [ | auto ].
-           cbn in H.
-           apply Hereditarity in H; [ | auto | auto | compute; intuition ].
-           assert (Pr Intuiti (Γ ⊢ ax10)).
-           { apply R_Ax. compute; intuition. }
-           unfold ax10 in H0.
-           apply R_All_e with (t := FVar "x") in H0; [ | auto ].
-           apply R_All_e with (t := Succ (FVar "y")) in H0; [ | auto ].
-           cbn in H0.
-           apply Symmetry in H0; [ | auto | auto | compute; intuition ].
-           assert (Eq1 : Pr Intuiti (Γ ⊢ Succ (Succ (FVar "x" + FVar "y")) = Succ (FVar "x") + Succ (FVar "y"))).
-           { apply Transitivity with (B := Succ (FVar "x" + Succ (FVar "y"))); [ auto | auto | auto | compute; intuition | assumption | assumption ]. }
-           assert (Pr Intuiti (Γ ⊢ ax10)).
-           { apply R_Ax. compute; intuition. }
-           unfold ax10 in H1.
-           apply R_All_e with (t := FVar "x") in H1; [ | auto ].
-           apply R_All_e with (t := FVar "y") in H1; [ | auto ].
-           cbn in H1.
-           apply Hereditarity in H1; [ | auto | auto | compute; intuition ].
-           trans (Succ (Succ ( FVar "x" + FVar "y" ))).
+  + app_R_All_i "x".
+    app_R_All_i "y".
+    cbm.
+    sym.
+    trans (Succ (FVar "y")).
+    - axiom ax9 AX9.
+      apply R_All_e with (t := Succ (FVar "y")) in AX9; auto.
+    - ahered.
+      sym.
+      axiom ax9 AX9.
+      apply R_All_e with (t := FVar "y") in AX9; auto.
+  + app_R_All_i "x".
+    cbm.
+    apply R_Imp_i.
+    app_R_All_i "y".
+    cbm.
+    set (hyp := ∀ Succ _ = _).
+    trans (Succ (Succ (FVar "x" + FVar "y"))).
+    - ahered.
+      axiom ax10 AX10.
+      apply R_All_e with (t := FVar "x") in AX10; auto.
+      apply R_All_e with (t := FVar "y") in AX10; auto.
+    - trans (Succ (FVar "x" + Succ (FVar "y"))).
+      * ahered.
+        axiom hyp Hyp.
+        apply R_All_e with (t := FVar "y") in Hyp; auto.
+      * axiom ax10 AX10.
+        sym.
+        apply R_All_e with (t := FVar "x") in AX10; auto.
+        apply R_All_e with (t := Succ (FVar "y")) in AX10; auto.
 Qed.
  
 Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).

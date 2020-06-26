@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Mix Meta Countable.
+Require Import Defs NameProofs Mix Meta Countable Models.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
@@ -94,6 +94,76 @@ Definition IsTheorem th T :=
     Pr logic (axs ⊢ T).
 
 Hint Unfold IsTheorem IsTheoremStrict.
+
+(** A theorem to build proofs using former lemmas. *)
+
+Lemma ModusPonens th : forall A B , IsTheorem th (A -> B) -> IsTheorem th A -> IsTheorem th B.
+Proof.
+  intros.
+  unfold IsTheorem in *.
+  destruct H. destruct H0.
+  split.
+  + unfold Wf in *.
+    intuition.
+    * assert (check th (A -> B)%form = true -> check th B = true).
+      {
+        assert (check th (A -> B)%form = check th A && check th B).
+        { auto. }
+        assert (check th A && check th B = check th A &&& check th B).
+        { apply andb_lazy_alt. }
+        rewrite H8 in H5.
+        intro.
+        rewrite H5 in H9.
+        Print andb_true_iff.
+        assert (check th A = true /\ check th B = true).
+        { apply andb_true_iff. rewrite H8. assumption. }
+        destruct H10.
+        assumption.
+      }
+      apply H5. assumption.
+    * assert (BClosed (A -> B)%form -> BClosed A /\ BClosed B).
+      {
+        intro.
+        unfold BClosed in *.
+        cbn in H5.
+        apply max_0 in H5.
+        assumption.
+      }
+      apply H5 in H0.
+      destruct H0.
+      assumption.
+    * assert (FClosed (A -> B)%form -> FClosed A /\ FClosed B).
+      {
+        intro.
+        unfold FClosed in *.
+        cbn in H5.
+        assert (forall s s', Names.Empty (Names.union s s') -> Names.Empty s /\ Names.Empty s').
+        { split. namedec. namedec. }
+        eapply H8 in H5.
+        assumption.
+      }
+      apply H5 in H6.
+      destruct H6.
+      assumption.
+  + destruct H1.
+    destruct H2.
+    exists (x ++ x0).
+    destruct H1. destruct H2.
+    split.
+    * assert (forall l l', Forall (IsAxiom th) l -> Forall (IsAxiom th) l' -> Forall (IsAxiom th) (l ++ l')).
+      {
+        intros.
+        induction l.
+        - auto.
+        - simpl. apply Forall_cons.
+          ++ inversion H5. assumption.
+          ++ apply IHl. inversion H5. assumption.
+      }
+      apply H5; assumption.
+    * apply R_Imp_e with (A := A).
+      - apply Pr_weakening with (s := x ⊢ A -> B); auto.
+        Print SubsetSeq.
+        unfold SubsetSeq.
 
 (** We can "fix" a proof made with things not in the signature,
     or a signature badly used, or with remaining bounded vars. *)

@@ -114,7 +114,6 @@ Proof.
         rewrite H8 in H5.
         intro.
         rewrite H5 in H9.
-        Print andb_true_iff.
         assert (check th A = true /\ check th B = true).
         { apply andb_true_iff. rewrite H8. assumption. }
         destruct H10.
@@ -162,8 +161,24 @@ Proof.
       apply H5; assumption.
     * apply R_Imp_e with (A := A).
       - apply Pr_weakening with (s := x ⊢ A -> B); auto.
-        Print SubsetSeq.
-        unfold SubsetSeq.
+        apply SubSeq.
+        assert (forall A (x : list A) x0, ListSubset x (x ++ x0)).
+        { intros. induction x1.
+          ++ unfold ListSubset. intros. inversion H5.
+          ++ unfold ListSubset. intros. inversion H5.
+             ** rewrite H6. simpl. apply in_eq.
+             ** simpl. right. apply IHx1. assumption.
+        }
+        apply H5.
+      - apply Pr_weakening with (s := x0 ⊢ A); auto.
+        apply SubSeq.
+        assert (forall A (x : list A) x0, ListSubset x0 (x ++ x0)).
+        { intros. induction x1.
+          ++ unfold ListSubset. intros. simpl. assumption.
+          ++ unfold ListSubset. intros. unfold ListSubset in IHx1. simpl. right. apply IHx1. assumption.
+        }
+        apply H5.
+Qed.
 
 (** We can "fix" a proof made with things not in the signature,
     or a signature badly used, or with remaining bounded vars. *)

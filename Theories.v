@@ -97,7 +97,7 @@ Hint Unfold IsTheorem IsTheoremStrict.
 
 (** A theorem to build proofs using former lemmas. *)
 
-Lemma ModusPonens th : forall A B , IsTheorem th A -> IsTheorem th B -> IsTheorem th (A -> B).
+Lemma ModusPonens th : forall A B , IsTheorem th (A -> B) -> IsTheorem th A -> IsTheorem th B.
 Proof.
   intros.
   unfold IsTheorem in *.
@@ -105,7 +105,7 @@ Proof.
   split.
   + unfold Wf in *.
     intuition.
-    * assert (check th A = true /\ check th B = true -> check th (A -> B)%form = true).
+    * assert (check th (A -> B)%form = true -> check th B = true).
       {
         assert (check th (A -> B)%form = check th A && check th B).
         { auto. }
@@ -113,33 +113,37 @@ Proof.
         { apply andb_lazy_alt. }
         rewrite H8 in H5.
         intro.
-        rewrite H5.
-        apply andb_true_iff.
+        rewrite H5 in H9.
+        assert (check th A = true /\ check th B = true).
+        { apply andb_true_iff. rewrite H8. assumption. }
+        destruct H10.
         assumption.
       }
-      apply H5. split; assumption.
-    * assert (BClosed A /\ BClosed B -> BClosed (A -> B)%form).
+      apply H5. assumption.
+    * assert (BClosed (A -> B)%form -> BClosed A /\ BClosed B).
       {
         intro.
         unfold BClosed in *.
-        cbn.
-        apply max_0.
+        cbn in H5.
+        apply max_0 in H5.
         assumption.
       }
-      apply H5.
-      split; assumption.
-    * assert (FClosed A /\ FClosed B -> FClosed (A -> B)%form).
+      apply H5 in H0.
+      destruct H0.
+      assumption.
+    * assert (FClosed (A -> B)%form -> FClosed A /\ FClosed B).
       {
         intro.
         unfold FClosed in *.
-        cbn.
-        assert (forall s s', Names.Empty (Names.union s s') <-> Names.Empty s /\ Names.Empty s').
-        { split. split; namedec. namedec. }
+        cbn in H5.
+        assert (forall s s', Names.Empty (Names.union s s') -> Names.Empty s /\ Names.Empty s').
+        { split. namedec. namedec. }
         eapply H8 in H5.
         assumption.
       }
-      apply H5.
-      split; assumption.
+      apply H5 in H6.
+      destruct H6.
+      assumption.
   + destruct H1.
     destruct H2.
     exists (x ++ x0).
@@ -155,15 +159,25 @@ Proof.
           ++ apply IHl. inversion H5. assumption.
       }
       apply H5; assumption.
-    * apply R_Imp_i.
-      apply Pr_weakening with (s := x0 ⊢ B); auto.
+    * apply R_Imp_e with (A := A).
+      - apply Pr_weakening with (s := x ⊢ A -> B); auto.
+        apply SubSeq.
+        assert (forall A (x : list A) x0, ListSubset x (x ++ x0)).
+        { intros. induction x1.
+          ++ unfold ListSubset. intros. inversion H5.
+          ++ unfold ListSubset. intros. inversion H5.
+             ** rewrite H6. simpl. apply in_eq.
+             ** simpl. right. apply IHx1. assumption.
+        }
+        apply H5.
+      - apply Pr_weakening with (s := x0 ⊢ A); auto.
         apply SubSeq.
         assert (forall A (x : list A) x0, ListSubset x0 (x ++ x0)).
         { intros. induction x1.
           ++ unfold ListSubset. intros. simpl. assumption.
           ++ unfold ListSubset. intros. unfold ListSubset in IHx1. simpl. right. apply IHx1. assumption.
         }
-        apply H5 with (x := A :: x).
+        apply H5.
 Qed.
 
 (** We can "fix" a proof made with things not in the signature,

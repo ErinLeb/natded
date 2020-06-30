@@ -279,8 +279,15 @@ Proof.
         apply R_All_e with (t := Succ (FVar "y")) in AX10; auto.
 Qed.
  
-Lemma Comm : IsTheorem Intuiti PeanoTheory (∀∀ (#0 + #1 = #1 + #0)).
-Admitted.
+Lemma Comm :
+  IsTheorem Intuiti PeanoTheory
+            (∀ (#0 = #0 + Zero) -> ∀∀ (Succ(#1 + #0) = #1 + Succ(#0)) ->
+               ∀∀ (#0 + #1 = #1 + #0)).
+Proof.
+  assert (IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)) -> IsTheorem Intuiti PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Succ(#0)) -> ∀∀ (#0 + #1 = #1 + #0)) -> IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero) -> ∀∀ (Succ(#1 + #0) = #1 + Succ(#0)) -> ∀∀ (#0 + #1 = #1 + #0))).
+  { apply ModusPonens. }
+apply ModusPonens with (A := ∀ (#0 = #0 + Zero)).
+
 
 (** A Coq model of this Peano theory, based on the [nat] type *)
 

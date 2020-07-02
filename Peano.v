@@ -296,6 +296,7 @@ Proof.
   thm.
   rec.
   set (Γ' := _ :: _ :: Γ).
+  + 
 
 (** A Coq model of this Peano theory, based on the [nat] type *)
 

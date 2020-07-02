@@ -294,10 +294,47 @@ Lemma Comm :
                (∀∀ #0 + #1 = #1 + #0)).
 Proof.
   thm.
-  rec.
-  set (Γ' := _ :: _ :: Γ).
-  + 
+  rec; set (Γ' := _ :: _ :: Γ).
+  + app_R_All_i "x".
+    cbm.
+    app_R_All_i "x".
+    cbm.
+    trans (FVar "x").
+    - sym.
+      assert (Pr Intuiti (Γ' ⊢ ∀ # 0 = # 0 + Zero)). { apply R_Ax. simpl in *; intuition. }
+      apply R_All_e with (t := FVar "x") in H; auto.
+    - sym.
+      axiom ax9 AX9.
+      apply R_All_e with (t := FVar "x") in AX9; auto.
+  + app_R_All_i "y".
+    cbm.
+    apply R_Imp_i.
+    app_R_All_i "x".
+    cbm.
+    trans (Succ (FVar "x" + FVar "y")).
+    - sym.
+      assert (Pr Intuiti ((∀ # 0 + FVar "y" = FVar "y" + # 0) :: Γ' ⊢ ∀ ∀ Succ (#1 + #0) = #1 + Succ (#0))). { apply R_Ax. simpl in *; intuition. }
+      apply R_All_e with (t := FVar "x") in H; auto.
+      apply R_All_e with (t := FVar "y") in H; auto.
+    - trans (Succ (FVar "y" + FVar "x")).
+      * ahered.
+        assert (Pr Intuiti ((∀ #0 + FVar "y" = FVar "y" + #0) :: Γ' ⊢ ∀ #0 + FVar "y" = FVar "y" + #0)). { apply R_Ax. apply in_eq. }
+                                                                                                           apply R_All_e with (t := FVar "x") in H; auto.
+      * sym.
+        axiom ax10 AX10.
+        apply R_All_e with (t := FVar "y") in AX10; auto.
+        apply R_All_e with (t := FVar "x") in AX10; auto.
+Qed.
 
+Lemma Commutativity : IsTheorem Intuiti PeanoTheory (∀∀ #0 + #1 = #1 + #0).
+Proof.
+  apply ModusPonens with (A := (∀∀ Succ(#1 + #0) = #1 + Succ(#0))).
+  + apply ModusPonens with (A := ∀ #0 = #0 + Zero).
+    * apply Comm.
+    * apply ZeroRight.
+  + apply SuccRight.
+Qed.
+      
 (** A Coq model of this Peano theory, based on the [nat] type *)
 
 Definition PeanoFuns : modfuns nat :=

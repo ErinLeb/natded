@@ -206,19 +206,28 @@ Ltac change_succ :=
 
 Ltac cbm := cbn; change (Fun "O" []) with Zero; change_succ.
 
+Ltac parse term :=
+  match term with
+  | (_ -> ?queue)%form => parse queue
+  | (∀ ?formula)%form => formula
+  end.
+
 Ltac rec :=
   match goal with
-    | |- exists axs, (Forall (IsAxiom PeanoTheory) axs /\ Pr ?l (axs ⊢ (∀ ?form)))%type => 
-      exists (induction_schema form :: axioms_list); set (Γ := induction_schema form :: axioms_list); set (rec := induction_schema form); split;
+  | |- exists axs, (Forall (IsAxiom PeanoTheory) axs /\ Pr ?l (axs ⊢ ?A))%type => 
+    let form := parse A in  
+    exists (induction_schema form :: axioms_list); set (Γ := induction_schema form :: axioms_list); set (rec := induction_schema form); split;
       [ apply Forall_forall; intros x H; destruct H;
         [ simpl; unfold IsAx; right; exists form ; split;
           [ auto | split; [ auto | auto ]] | 
-        simpl; unfold IsAx; left; assumption ] |
+          simpl; unfold IsAx; left; assumption ] |
+        repeat apply R_Imp_i;
         eapply R_Imp_e;
-        [ apply R_Ax; unfold induction_schema; apply in_eq | simpl; apply R_And_i; cbn ]
+        [ apply R_Ax; unfold induction_schema; cbm; intuition | simpl; apply R_And_i; cbn ]
       ]; cbm
     (* | _ => idtac *)
   end.
+
             
 (** Some basic proofs in Peano arithmetics. *)
 
@@ -281,13 +290,12 @@ Qed.
  
 Lemma Comm :
   IsTheorem Intuiti PeanoTheory
-            (∀ (#0 = #0 + Zero) -> ∀∀ (Succ(#1 + #0) = #1 + Succ(#0)) ->
-               ∀∀ (#0 + #1 = #1 + #0)).
+            ((∀ #0 = #0 + Zero) -> (∀∀ Succ(#1 + #0) = #1 + Succ(#0)) ->
+               (∀∀ #0 + #1 = #1 + #0)).
 Proof.
-  assert (IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)) -> IsTheorem Intuiti PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Succ(#0)) -> ∀∀ (#0 + #1 = #1 + #0)) -> IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero) -> ∀∀ (Succ(#1 + #0) = #1 + Succ(#0)) -> ∀∀ (#0 + #1 = #1 + #0))).
-  { apply ModusPonens. }
-apply ModusPonens with (A := ∀ (#0 = #0 + Zero)).
-
+  thm.
+  rec.
+  set (Γ' := _ :: _ :: Γ).
 
 (** A Coq model of this Peano theory, based on the [nat] type *)
 

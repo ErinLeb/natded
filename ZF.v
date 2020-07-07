@@ -26,7 +26,7 @@ Definition compat_right := ∀∀∀ (#0 ∈ #1 /\ #1 = #2 -> #0 ∈ #2).
 
 Definition ext := ∀∀ (∀ (#2 ∈ #0 <-> #2 ∈ #1) -> #0 = #1).
 Definition pairing := ∀∀∃∀ (#3 ∈ #2 <-> #3 = #0 \/ #3 = #1).
-Definition union := ∀∃∀ (#2 ∈ #1 <-> ∃ (#3 ∈ #0 /\ #2 ∈ #3).
+Definition union := ∀∃∀ (#2 ∈ #1 <-> ∃ (#3 ∈ #0 /\ #2 ∈ #3)).
 Definition powerset := ∀∃∀ (#2 ∈ #1 <-> ∀ (#3 ∈ #2 -> #3 ∈ #0)).
 Definition infinity := ∃ (∃ (#1 ∈ #0 /\ ∀ not #2 ∈ #1) /\ ∀ (#3 ∈ #0 -> (∃ (#4 ∈ #0 /\ (∀ (#5 ∈ #4 <-> #5 = #3 \/ #5 ∈ #3)))))).
 

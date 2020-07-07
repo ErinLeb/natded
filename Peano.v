@@ -406,7 +406,7 @@ Proof.
  unfold PeanoTheory. simpl.
  unfold PeanoAx.IsAx.
  intros [IN|(B & -> & CK & CL)].
- - compute in IN. calc; subst; cbn; intros; subst; omega.
+ - compute in IN. intuition; subst; cbn; intros; subst; omega.
  - intros genv.
    unfold PeanoAx.induction_schema.
    apply interp_nforall.

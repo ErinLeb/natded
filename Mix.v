@@ -288,7 +288,7 @@ Infix "\/" := (Op Or) : formula_scope.
 Infix "->" := (Op Impl) : formula_scope.
 Infix "<->" := Iff : formula_scope.
 
-Notation "# n" := (BVar n) (at level 20) : formula_scope.
+Notation "# n" := (BVar n) (at level 20, format "# n") : formula_scope.
 
 Notation "∀ A" := (Quant All A)
  (at level 200, right associativity) : formula_scope.

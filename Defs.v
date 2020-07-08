@@ -78,7 +78,6 @@ Definition zf_sign :=
   {| Finite.funsymbs := [];
      Finite.predsymbs := [("=",2);("∈",2)] |}.
 
-
 (** Sets of names *)
 
 Module Names.

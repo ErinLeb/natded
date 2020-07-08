@@ -193,12 +193,12 @@ Proof.
   + simpl. unfold IsAx. left. assumption.
 Qed.
 
-Lemma rec0_rule l G A_x :
+Lemma rec0_rule l Γ A_x :
   BClosed (∀ A_x) ->
-  In (induction_schema A_x) G ->
-  Pr l (G ⊢ bsubst 0 Zero A_x) ->
-  Pr l (G ⊢ ∀ (A_x -> bsubst 0 (Succ(#0)) A_x)) ->
-  Pr l (G ⊢ ∀ A_x).
+  In (induction_schema A_x) Γ ->
+  Pr l (Γ ⊢ bsubst 0 Zero A_x) ->
+  Pr l (Γ ⊢ ∀ (A_x -> bsubst 0 (Succ(#0)) A_x)) ->
+  Pr l (Γ ⊢ ∀ A_x).
 Proof.
   intros.
   eapply R_Imp_e.
@@ -211,7 +211,7 @@ Proof.
     apply H0.
   + simpl.
     apply R_And_i; cbn.
-    * set (v := fresh (fvars (G ⊢ ∀ bsubst 0 Zero A_x)%form)).
+    * set (v := fresh (fvars (Γ ⊢ ∀ bsubst 0 Zero A_x)%form)).
       apply R_All_i with (x:=v).
       apply fresh_ok.
       rewrite form_level_bsubst_id.
@@ -347,7 +347,7 @@ Proof.
     - trans (Succ (y + x)).
       * ahered.
         assert (Pr Intuiti ((∀ #0 + y = y + #0) :: Γ' ⊢ ∀ #0 + y = y + #0)). { apply R_Ax. apply in_eq. }
-                                                                                                           apply R_All_e with (t := x) in H; auto.
+        apply R_All_e with (t := x) in H; auto.
       * sym.
         inst_axiom ax10 [y; x].
 Qed.

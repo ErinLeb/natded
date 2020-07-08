@@ -11,21 +11,50 @@ Local Open Scope eqb_scope.
 (** On the necessity of a non trivial set theory : Russell's paradox. *)
 
 (*  The naive set theory consists of the non restricted comprehension axiom schema :
-    ∀ x1, ..., ∀ xn, ∃ E, ∀ y (y ∈ E <-> A),
-      forall formula A whose free variable are x1, ..., xn. *)
+    ∀ x1, ..., ∀ xn, ∃ a, ∀ y (y ∈ a <-> A),
+      forall formula A whose free variable are amongst x1, ..., xn, y. *)
 
-Definition naive_sign :=
-  (* So as to make the proof easier, we assume there is a constant E in the signature of the theory.
-     This could be avoided by transforming the statement of the paradox into "∃∀ (#0 ∈ #1 <-> ~(#0 ∈ #0))". *)
-  {| Finite.funsymbs := [("E",0)];
-     Finite.predsymbs := [("∈",2)] |}.
+Notation "x ∈ y" := (Pred "∈" [x;y]) (at level 70) : formula_scope.
 
 Open Scope formula_scope.
 
-(* It is easy to notice that ∀ (#0 ∈ A <-> ~(#0 ∈ #0)) is (almost) an instance of the comprehension axiom schema : it suffices to let A = . *)
-Lemma Russell : Pr Intuiti ([ ∀ (#0 ∈ E <-> ~(#0 ∈ #0)) ] ⊢ False).
+(* So as to make the proof easier we Skolemise the instance of the comprehension axiom schema into
+   ∀ y, (y ∈ a <-> A).
+   It is easy to notice that ∀ (#0 ∈ A <-> ~(#0 ∈ #0)) is (almost) an instance of the comprehension
+   axiom schema : it suffices to let A = ~ (a ∈ a). *)
+Lemma Russell a : Pr Intuiti ([ ∀ (#0 ∈ (FVar a) <-> ~(#0 ∈ #0)) ] ⊢ False).
 Proof.
-  
+  set (comp := ∀ _ <-> _).
+  set (Γ := [comp]).
+  set (A := FVar a).
+  apply R_Not_e with (A := A ∈ A).
+  + apply R_Imp_e with (A := ~ A ∈ A).
+    - apply R_And_e2 with (A := (A ∈ A -> ~ A ∈ A)).
+      assert (Pr Intuiti (Γ ⊢ comp)). { apply R_Ax. compute; intuition. }
+      apply R_All_e with (t := FVar a) in H; auto.
+    - apply R_Not_i.
+      set (Γ' := (_ :: Γ)).
+      apply R_Not_e with (A := A ∈ A).
+      * apply R_Ax. compute; intuition.
+      * apply R_Imp_e with (A := A ∈ A).
+        ++ apply R_And_e1 with (B := (~ A ∈ A -> A ∈ A)).
+           assert (Pr Intuiti (Γ' ⊢ comp)). { apply R_Ax. compute; intuition. }
+           apply R_All_e with (t := FVar a) in H; auto.
+        ++ apply R_Ax. compute; intuition.
+  + apply R_Not_i.
+      set (Γ' := (_ :: Γ)).
+      apply R_Not_e with (A := A ∈ A).
+      * apply R_Ax. compute; intuition.
+      * apply R_Imp_e with (A := A ∈ A).
+        ++ apply R_And_e1 with (B := (~ A ∈ A -> A ∈ A)).
+           assert (Pr Intuiti (Γ' ⊢ comp)). { apply R_Ax. compute; intuition. }
+           apply R_All_e with (t := FVar a) in H; auto.
+        ++ apply R_Ax. compute; intuition.
+Qed.
+
+(* Russell's paradox therefore shows that the naive set theory is inconsistant.
+   We are to try to fix it, using ZF(C) theory, which has not been proved inconstitant so far
+   (neither has it been proved consistant though...). *)
 
 (** The ZF axioms *)
 
@@ -56,7 +85,7 @@ Definition axioms_list :=
     only since it contains now a [lift] of substituted terms inside
     quantifiers. *)
 
-Definition comprehension_schema A :=
+Definition separation_schema A :=
   nForall
     (Nat.pred (level A)-2)
     (∀∃∀ (#0 ∈ #1 <-> #0 ∈ #2 /\ A)).
@@ -70,7 +99,7 @@ Local Close Scope formula_scope.
 
 Definition IsAx A :=
   List.In A axioms_list \/
-  (exists B, A = comprehension_schema B /\
+  (exists B, A = separation_schema B /\
             check ZFSign B = true /\
             FClosed B).
   \/
@@ -84,7 +113,7 @@ Proof.
  - apply Wf_iff.
    unfold axioms_list in IN.
    simpl in IN. intuition; subst; reflexivity.
- - repeat split; unfold comprehension_schema; cbn.
+ - repeat split; unfold separation_schema; cbn.
    + rewrite nForall_check. cbn.
      rewrite !check_bsubst, HB; auto.
    + red. rewrite nForall_level. cbn.
@@ -124,15 +153,15 @@ Proof.
      unfold FClosed in *. intuition.
 Qed.
 
-End PeanoAx.
+End ZFAx.
 
 Local Open Scope string.
 Local Open Scope formula_scope.
 
-Definition PeanoTheory :=
+Definition ZFTheory :=
  {| sign := PeanoSign;
     IsAxiom := PeanoAx.IsAx;
     WfAxiom := PeanoAx.WfAx |}.
 
 
-Import PeanoAx.
+Import ZFAx.

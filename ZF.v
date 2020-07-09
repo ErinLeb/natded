@@ -12,7 +12,7 @@ Local Open Scope eqb_scope.
 
 (*  The naive set theory consists of the non restricted comprehension axiom schema :
     ∀ x1, ..., ∀ xn, ∃ a, ∀ y (y ∈ a <-> A),
-      forall formula A whose free variable are amongst x1, ..., xn, y. *)
+      forall formula A whose free variables are amongst x1, ..., xn, y. *)
 
 Notation "x ∈ y" := (Pred "∈" [x;y]) (at level 70) : formula_scope.
 
@@ -101,7 +101,7 @@ Definition IsAx A :=
   List.In A axioms_list \/
   (exists B, A = separation_schema B /\
             check ZFSign B = true /\
-            FClosed B).
+            FClosed B)
   \/
   (exists B, A = replacement_schema B /\
              check ZFSign B = true /\
@@ -109,14 +109,17 @@ Definition IsAx A :=
 
 Lemma WfAx A : IsAx A -> Wf ZFSign A.
 Proof.
- intros [ IN | (B & -> & HB & HB') ].
+ intros [ IN | [ (B & -> & HB & HB') | (C & -> & HC & HC') ] ].
  - apply Wf_iff.
    unfold axioms_list in IN.
    simpl in IN. intuition; subst; reflexivity.
  - repeat split; unfold separation_schema; cbn.
    + rewrite nForall_check. cbn.
-     rewrite !check_bsubst, HB; auto.
-   + red. rewrite nForall_level. cbn.
+     apply andb_true_iff.
+     split.
+     * assumption.
+     * apply orb_true_iff. left. assumption.
+   + red. rewrite nForall_level. SearchAbout level.
      assert (level (bsubst 0 Zero B) <= level B).
      { apply level_bsubst'. auto. }
      assert (level (bsubst 0 (Succ(BVar 0)) B) <= level B).

@@ -85,14 +85,23 @@ Definition axioms_list :=
     only since it contains now a [lift] of substituted terms inside
     quantifiers. *)
 
+Fixpoint occur_term n t :=
+  match t with
+  | BVar m => n =? m
+  | FVar _ => false
+  | Fun _ l => existsb (occur_term n) l
+  end.
+
+Axiom occur_form : nat -> formula -> bool. (* TODO *)
+
 Definition separation_schema A :=
   nForall
-    (Nat.pred (level A)-2)
-    (∀∃∀ (#0 ∈ #1 <-> #0 ∈ #2 /\ A)).
+    ((level A)-3)
+    (∀∃∀ (#0 ∈ #1 <-> (#0 ∈ #2 /\ A))).
 
 Definition replacement_schema A :=
   nForall
-    (Nat.pred (level A)-2)
+    (Nat.pred (level A)-3)
     (∀(∀ (#0 ∈ #1 -> (∃ (A /\ ∀ ((bsubst 1 (#0) A) -> #0 = #1)))) -> ∃∀ (#0 ∈ #2 -> ∃ (#0 ∈ #3 /\ A)))).
 
 Local Close Scope formula_scope.
@@ -100,12 +109,23 @@ Local Close Scope formula_scope.
 Definition IsAx A :=
   List.In A axioms_list \/
   (exists B, A = separation_schema B /\
+            occur_form 1 B = false /\
             check ZFSign B = true /\
             FClosed B)
   \/
   (exists B, A = replacement_schema B /\
              check ZFSign B = true /\
              FClosed B).
+
+Lemma aux A B : level (A <-> B)%form = Nat.max (level A) (level B).
+Proof.
+ cbn. omega with *.
+Qed.
+
+Lemma aux2 q A : level (Quant q A)%form = Nat.pred (level A).
+Proof.
+ cbn. reflexivity.
+Qed.
 
 Lemma WfAx A : IsAx A -> Wf ZFSign A.
 Proof.
@@ -119,7 +139,10 @@ Proof.
      split.
      * assumption.
      * apply orb_true_iff. left. assumption.
-   + red. rewrite nForall_level. SearchAbout level.
+   + red. rewrite nForall_level. rewrite !aux2, aux.
+     cbn -[Nat.max].
+     simpl (Nat.max 1 _).
+     rewrite Nat.max_assoc. simpl (Nat.max 2 3). omega with *. (* TODO *)
      assert (level (bsubst 0 Zero B) <= level B).
      { apply level_bsubst'. auto. }
      assert (level (bsubst 0 (Succ(BVar 0)) B) <= level B).

@@ -52,9 +52,9 @@ Proof.
         ++ apply R_Ax. compute; intuition.
 Qed.
 
-(* Russell's paradox therefore shows that the naive set theory is inconsistant.
-   We are to try to fix it, using ZF(C) theory, which has not been proved inconstitant so far
-   (neither has it been proved consistant though...). *)
+(* Russell's paradox therefore shows that the naive set theory is inconsistent.
+   We are to try to fix it, using ZF(C) theory, which has not been proved inconstitent so far
+   (neither has it been proved consistent though...). *)
 
 (** The ZF axioms *)
 
@@ -81,10 +81,6 @@ Definition infinity := ∃ (∃ (#0 ∈ #1 /\ ∀ ~(#0 ∈ #1)) /\ ∀ (#0 ∈ #
 Definition axioms_list :=
  [ eq_refl; eq_sym; eq_trans; compat_left; compat_right; ext; pairing; union; powerset; infinity ].
 
-(** Beware, [bsubst] is ok below for turning [#0] into [Succ #0], but
-    only since it contains now a [lift] of substituted terms inside
-    quantifiers. *)
-
 Fixpoint occur_term n t :=
   match t with
   | BVar m => n =? m
@@ -92,16 +88,25 @@ Fixpoint occur_term n t :=
   | Fun _ l => existsb (occur_term n) l
   end.
 
-Axiom occur_form : nat -> formula -> bool. (* TODO *)
+Fixpoint occur_form n f :=
+  match f with
+    | True => false
+    | False => false
+    | Pred _ l => existsb (occur_term n) l
+    | Not f' => occur_form n f'
+    | Op _ f1 f2 => (occur_form n f1) &&& (occur_form n f2)
+    | Quant Ex f' => occur_form n f'
+    | Quant All f' => occur_form (n+1) f'
+  end.
 
 Definition separation_schema A :=
   nForall
-    ((level A)-3)
+    ((level A) - 3)
     (∀∃∀ (#0 ∈ #1 <-> (#0 ∈ #2 /\ A))).
 
 Definition replacement_schema A :=
   nForall
-    (Nat.pred (level A)-3)
+    ((level A) - 4)
     (∀(∀ (#0 ∈ #1 -> (∃ (A /\ ∀ ((bsubst 1 (#0) A) -> #0 = #1)))) -> ∃∀ (#0 ∈ #2 -> ∃ (#0 ∈ #3 /\ A)))).
 
 Local Close Scope formula_scope.
@@ -114,6 +119,7 @@ Definition IsAx A :=
             FClosed B)
   \/
   (exists B, A = replacement_schema B /\
+             occur_form 1 B = false /\
              check ZFSign B = true /\
              FClosed B).
 
@@ -127,9 +133,29 @@ Proof.
  cbn. reflexivity.
 Qed.
 
+Lemma aux3 A B a : Names.In a (fvars (A <-> B)%form) -> Names.In a (Names.union (fvars A) (fvars B)).
+Proof.
+  cbn.
+  unfold Names.Equal.
+  intros.
+  apply Names.union_spec. apply Names.union_spec in H.
+  destruct H.
+  - apply Names.union_spec in H. destruct H.
+    * left. assumption.
+    * right. assumption.
+  - apply Names.union_spec in H. destruct H.
+    * right. assumption.
+    * left. assumption.
+Qed.
+
+Lemma aux4 A B a : Names.In a (fvars (A /\ B)%form) -> Names.In a (Names.union (fvars A) (fvars B)).
+Proof.
+  cbn. easy.
+Qed.
+
 Lemma WfAx A : IsAx A -> Wf ZFSign A.
 Proof.
- intros [ IN | [ (B & -> & HB & HB') | (C & -> & HC & HC') ] ].
+ intros [ IN | [ (B & -> & HB & HB' & HB'') | (C & -> & HC & HC' & HC'') ] ].
  - apply Wf_iff.
    unfold axioms_list in IN.
    simpl in IN. intuition; subst; reflexivity.
@@ -142,24 +168,24 @@ Proof.
    + red. rewrite nForall_level. rewrite !aux2, aux.
      cbn -[Nat.max].
      simpl (Nat.max 1 _).
-     rewrite Nat.max_assoc. simpl (Nat.max 2 3). omega with *. (* TODO *)
-     assert (level (bsubst 0 Zero B) <= level B).
-     { apply level_bsubst'. auto. }
-     assert (level (bsubst 0 (Succ(BVar 0)) B) <= level B).
-     { apply level_bsubst'. auto. }
-     omega with *.
-   + apply nForall_fclosed. red. cbn.
-     assert (FClosed (bsubst 0 Zero B)).
-     { red. rewrite bsubst_fvars.
-       intro x. rewrite Names.union_spec. cbn. red in HB'. intuition. }
-     assert (FClosed (bsubst 0 (Succ(BVar 0)) B)).
-     { red. rewrite bsubst_fvars.
-       intro x. rewrite Names.union_spec. cbn - [Names.union].
-       rewrite Names.union_spec.
-       generalize (HB' x) (@Names.empty_spec x). intuition. }
-     unfold FClosed in *. intuition.
-- repeat split; unfold replacement_schema; cbn.
+     rewrite Nat.max_assoc. simpl (Nat.max 2 3). omega with *.
+   + apply nForall_fclosed. red. unfold Names.Empty. intro a. intro.
+     apply aux3 in H. apply Names.union_spec in H.
+     destruct H.
+     * cbn in H. easy.
+     * apply aux4 in H. apply Names.union_spec in H. destruct H.
+       -- cbn in H. easy.
+       -- unfold FClosed in HB''. unfold Names.Empty in HB''. destruct HB'' with (a := a). assumption.
+ - repeat split; unfold replacement_schema; cbn.
    + rewrite nForall_check. cbn.
+     apply andb_true_iff.
+     split.
+     * apply andb_true_iff.
+       split; [ assumption | ].
+       apply orb_true_iff.
+       left.
+       cbn.
+       (* TODO *)
      rewrite !check_bsubst, HB; auto.
    + red. rewrite nForall_level. cbn.
      assert (level (bsubst 0 Zero B) <= level B).

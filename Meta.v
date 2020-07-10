@@ -1832,3 +1832,79 @@ Proof.
  - rewrite !map_map. apply map_ext_iff.
    rewrite Forall_forall in IH; auto.
 Qed.
+
+(* A few examples of proofs in NJ1 and NK1 (Samuel). *)
+
+Lemma ex1 f1 f2 : Provable Intuiti ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
+Proof.
+  apply Provable_alt.
+  apply R_Imp_i.
+  apply R_Or_i1.
+  apply R_And_e1 with (B := f2).
+  apply R_Ax.
+  apply in_eq.
+Qed.
+
+Lemma ex2 f1 f2 f3 : Provable Intuiti ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
+Proof.
+  apply Provable_alt.
+  apply R_And_i.
+  + apply R_Imp_i.
+    apply R_Imp_i.
+    apply R_Imp_e with (A := f2).
+    - apply R_Imp_e with (A := f1).
+      * apply R_Ax. apply in_cons. apply in_eq.
+      * apply R_And_e1 with (B := f2). apply R_Ax. apply in_eq.
+    - apply R_And_e2 with (A := f1). apply R_Ax. apply in_eq.
+  + apply R_Imp_i.
+    apply R_Imp_i.
+    apply R_Imp_i.
+    apply R_Imp_e with (A := (f1 /\ f2)%form).
+    - apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
+    - apply R_And_i; apply R_Ax.
+      * apply in_cons. apply in_eq.
+      * apply in_eq.
+Qed.
+
+Lemma RAA f1 Γ : Pr Classic (Γ ⊢ ~~f1) -> Pr Classic (Γ ⊢ f1).
+Proof.
+  intro.
+  apply R_Absu.
+  + reflexivity.
+  + apply R_Not_e with (A := (~ f1)%form).
+    - apply R_Ax. apply in_eq.
+    - apply Pr_pop. exact H.
+Qed.
+
+Lemma DeMorgan f1 f2 Γ : Pr Classic (Γ ⊢ ~(~f1 /\ f2)) -> Pr Classic (Γ ⊢ ~~(f1 \/ ~f2)).
+Proof.
+  intro.
+  apply R_Not_i.
+  apply R_Not_e with (A := (~f1 /\ f2)%form).
+  + apply RAA with (f1 := (~f1 /\ f2)%form).
+    apply R_Not_i.
+    apply R_Not_e with (A := (f1\/~f2)%form).
+    - apply R_Or_i1.
+      apply RAA.
+      apply R_Not_i.
+      apply R_Not_e with (A := (f1\/~f2)%form).
+      * apply R_Or_i2. apply R_Not_i. apply R_Not_e with (A := (~f1 /\ f2)%form).
+        ++ apply R_And_i.
+           -- apply R_Ax. apply in_cons. apply in_eq.
+           -- apply R_Ax. apply in_eq.
+        ++ apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
+      * apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
+    - apply R_Ax. apply in_cons. apply in_eq.
+  + apply Pr_pop. exact H.
+Qed.
+
+Lemma ExcludedMiddle f1 : Provable Classic ([] ⊢ f1 \/ ~f1).
+Proof.
+  apply Provable_alt.
+  apply RAA.
+  apply DeMorgan with (f2 := f1) (Γ := []).
+  apply R_Not_i.
+  apply R_Not_e with (A := f1).
+  + apply R_And_e2 with (A := (~f1)%form). apply R_Ax. apply in_eq.
+  + apply R_And_e1 with (B := f1). apply R_Ax. apply in_eq.
+Qed.

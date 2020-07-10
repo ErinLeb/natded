@@ -1397,13 +1397,11 @@ Proof.
       f_equal. apply restrict_bsubst.
   - rewrite restrict_bsubst.
     constructor.
-    + now apply restrict_term_bclosed.
     + apply IHValid; namedec.
-    + unfold Claim. rewrite claim_restrict. now rewrite H2.
+    + unfold Claim. rewrite claim_restrict. now rewrite H1.
   - constructor.
-    + now apply restrict_term_bclosed.
     + apply IHValid; namedec.
-    + unfold Claim. rewrite claim_restrict. rewrite H2.
+    + unfold Claim. rewrite claim_restrict. rewrite H1.
       cbn. now rewrite restrict_bsubst.
   - apply V_Ex_e with (restrict sign x A).
     + cbn. rewrite restrict_ctx_fvars, !restrict_form_fvars. namedec.
@@ -1520,10 +1518,6 @@ Definition forcelevel_ctx x (c:context) :=
 
 Definition forcelevel_seq x '(c ⊢ f) :=
  forcelevel_ctx x c ⊢ forcelevel 0 x f.
-
-(** Normally the witnesses in [rule_kind] are already BClosed,
-    at least for valid derivations. Forcing it nonetheless
-    allow to write a few lemmas below without preconditions. *)
 
 Definition forcelevel_rule x r :=
  match r with
@@ -1717,26 +1711,25 @@ Proof.
  - f_equal. rewrite !map_map. apply map_ext_iff; auto.
 Qed.
 
-Lemma forcelevel_bsubst_term' n x (u t:term) :
-  level u <= n ->
-  forcelevel_term n x (bsubst n u t) =
-  bsubst n u (forcelevel_term (S n) x t).
+Lemma forcelevel_lift n x u :
+  forcelevel_term (S n) x (lift u) = lift (forcelevel_term n x u).
 Proof.
- intros Hu.
- rewrite forcelevel_bsubst_term. f_equal.
- now apply forcelevel_term_id.
+ induction u using term_ind'; simpl; auto.
+ - change (S n0 <? S n) with (n0 <? n).
+   case Nat.ltb_spec; simpl; auto.
+ - f_equal. rewrite !map_map. apply map_ext_in; auto.
 Qed.
 
 Lemma forcelevel_bsubst n x u f :
-  level u <= n ->
   forcelevel n x (bsubst n u f) =
-  bsubst n u (forcelevel (S n) x f).
+  bsubst n (forcelevel_term n x u) (forcelevel (S n) x f).
 Proof.
  revert n u.
  induction f; cbn; intros; f_equal; auto.
- rewrite !map_map. apply map_ext_iff.
- auto using forcelevel_bsubst_term'.
- apply IHf. transitivity (S (level u)). apply level_lift. omega.
+ - rewrite !map_map. apply map_ext_iff.
+   auto using forcelevel_bsubst_term.
+ - rewrite IHf.
+   f_equal. apply forcelevel_lift.
 Qed.
 
 Ltac solver' :=
@@ -1760,16 +1753,14 @@ Proof.
    + apply IHValid. namedec.
    + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
      rewrite forcelevel_bsubst; auto.
- - rewrite forcelevel_bsubst by now rewrite H0.
-   rewrite forcelevel_term_id by now rewrite H0.
+ - rewrite forcelevel_bsubst.
    constructor; auto.
    + apply IHValid; namedec.
-   + unfold Claim. now rewrite claim_forcelevel, H2.
- - rewrite forcelevel_term_id by now rewrite H0.
-   constructor; auto.
+   + unfold Claim. now rewrite claim_forcelevel, H1.
+ - constructor; auto.
    + apply IHValid. namedec.
-   + unfold Claim; rewrite claim_forcelevel, H2. cbn. f_equal.
-     apply forcelevel_bsubst; now rewrite H0.
+   + unfold Claim; rewrite claim_forcelevel, H1. cbn. f_equal.
+     apply forcelevel_bsubst.
  - apply V_Ex_e with (forcelevel 1 x A).
    + cbn. rewrite forcelevel_ctx_fvars, !forcelevel_fvars. namedec.
    + apply IHValid1. namedec.

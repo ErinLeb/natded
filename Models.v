@@ -631,17 +631,16 @@ Proof.
  intros WFt (WFA & axs & F & P).
  split. apply Wf_bsubst; auto.
  exists axs. split; auto.
- apply R_All_e; auto. apply WFt.
 Qed.
 
-Lemma thm_ex_i logic A t : Wf th (∃A) -> Wf_term th t ->
+Lemma thm_ex_i logic A t : Wf th (∃A) ->
  IsTheorem logic th (bsubst 0 t A) ->
  IsTheorem logic th (∃A).
 Proof.
- intros WFA WFt (_ & axs & F & P).
+ intros WFA (_ & axs & F & P).
  split; auto.
  exists axs. split; auto.
- apply R_Ex_i with t; auto. apply WFt.
+ apply R_Ex_i with t; auto.
 Qed.
 
 

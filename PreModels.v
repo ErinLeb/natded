@@ -403,15 +403,21 @@ Qed.
 Lemma coherence logic : CoqRequirements logic ->
  forall (d:derivation),
  Valid logic d ->
- BClosed d ->
  ~Claim d ([]⊢False).
 Proof.
- intros CR d VD CL E.
- red in E.
+ intros CR d VD E.
+ destruct (exist_fresh (fvars d)) as (x,Hx).
+ assert (VD' := forcelevel_deriv_valid logic x d Hx VD).
+ assert (BC' := forcelevel_deriv_bclosed x d).
+ set (d' := forcelevel_deriv x d) in *.
+ assert (E' : Claim d' ([] ⊢ False)).
+ { unfold d', Claim. now rewrite claim_forcelevel, E. }
+ clearbody d'.
+ red in E'.
  set (genv := fun (_:variable) => Mo.(someone)).
- assert (interp_seq genv [] (claim d)).
+ assert (interp_seq genv [] (claim d')).
  { apply correctness with logic; auto. }
- rewrite E in H. cbn in *. apply H. intros A. destruct 1.
+ rewrite E' in H. cbn in *. apply H. intros A. destruct 1.
 Qed.
 
 End PREMODEL.

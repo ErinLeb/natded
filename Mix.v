@@ -329,8 +329,8 @@ Instance form_level : Level formula :=
     Note : we try to do something sensible when [t] has itself some
     bounded variables (we lift them when entering [f]'s quantifiers).
     But this situtation is nonetheless to be used with caution.
-    Actually, we'll almost always use [bsubst] when [t] is [BClosed],
-    except in [Peano.v]. *)
+    Actually, we'll mostly use [bsubst] when [t] is [BClosed].
+    Notable exception : induction schema in Peano.v *)
 
 Instance form_bsubst : BSubst formula :=
  fix form_bsubst n t f :=
@@ -514,22 +514,26 @@ Instance vmap_rule : VMap rule_kind :=
 (** Validity of a derivation : is it using correct rules
     of classical logic (resp. intuitionistic logic) ? *)
 
-(** Note that we require the witness terms in rules ∀e and ∃i
-    to be [BClosed] (i.e. without any [BVar]). Otherwise
-    awkward things may happen due to our implementation
-    of [bsubst].
+(** Note : this validity notion does *not* ensure that
+    the terms and formulas in this derivation are well-formed
+    (i.e. have no unbound [BVar] variables and properly use
+    the symbols of a signature). We will see later how to
+    "force" a derivation to be well-formed (see [Meta.forcelevel]
+    and [Meta.restrict]).
 
-    For instance think of [∀ ∃ ~(Pred "=" [#0;#1])] i.e.
+    In particular, forcing here all formulas to be [BClosed] would
+    be tedious. See for instance [Fa_e] below, any formula can be
+    deduced from [False], even non-well-formed ones. In a former
+    version of this work, [BClosed] conditions were imposed on
+    [All_e] and [Ex_i] witnesses [t], but this isn't mandatory
+    anymore now that [subst] incorporates a [lift] operation.
+
+    Example of earlier issue : consider [∀ ∃ ~(Pred "=" [#0;#1])] i.e.
     [∀x∃y,x≠y], a possible way of saying that the world isn't
-    a singleton. With an unrestricted ∀e, we could deduce
-    [bsubst 0 (#0) (∃ ~(Pred "=" [#0;#1]))] which reduces
-    to [∃ ~(Pred "=" [#0;#0])], a formula negating the reflexivity
-    of equality !
-
-    Apart from these witnesses, the rest of the derivation
-    could technically have unbounded variables, even though
-    we intend all derivations to be [BClosed]. We will be able
-    to force this later on (see [Meta.forcelevel])
+    a singleton. By [∀e] we can deduce
+    [bsubst 0 (#0) (∃ ~(Pred "=" [#0;#1]))], and without [lift] this
+    was reducing to [∃ ~(Pred "=" [#0;#0])], a formula negating
+    the reflexivity of equality !
 *)
 
 Definition valid_deriv_step logic '(Rule r s ld) :=
@@ -555,9 +559,9 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
      (Γ =? Γ') &&& (A' =? bsubst 0 (FVar x) A)
      &&& negb (Names.mem x (fvars (Γ⊢A)))
   | All_e t, (Γ ⊢ B), [Γ'⊢ ∀A] =>
-    (Γ =? Γ') &&& (B =? bsubst 0 t A) &&& (level t =? 0)
+    (Γ =? Γ') &&& (B =? bsubst 0 t A)
   | Ex_i t,  (Γ ⊢ ∃A), [Γ'⊢B] =>
-    (Γ =? Γ') &&& (B =? bsubst 0 t A) &&& (level t =? 0)
+    (Γ =? Γ') &&& (B =? bsubst 0 t A)
   | Ex_e x,  s, [Γ⊢∃A; A'::Γ'⊢B] =>
      (s =? (Γ ⊢ B)) &&& (Γ' =? Γ)
      &&& (A' =? bsubst 0 (FVar x) A)
@@ -765,10 +769,10 @@ Inductive Valid (l:logic) : derivation -> Prop :=
      Valid l d -> Claim d (Γ ⊢ bsubst 0 (FVar x) A) ->
      Valid l (Rule (All_i x) (Γ ⊢ ∀A) [d])
  | V_All_e t d Γ A :
-     BClosed t -> Valid l d -> Claim d (Γ ⊢ ∀A) ->
+     Valid l d -> Claim d (Γ ⊢ ∀A) ->
      Valid l (Rule (All_e t) (Γ ⊢ bsubst 0 t A) [d])
  | V_Ex_i t d Γ A :
-     BClosed t -> Valid l d -> Claim d (Γ ⊢ bsubst 0 t A) ->
+     Valid l d -> Claim d (Γ ⊢ bsubst 0 t A) ->
      Valid l (Rule (Ex_i t) (Γ ⊢ ∃A) [d])
  | V_Ex_e x d1 d2 Γ A B :
      ~Names.In x (fvars (A::Γ⊢B)) ->
@@ -879,10 +883,8 @@ Inductive Pr (l:logic) : sequent -> Prop :=
  | R_All_i x Γ A : ~Names.In x (fvars (Γ ⊢ A)) ->
                    Pr l (Γ ⊢ bsubst 0 (FVar x) A) ->
                    Pr l (Γ ⊢ ∀A)
- | R_All_e t Γ A : BClosed t -> Pr l (Γ ⊢ ∀A) ->
-                   Pr l (Γ ⊢ bsubst 0 t A)
- | R_Ex_i t Γ A : BClosed t -> Pr l (Γ ⊢ bsubst 0 t A) ->
-                  Pr l (Γ ⊢ ∃A)
+ | R_All_e t Γ A : Pr l (Γ ⊢ ∀A) -> Pr l (Γ ⊢ bsubst 0 t A)
+ | R_Ex_i t Γ A : Pr l (Γ ⊢ bsubst 0 t A) -> Pr l (Γ ⊢ ∃A)
  | R_Ex_e x Γ A B : ~Names.In x (fvars (A::Γ⊢B)) ->
       Pr l (Γ ⊢ ∃A) -> Pr l ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
       Pr l (Γ ⊢ B)

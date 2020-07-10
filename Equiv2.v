@@ -159,12 +159,8 @@ Proof.
    + rewrite V. symmetry. apply nam2mix_bsubst0_var.
    + rewrite U, V, nam2mix_ctx_fvars.
      rewrite nam2mix_fvars. simpl. namedec.
- - rewrite nam2mix_subst_bsubst0.
-   rewrite nam2mix_term_bclosed, eqb_refl.
-   apply andb_true_r.
- - rewrite nam2mix_subst_bsubst0.
-   rewrite nam2mix_term_bclosed, eqb_refl.
-   apply andb_true_r.
+ - rewrite nam2mix_subst_bsubst0; auto.
+ - rewrite nam2mix_subst_bsubst0; auto.
  - cbn.
    apply eq_true_iff_eq.
    rewrite !andb_true_iff.

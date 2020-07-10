@@ -225,6 +225,15 @@ Fixpoint lift t :=
  | Fun f args => Fun f (List.map lift args)
  end.
 
+(* +1 sur les dB >= k *)
+
+Fixpoint lift_above k t :=
+ match t with
+ | BVar n => if (k <=? n)%nat then BVar (S n) else t
+ | FVar v => FVar v
+ | Fun f args => Fun f (List.map (lift_above k) args)
+ end.
+
 (** Formulas *)
 
 Inductive formula :=
@@ -383,6 +392,16 @@ Compute eqb
         (∀ (Pred "A" [ #0 ] -> Pred "A" [ #0 ]))%form
         (∀ (Pred "A" [FVar "z"] -> Pred "A" [FVar "z"]))%form.
 
+(* +1 sur les dB >= k *)
+
+Fixpoint lift_form_above k f :=
+ match f with
+ | True | False => f
+ | Pred p l => Pred p (map (lift_above k) l)
+ | Not f => Not (lift_form_above k f)
+ | Op o f f' => Op o (lift_form_above k f) (lift_form_above k f')
+ | Quant q f => Quant q (lift_form_above (S k) f)
+ end.
 
 (** Contexts *)
 

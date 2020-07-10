@@ -90,36 +90,48 @@ Fixpoint occur_term n t :=
 
 Fixpoint occur_form n f :=
   match f with
-    | True => false
-    | False => false
+    | True | False => false
     | Pred _ l => existsb (occur_term n) l
     | Not f' => occur_form n f'
     | Op _ f1 f2 => (occur_form n f1) &&& (occur_form n f2)
-    | Quant Ex f' => occur_form n f'
-    | Quant All f' => occur_form (n+1) f'
+    | Quant _ f' => occur_form (S n) f'
   end.
+
+(* POUR SEPARATION:
+  dB dans A :  0=>x 1=>a n>=2:z_i
+  dB dans (lift_above 1 A) 0=>x ... 2=>a (n>=3:z_i)
+*)
 
 Definition separation_schema A :=
   nForall
-    ((level A) - 3)
-    (∀∃∀ (#0 ∈ #1 <-> (#0 ∈ #2 /\ A))).
+    ((level A) - 2)
+    (∀∃∀ (#0 ∈ #1 <-> (#0 ∈ #2 /\ lift_form_above 1 A))).
+
+Definition exists_uniq A :=
+∃ (A /\ ∀ (lift_form_above 1 A -> #0 = #1)).
+
+(* POUR SEPARATION:
+   dB dans A :  0=>y 1=>x 2=>a n>=3:z_i
+   dB dans (lift_above 2 A) 0=>y 1=>x ... 3=>a (n>=4:z_i)
+*)
 
 Definition replacement_schema A :=
   nForall
-    ((level A) - 4)
-    (∀(∀ (#0 ∈ #1 -> (∃ (A /\ ∀ ((bsubst 1 (#0) A) -> #0 = #1)))) -> ∃∀ (#0 ∈ #2 -> ∃ (#0 ∈ #3 /\ A)))).
+    ((level A) - 3)
+    (∀ (∀ (#0 ∈ #1 -> exists_uniq A)) ->
+       ∃∀ (#0 ∈ #2 -> ∃ (#0 ∈ #3 /\ lift_form_above 2 A))).
 
 Local Close Scope formula_scope.
 
 Definition IsAx A :=
   List.In A axioms_list \/
   (exists B, A = separation_schema B /\
-            occur_form 1 B = false /\
+(*            occur_form 1 B = false /\ *)
             check ZFSign B = true /\
             FClosed B)
   \/
   (exists B, A = replacement_schema B /\
-             occur_form 1 B = false /\
+(*             occur_form 1 B = false /\ *)
              check ZFSign B = true /\
              FClosed B).
 
@@ -133,19 +145,17 @@ Proof.
  cbn. reflexivity.
 Qed.
 
-Lemma aux3 A B a : Names.In a (fvars (A <-> B)%form) -> Names.In a (Names.union (fvars A) (fvars B)).
+Lemma aux2' q A : Names.eq (fvars (Quant q A)%form) (fvars A).
+Proof.
+ reflexivity.
+Qed.
+
+Lemma aux3 A B : Names.eq (fvars (A <-> B)%form)
+                          (Names.union (fvars A) (fvars B)).
 Proof.
   cbn.
-  unfold Names.Equal.
-  intros.
-  apply Names.union_spec. apply Names.union_spec in H.
-  destruct H.
-  - apply Names.union_spec in H. destruct H.
-    * left. assumption.
-    * right. assumption.
-  - apply Names.union_spec in H. destruct H.
-    * right. assumption.
-    * left. assumption.
+  unfold Names.eq.
+  namedec.
 Qed.
 
 Lemma aux4 A B a : Names.In a (fvars (A /\ B)%form) -> Names.In a (Names.union (fvars A) (fvars B)).
@@ -170,9 +180,10 @@ Proof.
      simpl (Nat.max 1 _).
      rewrite Nat.max_assoc. simpl (Nat.max 2 3). omega with *.
    + apply nForall_fclosed. red. unfold Names.Empty. intro a. intro.
-     apply aux3 in H. apply Names.union_spec in H.
+     rewrite !aux2', aux3 in H.
+     apply Names.union_spec in H.
      destruct H.
-     * cbn in H. easy.
+     * rewrite <- Names.mem_spec in H. compute in H. easy.
      * apply aux4 in H. apply Names.union_spec in H. destruct H.
        -- cbn in H. easy.
        -- unfold FClosed in HB''. unfold Names.Empty in HB''. destruct HB'' with (a := a). assumption.

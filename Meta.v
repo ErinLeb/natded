@@ -23,6 +23,50 @@ Proof.
  - rewrite list_max_map_0. intros H. f_equal. apply map_id_iff; auto.
 Qed.
 
+(** [check] and [lift_above] *)
+
+Lemma check_lift_above sign t k :
+  check sign (lift_above k t) = check sign t.
+Proof.
+  induction t as [ | | f l IH] using term_ind'; cbn; auto.
+  + destruct (k <=? n); auto.
+  + destruct funsymbs; auto.
+    rewrite map_length. case eqb; auto.
+    apply eq_true_iff_eq. rewrite forallb_map, !forallb_forall.
+    split; intros H x Hx. rewrite<- IH; auto. rewrite IH; auto.
+Qed.
+
+Lemma check_lift_form_above sign f k :
+  check sign (lift_form_above k f) = check sign f.
+Proof.
+  revert k. induction f; cbn; auto.
+  + destruct (predsymbs sign p); auto.
+    intro. rewrite map_length. case eqb; auto.
+    apply eq_true_iff_eq. rewrite forallb_map, !forallb_forall.
+    split; intros.
+    - destruct H with (x := x); auto. rewrite check_lift_above. reflexivity.
+    - destruct H with (x := x); auto. rewrite check_lift_above. reflexivity.
+  + intro. rewrite IHf1. rewrite IHf2. reflexivity.
+Qed.
+
+(** [level] and [level_above] *)
+
+Lemma level_lift_above t k :
+  level (lift_above k t) <= S (level t).
+Proof.
+  induction t using term_ind'; cbn; auto with arith.
+  + destruct (k <=? n); cbn; omega.
+  + rewrite map_map.
+    apply list_max_map_le. intros. transitivity (S (level a)); auto.
+    rewrite<- Nat.succ_le_mono. now apply list_max_map_in.
+Qed.
+
+Lemma level_lift_form_above f k :
+  level (lift_form_above k f) <= S (level f).
+Proof.
+  induction f; cbn; auto with arith.
+  + rewrite map_map. rewrite level_lift_above with (t := x).
+
 (** [bsubst] and [check] *)
 
 Lemma check_lift sign t :

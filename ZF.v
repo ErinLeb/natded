@@ -18,30 +18,31 @@ Notation "x ∈ y" := (Pred "∈" [x;y]) (at level 70) : formula_scope.
 
 Open Scope formula_scope.
 
-(* So as to make the proof easier we Skolemise the instance of the comprehension axiom schema into
-   ∀ y, (y ∈ a <-> A).
-   It is easy to notice that ∀ (#0 ∈ A <-> ~(#0 ∈ #0)) is (almost) an instance of the comprehension
-   axiom schema : it suffices to let A = ~ (a ∈ a). *)
-Lemma Russell a : Pr Intuiti ([ ∀ (#0 ∈ (FVar a) <-> ~(#0 ∈ #0)) ] ⊢ False).
+(* It is easy to notice that ∃ a ∀ x (x ∈ a <-> ~(x ∈ x)) is (almost) an instance of the
+   comprehension axiom schema : it suffices to let A = ~ (a ∈ a). *)
+Lemma Russell (a : variable) : Pr Intuiti ([ ∃∀ (#0 ∈ #1 <-> ~(#0 ∈ #0)) ] ⊢ False).
 Proof.
-  set (comp := ∀ _ <-> _).
-  set (Γ := [comp]).
-  set (A := FVar a).
-  apply R_Not_e with (A := A ∈ A).
-  + apply R_Imp_e with (A := ~ A ∈ A).
-    - apply R_And_e2 with (A := (A ∈ A -> ~ A ∈ A)).
-      assert (Pr Intuiti (Γ ⊢ comp)). { apply R_Ax. compute; intuition. }
-      apply R_All_e with (t := FVar a) in H; auto.
-    - apply R_Not_i.
-      set (Γ' := (_ :: Γ)).
-      apply R_Not_e with (A := A ∈ A).
-      * apply R_Ax. compute; intuition.
-      * apply R_Imp_e with (A := A ∈ A).
-        ++ apply R_And_e1 with (B := (~ A ∈ A -> A ∈ A)).
-           assert (Pr Intuiti (Γ' ⊢ comp)). { apply R_Ax. compute; intuition. }
-           apply R_All_e with (t := FVar a) in H; auto.
+  apply R'_Ex_e with (x := a); auto.
+  + cbn - [Names.union]. intro. inversion H.
+  + cbn. fold (#0 ∈ FVar a <-> ~ #0 ∈ #0)%form.
+    set (comp := ∀ _ <-> _).
+    set (Γ := [comp]).
+    set (A := FVar a).
+    apply R_Not_e with (A := A ∈ A).
+    - apply R_Imp_e with (A := ~ A ∈ A).
+      * apply R_And_e2 with (A := (A ∈ A -> ~ A ∈ A)).
+        assert (Pr Intuiti (Γ ⊢ comp)). { apply R_Ax. compute; intuition. }
+        apply R_All_e with (t := FVar a) in H; auto.
+      * apply R_Not_i.
+        set (Γ' := (_ :: Γ)).
+        apply R_Not_e with (A := A ∈ A).
         ++ apply R_Ax. compute; intuition.
-  + apply R_Not_i.
+        ++ apply R_Imp_e with (A := A ∈ A).
+            -- apply R_And_e1 with (B := (~ A ∈ A -> A ∈ A)).
+               assert (Pr Intuiti (Γ' ⊢ comp)). { apply R_Ax. compute; intuition. }
+               apply R_All_e with (t := FVar a) in H; auto.
+            -- apply R_Ax. compute; intuition.
+    - apply R_Not_i.
       set (Γ' := (_ :: Γ)).
       apply R_Not_e with (A := A ∈ A).
       * apply R_Ax. compute; intuition.
@@ -99,9 +100,7 @@ Fixpoint occur_form n f :=
 
 (* POUR SEPARATION:
   dB dans A :  0=>x 1=>a n>=2:z_i
-  dB dans (lift_above 1 A) 0=>x ... 2=>a (n>=3:z_i)
-*)
-
+  dB dans (lift_above 1 A) 0=>x ... 2=>a (n>=3:z_i) *)
 Definition separation_schema A :=
   nForall
     ((level A) - 2)
@@ -110,11 +109,9 @@ Definition separation_schema A :=
 Definition exists_uniq A :=
 ∃ (A /\ ∀ (lift_form_above 1 A -> #0 = #1)).
 
-(* POUR SEPARATION:
+(* POUR REPLACEMENT:
    dB dans A :  0=>y 1=>x 2=>a n>=3:z_i
-   dB dans (lift_above 2 A) 0=>y 1=>x ... 3=>a (n>=4:z_i)
-*)
-
+   dB dans (lift_above 2 A) 0=>y 1=>x ... 3=>a (n>=4:z_i) *)
 Definition replacement_schema A :=
   nForall
     ((level A) - 3)
@@ -126,12 +123,10 @@ Local Close Scope formula_scope.
 Definition IsAx A :=
   List.In A axioms_list \/
   (exists B, A = separation_schema B /\
-(*            occur_form 1 B = false /\ *)
-            check ZFSign B = true /\
-            FClosed B)
+             check ZFSign B = true /\
+             FClosed B)
   \/
   (exists B, A = replacement_schema B /\
-(*             occur_form 1 B = false /\ *)
              check ZFSign B = true /\
              FClosed B).
 
@@ -165,7 +160,7 @@ Qed.
 
 Lemma WfAx A : IsAx A -> Wf ZFSign A.
 Proof.
- intros [ IN | [ (B & -> & HB & HB' & HB'') | (C & -> & HC & HC' & HC'') ] ].
+ intros [ IN | [ (B & -> & HB & HB') | (C & -> & HC & HC') ] ].
  - apply Wf_iff.
    unfold axioms_list in IN.
    simpl in IN. intuition; subst; reflexivity.
@@ -173,8 +168,8 @@ Proof.
    + rewrite nForall_check. cbn.
      apply andb_true_iff.
      split.
-     * assumption.
-     * apply orb_true_iff. left. assumption.
+     * rewrite check_lift_form_above. assumption.
+     * (* TODO *) apply orb_true_iff. left. rewrite check_lift_form_above. assumption.
    + red. rewrite nForall_level. rewrite !aux2, aux.
      cbn -[Nat.max].
      simpl (Nat.max 1 _).
@@ -196,7 +191,7 @@ Proof.
        apply orb_true_iff.
        left.
        cbn.
-       (* TODO *)
+       (* TODO bis *)
      rewrite !check_bsubst, HB; auto.
    + red. rewrite nForall_level. cbn.
      assert (level (bsubst 0 Zero B) <= level B).
@@ -222,9 +217,9 @@ Local Open Scope string.
 Local Open Scope formula_scope.
 
 Definition ZFTheory :=
- {| sign := PeanoSign;
-    IsAxiom := PeanoAx.IsAx;
-    WfAxiom := PeanoAx.WfAx |}.
+ {| sign := ZFSign;
+    IsAxiom := ZFAx.IsAx;
+    WfAxiom := ZFAx.WfAx |}.
 
 
 Import ZFAx.

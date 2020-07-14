@@ -393,7 +393,6 @@ Compute eqb
         (∀ (Pred "A" [FVar "z"] -> Pred "A" [FVar "z"]))%form.
 
 (* +1 sur les dB >= k *)
-
 Fixpoint lift_form_above k f :=
  match f with
  | True | False => f

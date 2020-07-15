@@ -3,6 +3,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
+Require Import ROmega.
 Require Import Defs NameProofs Mix Meta Theories PreModels Models.
 Import ListNotations.
 Local Open Scope bool_scope.
@@ -194,14 +195,13 @@ Proof.
      simpl (Nat.max 1 _).
      assert (H := level_lift_form_above C 1).
      assert (H' := level_lift_form_above C 2).
-     admit.
-     (* omega with *. *)
+     romega with *.
    + apply nForall_fclosed. red. unfold Names.Empty. intro a. intro.
      rewrite !aux2' in H. cbn -[Names.union] in H.
      rewrite !fvars_lift_form_above in H.
      unfold FClosed in HC'. unfold Names.Empty in HC'. destruct HC' with (a := a).
      namedec.
-Admitted.     
+Qed.     
 
 End ZFAx.
 

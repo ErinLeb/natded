@@ -49,7 +49,7 @@ Proof.
   + intro. rewrite IHf1. rewrite IHf2. reflexivity.
 Qed.
 
-(** [level] and [level_above] *)
+(** [level] and [lift_above] *)
 
 Lemma level_lift_above t k :
   level (lift_above k t) <= S (level t).
@@ -61,11 +61,47 @@ Proof.
     rewrite<- Nat.succ_le_mono. now apply list_max_map_in.
 Qed.
 
+Ltac specialise t := specialize t.
+
 Lemma level_lift_form_above f k :
   level (lift_form_above k f) <= S (level f).
 Proof.
-  induction f; cbn; auto with arith.
-  + rewrite map_map. rewrite level_lift_above with (t := x).
+  revert k. induction f; intro; cbn; auto with arith.
+  + rewrite map_map.
+    rewrite list_max_map_le.
+    intros.
+    transitivity (S (level a)).
+    - apply level_lift_above.
+    - apply-> Nat.succ_le_mono.
+      apply list_max_map_in.
+      assumption.
+  + specialise (IHf1 k).
+    specialise (IHf2 k).
+    omega with *.
+  + specialise (IHf (S k)).
+    omega.
+Qed.
+
+(** [fvars] and [lift_above] *)
+
+Lemma fvars_lift_above t k :
+  fvars (lift_above k t) = fvars t.
+Proof.
+  induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
+  - destruct (k <=? n); auto.
+  - induction l; simpl; auto.
+    rewrite IH, IHl; simpl; auto.
+    intros x Hx. apply IH. simpl; auto.
+Qed.
+
+Lemma fvars_lift_form_above f k :
+  fvars (lift_form_above k f) = fvars f.
+Proof.
+  revert k. induction f; intro; cbn; auto with *.
+  - induction l; simpl; auto.
+    rewrite fvars_lift_above, IHl; simpl; auto.
+  - rewrite IHf1. rewrite IHf2. auto.
+Qed.
 
 (** [bsubst] and [check] *)
 

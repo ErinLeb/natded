@@ -16,49 +16,47 @@ Local Open Scope eqb_scope.
 
 Notation "x ∈ y" := (Pred "∈" [x;y]) (at level 70) : formula_scope.
 
+Open Scope string_scope.
 Open Scope formula_scope.
 
 (* It is easy to notice that ∃ a ∀ x (x ∈ a <-> ~(x ∈ x)) is (almost) an instance of the
    comprehension axiom schema : it suffices to let A = ~ (a ∈ a). *)
-Lemma Russell (a : variable) : Pr Intuiti ([ ∃∀ (#0 ∈ #1 <-> ~(#0 ∈ #0)) ] ⊢ False).
+Lemma Russell : Pr Intuiti ([ ∃∀ (#0 ∈ #1 <-> ~(#0 ∈ #0)) ] ⊢ False).
 Proof.
-  apply R'_Ex_e with (x := a); auto.
+  apply R'_Ex_e with (x := "a"); auto.
   + cbn - [Names.union]. intro. inversion H.
-  + cbn. fold (#0 ∈ FVar a <-> ~ #0 ∈ #0)%form.
+  + cbn. set  (A := FVar "a"). fold (#0 ∈ A <-> ~ #0 ∈ #0)%form.
     set (comp := ∀ _ <-> _).
     set (Γ := [comp]).
-    set (A := FVar a).
-    apply R_Not_e with (A := A ∈ A).
-    - apply R_Imp_e with (A := ~ A ∈ A).
-      * apply R_And_e2 with (A := (A ∈ A -> ~ A ∈ A)).
-        assert (Pr Intuiti (Γ ⊢ comp)). { apply R_Ax. compute; intuition. }
-        apply R_All_e with (t := FVar a) in H; auto.
-      * apply R_Not_i.
-        set (Γ' := (_ :: Γ)).
-        apply R_Not_e with (A := A ∈ A).
-        ++ apply R_Ax. compute; intuition.
-        ++ apply R_Imp_e with (A := A ∈ A).
-            -- apply R_And_e1 with (B := (~ A ∈ A -> A ∈ A)).
-               assert (Pr Intuiti (Γ' ⊢ comp)). { apply R_Ax. compute; intuition. }
-               apply R_All_e with (t := FVar a) in H; auto.
-            -- apply R_Ax. compute; intuition.
-    - apply R_Not_i.
+    assert (Pr Intuiti (Γ ⊢ ~ A ∈ A)).
+    {
+      apply R_Not_i.
       set (Γ' := (_ :: Γ)).
       apply R_Not_e with (A := A ∈ A).
       * apply R_Ax. compute; intuition.
       * apply R_Imp_e with (A := A ∈ A).
         ++ apply R_And_e1 with (B := (~ A ∈ A -> A ∈ A)).
            assert (Pr Intuiti (Γ' ⊢ comp)). { apply R_Ax. compute; intuition. }
-           apply R_All_e with (t := FVar a) in H; auto.
+           apply R_All_e with (t := A) in H; auto.
         ++ apply R_Ax. compute; intuition.
+    }     
+    apply R_Not_e with (A := A ∈ A); auto.
+    apply R_Imp_e with (A := ~ A ∈ A); auto.
+    - apply R_And_e2 with (A := (A ∈ A -> ~ A ∈ A)).
+      assert (Pr Intuiti (Γ ⊢ comp)). { apply R_Ax. compute; intuition. }
+      apply R_All_e with (t := A) in H0; auto.
 Qed.
 
 (* Russell's paradox therefore shows that the naive set theory is inconsistent.
    We are to try to fix it, using ZF(C) theory, which has not been proved inconstitent so far
-   (neither has it been proved consistent though...). *)
+   (neither has it been proved consistent though).
+   Actually, were we to intend to prove that ZF is consistent, Godel's second theorem tells us that
+   we would have to do it in a stronger theory, which we would have to prove to be consitent too
+   (in a stronger theory too), and so on... *)
 
 (** The ZF axioms *)
 
+Close Scope string_scope.
 Definition ZFSign := Finite.to_infinite zf_sign.
 
 Notation "x = y" := (Pred "=" [x;y]) : formula_scope.
@@ -135,6 +133,11 @@ Proof.
  cbn. omega with *.
 Qed.
 
+Lemma aux' A B : level (A -> B)%form = Nat.max (level A) (level B).
+Proof.
+  cbn. omega with *.
+Qed.
+
 Lemma aux2 q A : level (Quant q A)%form = Nat.pred (level A).
 Proof.
  cbn. reflexivity.
@@ -166,14 +169,14 @@ Proof.
    simpl in IN. intuition; subst; reflexivity.
  - repeat split; unfold separation_schema; cbn.
    + rewrite nForall_check. cbn.
-     apply andb_true_iff.
-     split.
-     * rewrite check_lift_form_above. assumption.
-     * (* TODO *) apply orb_true_iff. left. rewrite check_lift_form_above. assumption.
+     rewrite !check_lift_form_above, HB.
+     easy.
    + red. rewrite nForall_level. rewrite !aux2, aux.
      cbn -[Nat.max].
      simpl (Nat.max 1 _).
-     rewrite Nat.max_assoc. simpl (Nat.max 2 3). omega with *.
+     rewrite Nat.max_assoc. simpl (Nat.max 2 3).
+     assert (H := level_lift_form_above B 1).
+     omega with *.
    + apply nForall_fclosed. red. unfold Names.Empty. intro a. intro.
      rewrite !aux2', aux3 in H.
      apply Names.union_spec in H.
@@ -181,35 +184,24 @@ Proof.
      * rewrite <- Names.mem_spec in H. compute in H. easy.
      * apply aux4 in H. apply Names.union_spec in H. destruct H.
        -- cbn in H. easy.
-       -- unfold FClosed in HB''. unfold Names.Empty in HB''. destruct HB'' with (a := a). assumption.
+       -- unfold FClosed in HB'. unfold Names.Empty in HB'. destruct HB' with (a := a). rewrite fvars_lift_form_above in H. assumption.
  - repeat split; unfold replacement_schema; cbn.
    + rewrite nForall_check. cbn.
-     apply andb_true_iff.
-     split.
-     * apply andb_true_iff.
-       split; [ assumption | ].
-       apply orb_true_iff.
-       left.
-       cbn.
-       (* TODO bis *)
-     rewrite !check_bsubst, HB; auto.
-   + red. rewrite nForall_level. cbn.
-     assert (level (bsubst 0 Zero B) <= level B).
-     { apply level_bsubst'. auto. }
-     assert (level (bsubst 0 (Succ(BVar 0)) B) <= level B).
-     { apply level_bsubst'. auto. }
-     omega with *.
-   + apply nForall_fclosed. red. cbn.
-     assert (FClosed (bsubst 0 Zero B)).
-     { red. rewrite bsubst_fvars.
-       intro x. rewrite Names.union_spec. cbn. red in HB'. intuition. }
-     assert (FClosed (bsubst 0 (Succ(BVar 0)) B)).
-     { red. rewrite bsubst_fvars.
-       intro x. rewrite Names.union_spec. cbn - [Names.union].
-       rewrite Names.union_spec.
-       generalize (HB' x) (@Names.empty_spec x). intuition. }
-     unfold FClosed in *. intuition.
-Qed.
+     rewrite !check_lift_form_above, HC.
+     easy.
+   + red. rewrite nForall_level. repeat rewrite !aux2, !aux'.
+     cbn -[Nat.max].
+     simpl (Nat.max 1 _).
+     assert (H := level_lift_form_above C 1).
+     assert (H' := level_lift_form_above C 2).
+     admit.
+     (* omega with *. *)
+   + apply nForall_fclosed. red. unfold Names.Empty. intro a. intro.
+     rewrite !aux2' in H. cbn -[Names.union] in H.
+     rewrite !fvars_lift_form_above in H.
+     unfold FClosed in HC'. unfold Names.Empty in HC'. destruct HC' with (a := a).
+     namedec.
+Admitted.     
 
 End ZFAx.
 

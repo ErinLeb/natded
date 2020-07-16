@@ -4,7 +4,7 @@
     This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import ROmega.
-Require Import Defs NameProofs Mix Meta Theories PreModels Models.
+Require Import Defs NameProofs Mix Meta Theories PreModels Models Peano.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
@@ -215,8 +215,6 @@ Definition ZF :=
 
 Import ZFAx.
 
-Ltac thm := unfold IsTheorem; split; [ unfold Wf; split; [ auto | split; auto ] | ].
-
 Lemma emptyset : IsTheorem Intuiti ZF (∃∀ ~(#0 ∈ #1)). 
 Proof.
   thm.
@@ -225,8 +223,25 @@ Proof.
   - simpl. rewrite Forall_forall. intros. destruct H.
     + rewrite<- H. unfold IsAx. left. compute; intuition.
     + inversion H.
-  - apply R_Ex_e with (A := infinity) (x := "a").
-    + intro. cbn in H.
+  - apply R_Ex_e with (A := (∃ (#0 ∈ #1 /\ ∀ ~(#0 ∈ #1)) /\ ∀ (#0 ∈ #1 -> (∃ (#0 ∈ #2 /\ (∀ (#0 ∈ #1 <-> #0 = #2 \/ #0 ∈ #2))))))) (x := "a").
+    + calc.
+    + apply R_Ax; auto. unfold infinity. intuition.
+    + cbn.
+      apply R_Ex_e with (A := #0 ∈ FVar "a" /\ (∀ ~ #0 ∈ #1)) (x := "x").
+      * calc.
+      * apply R'_Ex_e with (x := "y"); [ calc | ].
+        cbn.
+        set (rem := ∀ _ -> ∃ _).
+        apply R_Ex_i with (t := FVar "y").
+        cbn.
+        apply R_And_e1 with (B := rem).
+        apply R_Ax. apply in_eq.
+      * cbn. 
+        apply R_Ex_i with (t := FVar "x").
+        cbn.
+        apply R_And_e2 with (A := FVar "x" ∈ FVar "a").
+        apply R_Ax. apply in_eq.
+Qed.        
 
 Lemma singleton : IsTheorem Intuiti ZF (∀∃∀ (#0 ∈ #1 <-> #0 = #2)).
 Admitted.

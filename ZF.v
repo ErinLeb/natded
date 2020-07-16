@@ -243,8 +243,42 @@ Proof.
         apply R_Ax. apply in_eq.
 Qed.        
 
+(* utiliser l'axiome de la paire et défaire puis refaire quantificateurs
+   OU
+   paire -> existence de {x,x}; skolem; séparation -> {x} = {x,x}
+*)
 Lemma singleton : IsTheorem Intuiti ZF (∀∃∀ (#0 ∈ #1 <-> #0 = #2)).
-Admitted.
+Proof.
+  thm.
+  exists [pairing].
+  split; auto.
+  - simpl. rewrite Forall_forall. intros. destruct H.
+    + rewrite<- H. unfold IsAx. left. compute; intuition.
+    + inversion H.
+  - apply R_All_i with (x := "x"); [ calc | cbn ].
+    apply R_Ex_i with (t := FVar "s"); cbn.
+    apply R_All_i with (x := "y"); [ calc | cbn ].
+    assert (Pr Intuiti ([pairing] ⊢ pairing)).
+    { apply R_Ax. apply in_eq. }
+    unfold pairing in H.
+    apply R_All_e with (t := FVar "x") in H; cbn in H.
+    apply R_All_e with (t := FVar "x") in H; cbn in H.
+    (* il se passe un truc ici *)
+    apply R_And_i.
+    + apply R_Imp_i.
+      apply R_Imp_e with (A := FVar "y" ∈ FVar "s" \/ FVar "y" ∈ FVar "s"); [ | apply R_Or_i1; apply R_Ax; compute; intuition ].
+      
+    (* set (L := _ ∈ _ -> _).
+    assert (Pr Intuiti ([pairing] ⊢ pairing)).
+    { apply R_Ax. apply in_eq. }
+    unfold pairing in H.
+    apply R_All_e with (t := FVar "x") in H; cbn in H.
+    apply R_All_e with (t := FVar "x") in H; cbn in H.
+    apply R_Ex_e with (x := "s") (B := ∀ (#0 ∈ #1 -> #0 = FVar "x" \/ #0 = FVar "x") /\
+                (#0 = FVar "x" \/ #0 = FVar "x" -> #0 ∈ #1)) in H; [ cbn | calc | cbn ].
+    * apply R_All_e with (t := FVar "y") in H; cbn in H.
+      admit.
+    * apply R_And_i.*)
 
 Lemma union : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #2 \/ #0 ∈ #3)).
 Admitted.

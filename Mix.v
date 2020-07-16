@@ -226,7 +226,6 @@ Fixpoint lift t :=
  end.
 
 (* +1 sur les dB >= k *)
-
 Fixpoint lift_above k t :=
  match t with
  | BVar n => if (k <=? n)%nat then BVar (S n) else t

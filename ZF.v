@@ -208,10 +208,28 @@ End ZFAx.
 Local Open Scope string.
 Local Open Scope formula_scope.
 
-Definition ZFTheory :=
+Definition ZF :=
  {| sign := ZFSign;
     IsAxiom := ZFAx.IsAx;
     WfAxiom := ZFAx.WfAx |}.
 
-
 Import ZFAx.
+
+Ltac thm := unfold IsTheorem; split; [ unfold Wf; split; [ auto | split; auto ] | ].
+
+Lemma emptyset : IsTheorem Intuiti ZF (∃∀ ~(#0 ∈ #1)). 
+Proof.
+  thm.
+  exists [infinity].
+  split; auto.
+  - simpl. rewrite Forall_forall. intros. destruct H.
+    + rewrite<- H. unfold IsAx. left. compute; intuition.
+    + inversion H.
+  - apply R_Ex_e with (A := infinity) (x := "a").
+    + intro. cbn in H.
+
+Lemma singleton : IsTheorem Intuiti ZF (∀∃∀ (#0 ∈ #1 <-> #0 = #2)).
+Admitted.
+
+Lemma union : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #2 \/ #0 ∈ #3)).
+Admitted.

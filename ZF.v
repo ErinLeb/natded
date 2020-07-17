@@ -62,9 +62,13 @@ Definition ZFSign := Finite.to_infinite zf_sign.
 
 Notation "x = y" := (Pred "=" [x;y]) : formula_scope.
 Notation "x ∈ y" := (Pred "∈" [x;y]) (at level 70) : formula_scope.
+Notation "x ∉ y" := (~ x ∈ y) (at level 70) : formula_scope.
 
 Module ZFAx.
 Local Open Scope formula_scope.
+
+Definition zero s := ∀ #0 ∉ lift s.
+Definition succ x y := ∀ (#0 ∈ lift y <-> #0 = lift x \/ #0 ∈ lift x).
 
 Definition eq_refl := ∀ (#0 = #0).
 Definition eq_sym := ∀∀ (#1 = #0 -> #0 = #1).
@@ -76,7 +80,7 @@ Definition ext := ∀∀ (∀ (#0 ∈ #2 <-> #0 ∈ #1) -> #2 = #1).
 Definition pairing := ∀∀∃∀ (#0 ∈ #1 <-> #0 = #3 \/ #0 = #2).
 Definition union := ∀∃∀ (#0 ∈ #1 <-> ∃ (#0 ∈ #3 /\ #1 ∈ #0)).
 Definition powerset := ∀∃∀ (#0 ∈ #1 <-> ∀ (#0 ∈ #1 -> #0 ∈ #3)).
-Definition infinity := ∃ (∃ (#0 ∈ #1 /\ ∀ ~(#0 ∈ #1)) /\ ∀ (#0 ∈ #1 -> (∃ (#0 ∈ #2 /\ (∀ (#0 ∈ #1 <-> #0 = #2 \/ #0 ∈ #2)))))).
+Definition infinity := ∃ (∃ (#0 ∈ #1 /\ zero (#0)) /\ ∀ (#0 ∈ #1 -> (∃ (#0 ∈ #2 /\ succ (#1) (#0))))).
 
 Definition axioms_list :=
  [ eq_refl; eq_sym; eq_trans; compat_left; compat_right; ext; pairing; union; powerset; infinity ].
@@ -129,37 +133,22 @@ Definition IsAx A :=
              check ZFSign B = true /\
              FClosed B).
 
-Lemma aux A B : level (A <-> B)%form = Nat.max (level A) (level B).
+Ltac reIff :=
+match goal with
+| |- context [ ((?A -> ?B) /\ _ )%form ] => fold (Iff A B); reIff
+| H : context [ ((?A -> ?B) /\ _ )%form ] |- _ => fold (Iff A B) in H; reIff
+| _ => idtac
+end.
+
+Lemma pred_max a b :
+Nat.pred (Nat.max a b) = Nat.max (Nat.pred a) (Nat.pred b).
 Proof.
- cbn. omega with *.
+symmetry. apply Nat.max_monotone. red. red. auto with *.
 Qed.
 
-Lemma aux' A B : level (A -> B)%form = Nat.max (level A) (level B).
+Lemma empty_alt a : Names.Empty a <-> Names.eq a Names.empty.
 Proof.
-  cbn. omega with *.
-Qed.
-
-Lemma aux2 q A : level (Quant q A)%form = Nat.pred (level A).
-Proof.
- cbn. reflexivity.
-Qed.
-
-Lemma aux2' q A : Names.eq (fvars (Quant q A)%form) (fvars A).
-Proof.
- reflexivity.
-Qed.
-
-Lemma aux3 A B : Names.eq (fvars (A <-> B)%form)
-                          (Names.union (fvars A) (fvars B)).
-Proof.
-  cbn.
-  unfold Names.eq.
-  namedec.
-Qed.
-
-Lemma aux4 A B a : Names.In a (fvars (A /\ B)%form) -> Names.In a (Names.union (fvars A) (fvars B)).
-Proof.
-  cbn. easy.
+unfold Names.eq. intuition.
 Qed.
 
 Lemma WfAx A : IsAx A -> Wf ZFSign A.
@@ -172,24 +161,24 @@ Proof.
    + rewrite nForall_check. cbn.
      rewrite !check_lift_form_above, HB.
      easy.
-   + red. rewrite nForall_level. rewrite !aux2, aux.
+   + red. rewrite nForall_level.
      cbn -[Nat.max].
-     simpl (Nat.max 1 _).
-     rewrite Nat.max_assoc. simpl (Nat.max 2 3).
+     rewrite !pred_max.
+     simpl.
      assert (H := level_lift_form_above B 1).
-     omega with *.
-   + apply nForall_fclosed. red. unfold Names.Empty. intro a. intro.
-     rewrite !aux2', aux3 in H.
-     apply Names.union_spec in H.
-     destruct H.
-     * rewrite <- Names.mem_spec in H. compute in H. easy.
-     * apply aux4 in H. apply Names.union_spec in H. destruct H.
-       -- cbn in H. easy.
-       -- unfold FClosed in HB'. unfold Names.Empty in HB'. destruct HB' with (a := a). rewrite fvars_lift_form_above in H. assumption.
+     apply Nat.sub_0_le.
+     repeat apply Nat.max_lub; omega with *.
+   + apply nForall_fclosed. red.
+     apply-> Names.is_empty_spec. cbn -[Names.union].
+     rewrite fvars_lift_form_above.
+     apply empty_alt in HB'.
+     rewrite HB'.
+     reflexivity.
  - repeat split; unfold replacement_schema; cbn.
    + rewrite nForall_check. cbn.
      rewrite !check_lift_form_above, HC.
      easy.
+     (* todo *)
    + red. rewrite nForall_level. repeat rewrite !aux2, !aux'.
      cbn -[Nat.max].
      simpl (Nat.max 1 _).
@@ -220,33 +209,22 @@ Proof.
   thm.
   exists [infinity].
   split; auto.
-  - simpl. rewrite Forall_forall. intros. destruct H.
-    + rewrite<- H. unfold IsAx. left. compute; intuition.
-    + inversion H.
-  - apply R_Ex_e with (A := (∃ (#0 ∈ #1 /\ ∀ ~(#0 ∈ #1)) /\ ∀ (#0 ∈ #1 -> (∃ (#0 ∈ #2 /\ (∀ (#0 ∈ #1 <-> #0 = #2 \/ #0 ∈ #2))))))) (x := "a").
+  - simpl. constructor; auto.
+    unfold IsAx. left. calc.
+  - apply R'_Ex_e with (x := "a").
     + calc.
-    + apply R_Ax; auto. unfold infinity. intuition.
     + cbn.
-      apply R_Ex_e with (A := #0 ∈ FVar "a" /\ (∀ ~ #0 ∈ #1)) (x := "x").
+      apply R'_Ex_e with (x := "x").
       * calc.
-      * apply R'_Ex_e with (x := "y"); [ calc | ].
-        cbn.
-        set (rem := ∀ _ -> ∃ _).
-        apply R_Ex_i with (t := FVar "y").
-        cbn.
-        apply R_And_e1 with (B := rem).
-        apply R_Ax. apply in_eq.
-      * cbn. 
-        apply R_Ex_i with (t := FVar "x").
-        cbn.
-        apply R_And_e2 with (A := FVar "x" ∈ FVar "a").
-        apply R_Ax. apply in_eq.
-Qed.        
+      * cbn.
+        apply R'_And_e.
+        apply Pr_swap, Pr_pop.
+        apply R'_And_e.
+        apply Pr_pop.
+        apply R_Ex_i with (t := FVar "x"). cbn.
+        apply R'_Ax.
+Qed.
 
-(* utiliser l'axiome de la paire et défaire puis refaire quantificateurs
-   OU
-   paire -> existence de {x,x}; skolem; séparation -> {x} = {x,x}
-*)
 Lemma singleton : IsTheorem Intuiti ZF (∀∃∀ (#0 ∈ #1 <-> #0 = #2)).
 Proof.
   thm.
@@ -255,30 +233,14 @@ Proof.
   - simpl. rewrite Forall_forall. intros. destruct H.
     + rewrite<- H. unfold IsAx. left. compute; intuition.
     + inversion H.
-  - apply R_All_i with (x := "x"); [ calc | cbn ].
-    apply R_Ex_i with (t := FVar "s"); cbn.
-    apply R_All_i with (x := "y"); [ calc | cbn ].
-    assert (Pr Intuiti ([pairing] ⊢ pairing)).
-    { apply R_Ax. apply in_eq. }
-    unfold pairing in H.
-    apply R_All_e with (t := FVar "x") in H; cbn in H.
-    apply R_All_e with (t := FVar "x") in H; cbn in H.
-    (* il se passe un truc ici *)
-    apply R_And_i.
-    + apply R_Imp_i.
-      apply R_Imp_e with (A := FVar "y" ∈ FVar "s" \/ FVar "y" ∈ FVar "s"); [ | apply R_Or_i1; apply R_Ax; compute; intuition ].
+  - app_R_All_i "x" x.
+    inst_axiom pairing [x; x]. cbn in H. reIff.
+    fold x in H.
+    eapply R_Ex_e with (x := "y"); [ | exact H | ].
+    + calc.
+    + cbn. fold x.
+      set (y := FVar "y"). reIff.
+      apply R_Ex_i with (t := y); cbn; reIff. fold x; fold y.
       
-    (* set (L := _ ∈ _ -> _).
-    assert (Pr Intuiti ([pairing] ⊢ pairing)).
-    { apply R_Ax. apply in_eq. }
-    unfold pairing in H.
-    apply R_All_e with (t := FVar "x") in H; cbn in H.
-    apply R_All_e with (t := FVar "x") in H; cbn in H.
-    apply R_Ex_e with (x := "s") (B := ∀ (#0 ∈ #1 -> #0 = FVar "x" \/ #0 = FVar "x") /\
-                (#0 = FVar "x" \/ #0 = FVar "x" -> #0 ∈ #1)) in H; [ cbn | calc | cbn ].
-    * apply R_All_e with (t := FVar "y") in H; cbn in H.
-      admit.
-    * apply R_And_i.*)
-
 Lemma union : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #2 \/ #0 ∈ #3)).
 Admitted.

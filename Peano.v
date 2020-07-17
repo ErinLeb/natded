@@ -245,7 +245,7 @@ Ltac axiom ax name :=
 
 Ltac inst_axiom ax l :=
  let H := fresh in
- axiom ax H; inst H l; easy.
+ axiom ax H; inst H l; try easy.
 
 Ltac app_R_All_i t v := apply R_All_i with (x := t); calc; cbn; set (v := FVar t).
 Ltac eapp_R_All_i := eapply R_All_i; calc.

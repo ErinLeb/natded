@@ -163,8 +163,7 @@ Proof.
      easy.
    + red. rewrite nForall_level.
      cbn -[Nat.max].
-     rewrite !pred_max.
-     simpl.
+     rewrite !pred_max. simpl.
      assert (H := level_lift_form_above B 1).
      apply Nat.sub_0_le.
      repeat apply Nat.max_lub; omega with *.
@@ -178,19 +177,21 @@ Proof.
    + rewrite nForall_check. cbn.
      rewrite !check_lift_form_above, HC.
      easy.
-     (* todo *)
-   + red. rewrite nForall_level. repeat rewrite !aux2, !aux'.
+   + red. rewrite nForall_level.
      cbn -[Nat.max].
-     simpl (Nat.max 1 _).
+     rewrite !pred_max. simpl.
      assert (H := level_lift_form_above C 1).
      assert (H' := level_lift_form_above C 2).
-     romega with *.
-   + apply nForall_fclosed. red. unfold Names.Empty. intro a. intro.
-     rewrite !aux2' in H. cbn -[Names.union] in H.
-     rewrite !fvars_lift_form_above in H.
-     unfold FClosed in HC'. unfold Names.Empty in HC'. destruct HC' with (a := a).
-     namedec.
-Qed.     
+     apply Nat.sub_0_le.
+     repeat apply Nat.max_lub; omega with *.
+   + apply nForall_fclosed. red.
+     apply-> Names.is_empty_spec. cbn -[Names.union].
+     rewrite fvars_lift_form_above.
+     apply empty_alt in HC'.
+     assert (H := fvars_lift_form_above C 2).
+     rewrite H, !HC'.
+     reflexivity.
+Qed.
 
 End ZFAx.
 
@@ -241,6 +242,17 @@ Proof.
     + cbn. fold x.
       set (y := FVar "y"). reIff.
       apply R_Ex_i with (t := y); cbn; reIff. fold x; fold y.
-      
+      apply R_All_i with (x := "z"); [ calc | ].
+      set (z := FVar "z"). apply R'_All_e with (t := z); auto.
+      cbn. fold x. fold y. fold z.
+      apply R_And_i; apply R'_And_e.
+      * apply R_Imp_i.
+        apply R_Or_e with (A := z = x) (B := z = x); [ | apply R_Ax; calc | apply R_Ax; calc ].
+        apply R_Imp_e with (A := z ∈ y); apply R_Ax; calc.
+      * apply R_Imp_i.
+        apply R_Imp_e with (A := z = x \/ z = x); [ apply R_Ax; calc | ].
+        apply R_Or_i1; apply R_Ax; calc.
+Qed.
+
 Lemma union : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #2 \/ #0 ∈ #3)).
 Admitted.

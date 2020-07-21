@@ -20,16 +20,16 @@ Definition Wf (sign:signature) (A:formula) :=
 Hint Unfold Wf.
 
 Definition isWf sign (A:formula) :=
-  check sign A && (level A =? 0) && Names.is_empty (fvars A).
+  check sign A && (level A =? 0) && form_fclosed A.
 
 Lemma Wf_spec sign A : reflect (Wf sign A) (isWf sign A).
 Proof.
- unfold Wf, isWf, BClosed, FClosed.
+ unfold Wf, isWf, BClosed.
  destruct check; simpl; [ | constructor; easy].
  case eqbspec; simpl; intros; [ | constructor; easy ].
- destruct (Names.is_empty (fvars A)) eqn:E.
- - rewrite Names.is_empty_spec in E. now constructor.
- - constructor. rewrite <- Names.is_empty_spec, E. easy.
+ destruct (form_fclosed A) eqn:E.
+ - rewrite form_fclosed_spec in E. now constructor.
+ - constructor. rewrite <- form_fclosed_spec, E. easy.
 Qed.
 
 Lemma Wf_iff sign A : Wf sign A <-> isWf sign A = true.

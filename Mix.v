@@ -952,3 +952,22 @@ Lemma any_classic d lg : Valid lg d -> Valid Classic d.
 Proof.
  destruct lg. trivial. apply intuit_classic.
 Qed.
+
+(** A direct boolean version of [FClosed], easier to use than
+    [Names.is_empty (fvars ...)] *)
+
+Fixpoint term_fclosed t :=
+  match t with
+  | BVar _ => true
+  | FVar _ => false
+  | Fun _ l => forallb term_fclosed l
+  end.
+
+Fixpoint form_fclosed f :=
+  match f with
+  | True | False => true
+  | Pred _ l => forallb term_fclosed l
+  | Not f => form_fclosed f
+  | Op _ f1 f2 => form_fclosed f1 &&& form_fclosed f2
+  | Quant _ f => form_fclosed f
+  end.

@@ -146,11 +146,6 @@ Proof.
 symmetry. apply Nat.max_monotone. red. red. auto with *.
 Qed.
 
-Lemma empty_alt a : Names.Empty a <-> Names.eq a Names.empty.
-Proof.
-unfold Names.eq. intuition.
-Qed.
-
 Lemma WfAx A : IsAx A -> Wf ZFSign A.
 Proof.
  intros [ IN | [ (B & -> & HB & HB') | (C & -> & HC & HC') ] ].
@@ -167,12 +162,8 @@ Proof.
      assert (H := level_lift_form_above B 1).
      apply Nat.sub_0_le.
      repeat apply Nat.max_lub; omega with *.
-   + apply nForall_fclosed. red.
-     apply-> Names.is_empty_spec. cbn -[Names.union].
-     rewrite fvars_lift_form_above.
-     apply empty_alt in HB'.
-     rewrite HB'.
-     reflexivity.
+   + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.
+     cbn. now rewrite fclosed_lift_above, HB'.
  - repeat split; unfold replacement_schema; cbn.
    + rewrite nForall_check. cbn.
      rewrite !check_lift_form_above, HC.
@@ -184,13 +175,8 @@ Proof.
      assert (H' := level_lift_form_above C 2).
      apply Nat.sub_0_le.
      repeat apply Nat.max_lub; omega with *.
-   + apply nForall_fclosed. red.
-     apply-> Names.is_empty_spec. cbn -[Names.union].
-     rewrite fvars_lift_form_above.
-     apply empty_alt in HC'.
-     assert (H := fvars_lift_form_above C 2).
-     rewrite H, !HC'.
-     reflexivity.
+   + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.
+     cbn. now rewrite !fclosed_lift_above, HC'.
 Qed.
 
 End ZFAx.

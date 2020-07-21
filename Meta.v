@@ -1988,3 +1988,48 @@ Proof.
   + apply R_And_e2 with (A := (~f1)%form). apply R_Ax. apply in_eq.
   + apply R_And_e1 with (B := f1). apply R_Ax. apply in_eq.
 Qed.
+
+(** Properties of [term_fclosed] and [form_fclosed] *)
+
+Lemma term_fclosed_spec t : term_fclosed t = true <-> FClosed t.
+Proof.
+ unfold FClosed.
+ induction t using term_ind'; cbn.
+ - rewrite <- Names.is_empty_spec. namedec.
+ - rewrite <- Names.is_empty_spec. reflexivity.
+ - rewrite forallb_forall. unfold Names.Empty.
+   setoid_rewrite unionmap_in. split.
+   + intros F a (t & IN & IN').
+     specialize (F t IN'). rewrite H in F; auto. now apply (F a).
+   + intros G x Hx. rewrite H; auto. intros a Ha. apply (G a).
+     now exists x.
+Qed.
+
+Lemma form_fclosed_spec f : form_fclosed f = true <-> FClosed f.
+Proof.
+ unfold FClosed.
+ induction f; cbn; auto.
+ - rewrite <- Names.is_empty_spec. namedec.
+ - rewrite <- Names.is_empty_spec. namedec.
+ - apply (term_fclosed_spec (Fun "" l)).
+ - rewrite <- andb_lazy_alt, andb_true_iff, IHf1, IHf2.
+   intuition.
+Qed.
+
+Lemma fclosed_bsubst n t f :
+ term_fclosed t = true -> form_fclosed (bsubst n t f) = form_fclosed f.
+Proof.
+ intros E. apply eq_true_iff_eq. rewrite !form_fclosed_spec.
+ rewrite term_fclosed_spec in E. unfold FClosed in *.
+ assert (Names.Equal (fvars (bsubst n t f)) (fvars f)).
+ { intros a. split. rewrite bsubst_fvars. namedec.
+   apply bsubst_fvars'. }
+ now rewrite H.
+Qed.
+
+Lemma fclosed_lift_above n f :
+  form_fclosed (lift_form_above n f) = form_fclosed f.
+Proof.
+ apply eq_true_iff_eq. rewrite !form_fclosed_spec.
+ unfold FClosed. now rewrite fvars_lift_form_above.
+Qed.

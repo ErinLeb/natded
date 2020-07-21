@@ -81,16 +81,8 @@ Proof.
      assert (level (bsubst 0 (Succ(BVar 0)) B) <= level B).
      { apply level_bsubst'. auto. }
      omega with *.
-   + apply nForall_fclosed. red. cbn.
-     assert (FClosed (bsubst 0 Zero B)).
-     { red. rewrite bsubst_fvars.
-       intro x. rewrite Names.union_spec. cbn. red in HB'. intuition. }
-     assert (FClosed (bsubst 0 (Succ(BVar 0)) B)).
-     { red. rewrite bsubst_fvars.
-       intro x. rewrite Names.union_spec. cbn - [Names.union].
-       rewrite Names.union_spec.
-       generalize (HB' x) (@Names.empty_spec x). intuition. }
-     unfold FClosed in *. intuition.
+   + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.
+     cbn. now rewrite !fclosed_bsubst, HB'.
 Qed.
 
 End PeanoAx.

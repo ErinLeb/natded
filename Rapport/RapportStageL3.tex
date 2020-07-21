@@ -95,7 +95,7 @@ Ce stage de recherche de fin de licence avait pour but de proposer des extension
 Dans un premier temps, il a fallu se familiariser avec les outils du stage : à la fois la manipulation de Git mais aussi l'encodage parfois étonnant des notions classiques de la logique (formules closes, variables liées, modèles, etc.). Un fois ce travail de défrichage effectué, nous avons pu enrichir le codage existant en suivant trois axes principaux, qui correspondent aux trois sections principales de ce rapport :
 \begin{itemize}
 \item l'arithmétique de Peano, qui avait déjà été encodée mais où tout restait à faire du point de vue des exemples et de la maniabilité des preuves,
-\item la théorie des ensembles $\ZF$, où il s'est agit non seulement d'encoder les axiomes et de faire quelques preuves exemples, mais aussi de montrer qu'elle était plus générale que $\PA$, en ce sens qu'on peut démontrer dans $\ZF$ l'ensemble des axiomes de $\PA$. En pratique, il n'a pas été démontré exactement $\ZF \vdash \PA$, par manque de temps, mais on a défini dans $\ZF$ des fonctions zéro et successeur, qui servent de base à l'arithmétique de Peano.
+\item la théorie des ensembles $\ZF$, où il s'est agit non seulement d'encoder les axiomes et de faire quelques preuves exemples, mais aussi de montrer qu'elle était plus générale que $\PA$, en ce sens qu'on peut démontrer dans $\ZF$ l'ensemble des axiomes de $\PA$. En pratique, il n'a pas vraiment été démontré $\ZF \vdash \PA$, par manque de temps, mais on a défini dans $\ZF$ des fonctions zéro et successeur, qui servent de base à l'arithmétique de Peano.
 \item le $\lambda$-calcul enfin
 \end{itemize}
 \end{abstract}
@@ -109,11 +109,11 @@ Dans un premier temps, il a fallu se familiariser avec les outils du stage : à 
 
 \subsection{Contexte pratique du stage}
 
-Ce stage a été effectué sous la direction de Pierre Letouzey, maître de conférence à l'Université Paris-Diderot, et membre du groupe $\pi r^2$ de l'IRIF. Compte tenu du contexte sanitaire, la majeur partie des échange a eu lieu via BBB et par mail, à un rythme assez soutenu. J'ai cependant pu me rendre physiquement à l'IRIF afin de discuter dans la vraie vie avec avec mon maître de stage.
+Ce stage a été effectué sous la direction de Pierre Letouzey, maître de conférence à l'Université Paris-Diderot, et membre du groupe $\pi r^2$ de l'IRIF. Compte tenu du contexte sanitaire, la majeur partie des échange a eu lieu par visio-conférence et par mail, à un rythme assez soutenu. J'ai cependant pu me rendre physiquement à l'IRIF afin de discuter dans la vraie vie avec avec mon maître de stage.
 
 Malgré les échanges de mails réguliers, le travail à distance a probablement été le plus gros inconvénient de ce stage : dans la mesure où je travaillais sur un codage créé par Pierre Letouzey, qui n'a pas écrit de manuel d'explication pour justifier ou expliquer ses choix d'implémentation (ce qui se conçoit parfaitement étant donné l'usage qu'il avait prévu de faire de son travail, qui n'était censé être utilisé que pour illustrer le cours de logique qu'il donne en M1), j'ai dans eu grandement besoin d'explications pour me lancer dans le travail, et il eût probablement été plus aisé d'avoir ce genre de discussions informelles si nous avions pu travailler dans deux bureaux adjacents.
 
-Il n'en demeure pas moins que le stage a pu se dérouler sans trop d'embuche, et sans problèmes matériels majeurs. Par ailleurs, le travail à distance présente l'avantage non négligeable de permettre à chacun de travailler aux horaires qui lui conviennent le mieux, fût-ce tard le soir (ou bien tôt le matin selon la façon dont on voit les choses).
+Il n'en demeure pas moins que le stage a pu se dérouler sans trop d'embûches, et sans problèmes matériels majeurs. Par ailleurs, le travail à distance présente l'avantage non négligeable de permettre à chacun de travailler aux horaires qui lui conviennent le mieux, fût-ce tard le soir (ou bien tôt le matin selon la façon dont on voit les choses).
 
 \subsection{Motivations}
 
@@ -129,13 +129,15 @@ Par la suite, il a été à propos d'ajouter d'autres aspects de la logique à c
 % distinction pr ou valid
 % locally nameless
 
+% premier codage en coq (pas en isabelle) qui permet d'expérimenter des aspects calculatoires (p ex bsubst), la méta théorie (assez poussée, eg complétude) et une approche pédagogique
+
 \subsection{Mise en place de l'environnement de travail}
 
-Avant de se lancer dans le stage à proprement parler, il a fallu consacrer une petite semaine à l'acquisition de réflexes de travail, à la fois sur le support (GitHub) et sur l'encodage lui-même.
+Avant de se lancer dans le stage à proprement parler, il a fallu consacrer une petite semaine à l'acquisition de réflexes de travail, à la fois sur le support (GitLab) et sur l'encodage lui-même.
 
 \subsubsection{Dépôt Git}
 
-La première journée du stage a été passée à appréhender un outil nouveau pour manipuler de gros projets de code : GitHub. \'A ce titre, et pour me fixer les idées, j'ai rédigé la cheatsheet présentée en \ref{gitsheet}.
+La première journée du stage a été passée à appréhender un outil nouveau pour manipuler de gros projets de code : GitLab. \'A ce titre, et pour me fixer les idées, j'ai rédigé la cheatsheet présentée en \ref{gitsheet}.
 
 L'usage de Git a été d'un grand recours, notamment lorsque nous voulions discuter d'un morceau de preuve en visio-conférence, car chacun pouvait travailler et mettre à jour le dépôt de son côté, la fusion se faisant ensuite aisément grâce à la commande \verb+git pull+.
 
@@ -170,6 +172,8 @@ Pour ce dernier point, il a été utile d'établir l'admissibilité des règles 
 
 \subsection{Définition de nouvelles tactiques}
 
+% Parler de la généralité de la tactique rec
+
 
 \section{Théorie des ensembles de Zermelo-Fraenkel}
 
@@ -195,7 +199,7 @@ Pour ce dernier point, il a été utile d'établir l'admissibilité des règles 
 
 \section{Définition de \texttt{Pr}}
 
-\includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour GitHub}\label{gitsheet}]{TutoGitHub.pdf}
+\includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour GitLab}\label{gitsheet}]{TutoGitHub.pdf}
 
 \section{Commutativité de l'addition : avant-après}\label{beforeafter_comm_+}
 

@@ -133,13 +133,6 @@ Definition IsAx A :=
              check ZFSign B = true /\
              FClosed B).
 
-Ltac reIff :=
-match goal with
-| |- context [ ((?A -> ?B) /\ _ )%form ] => fold (Iff A B); reIff
-| H : context [ ((?A -> ?B) /\ _ )%form ] |- _ => fold (Iff A B) in H; reIff
-| _ => idtac
-end.
-
 Lemma pred_max a b :
 Nat.pred (Nat.max a b) = Nat.max (Nat.pred a) (Nat.pred b).
 Proof.
@@ -240,5 +233,50 @@ Proof.
         apply R_Or_i1; apply R_Ax; calc.
 Qed.
 
-Lemma union : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #2 \/ #0 ∈ #3)).
-Admitted.
+Lemma union : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)).
+Proof.
+  thm.
+  exists [ pairing; union ].
+  split; auto.
+  - simpl. constructor.
+    + left. calc.
+    + constructor; [ left; calc | auto ].
+  - set (Γ := [ _ ; _ ]).
+    app_R_All_i "A" A.
+    app_R_All_i "B" B.
+    inst_axiom pairing [A; B]; cbn in *. fold A. fold B. fold A in H. fold B in H. reIff.
+    eapply R_Ex_e with (x := "C"); [ | exact H | ]; calc.
+    cbn. fold A. fold B. set (C := FVar "C"). reIff.
+    clear H.
+    inst_axiom union [C]; cbn in *. fold A. fold B. fold C. fold A in H. fold B in H. fold C in H. reIff.
+    eapply R_Ex_e with (x := "U"); [ | exact H | ]; calc.
+    cbn. fold A. fold B. fold C. set (U := FVar "U"). reIff. clear H.
+    apply R_Ex_i with (t := U).
+    cbn. fold A. fold B. fold C. fold U.
+    app_R_All_i "x" x.
+    cbn. fold A. fold B. fold C. fold U. fold x.
+    apply R_And_i.
+    + apply R_Imp_i.
+      apply R_Ex_e with (A := #0 ∈ C /\ x ∈ #0) (x := "y"); set (y := FVar "y").
+      * calc.
+      * apply R_Imp_e with (A := x ∈ U).
+        -- eapply R_And_e1.
+           set (Ax := ∀ _). inst_axiom Ax [ x ].
+           exact H.
+        -- apply R'_Ax.
+      * cbn. fold A. fold B. fold C. fold U. fold x. fold y.
+        apply R'_And_e.
+        apply R_Or_e with (A := y = A) (B := y = B).
+        -- apply R_Imp_e with (A := y ∈ C); [ | apply R'_Ax ].
+           eapply R_And_e1.
+           set (Ax := ∀ _ <-> _ \/ _). inst_axiom Ax [ y ].
+           exact H.
+        -- apply R_Or_i1.
+           (* todo avec compat_left *)
+           admit.
+        -- apply R_Or_i2.
+           (* todo *)
+           admit.
+    + apply R_Imp_i.
+      apply R'_Or_e.
+      * admit.

@@ -216,6 +216,13 @@ Qed.
 
 (* And tactics to make the proofs look like natural deduction proofs. *)
 
+Ltac reIff :=
+  match goal with
+  | |- context [ ((?A -> ?B) /\ _ )%form ] => fold (Iff A B); reIff
+  | H : context [ ((?A -> ?B) /\ _ )%form ] |- _ => fold (Iff A B) in H; reIff
+  | _ => idtac
+  end.
+
 Ltac calc :=
   match goal with
   | |- BClosed _ => reflexivity
@@ -239,7 +246,7 @@ Ltac inst_axiom ax l :=
  let H := fresh in
  axiom ax H; inst H l; try easy.
 
-Ltac app_R_All_i t v := apply R_All_i with (x := t); calc; cbn; set (v := FVar t).
+Ltac app_R_All_i t v := apply R_All_i with (x := t); calc; cbn; set (v := FVar t); reIff.
 Ltac eapp_R_All_i := eapply R_All_i; calc.
 
 Ltac sym := apply Symmetry; calc.

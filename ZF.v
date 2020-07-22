@@ -9,6 +9,15 @@ Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
 
+Ltac refold :=
+ match goal with
+ | x := _, H : _ |- _ => progress fold x in H; refold
+ | x := _ |- _ => progress fold x; refold
+ | _ => idtac
+ end.
+
+Ltac simp := cbn in *; reIff; refold.
+
 (** On the necessity of a non trivial set theory : Russell's paradox. *)
 
 (*  The naive set theory consists of the non restricted comprehension axiom schema :
@@ -214,16 +223,15 @@ Proof.
     + rewrite<- H. unfold IsAx. left. compute; intuition.
     + inversion H.
   - app_R_All_i "x" x.
-    inst_axiom pairing [x; x]. cbn in H. reIff.
-    fold x in H.
+    inst_axiom pairing [x; x]. simp.
     eapply R_Ex_e with (x := "y"); [ | exact H | ].
     + calc.
     + cbn. fold x.
       set (y := FVar "y"). reIff.
-      apply R_Ex_i with (t := y); cbn; reIff. fold x; fold y.
+      apply R_Ex_i with (t := y); simp.
       apply R_All_i with (x := "z"); [ calc | ].
       set (z := FVar "z"). apply R'_All_e with (t := z); auto.
-      cbn. fold x. fold y. fold z.
+      simp.
       apply R_And_i; apply R'_And_e.
       * apply R_Imp_i.
         apply R_Or_e with (A := z = x) (B := z = x); [ | apply R_Ax; calc | apply R_Ax; calc ].
@@ -246,17 +254,17 @@ Proof.
   - set (Γ := [ _ ; _ ; _ ]).
     app_R_All_i "A" A.
     app_R_All_i "B" B.
-    inst_axiom pairing [A; B]; cbn in *. fold A. fold B. fold A in H. fold B in H. reIff.
+    inst_axiom pairing [A; B]; simp.
     eapply R_Ex_e with (x := "C"); [ | exact H | ]; calc.
-    cbn. fold A. fold B. set (C := FVar "C"). reIff.
+    set (C := FVar "C"). simp.
     clear H.
-    inst_axiom union [C]; cbn in *. fold A. fold B. fold C. fold A in H. fold B in H. fold C in H. reIff.
+    inst_axiom union [C]; simp.
     eapply R_Ex_e with (x := "U"); [ | exact H | ]; calc.
-    cbn. fold A. fold B. fold C. set (U := FVar "U"). reIff. clear H.
+    set (U := FVar "U"). simp. clear H.
     apply R_Ex_i with (t := U).
-    cbn. fold A. fold B. fold C. fold U.
+    simp.
     app_R_All_i "x" x.
-    cbn. fold A. fold B. fold C. fold U. fold x.
+    simp.
     apply R_And_i.
     + apply R_Imp_i.
       apply R_Ex_e with (A := #0 ∈ C /\ x ∈ #0) (x := "y"); set (y := FVar "y").
@@ -266,7 +274,7 @@ Proof.
            set (Ax := ∀ _). inst_axiom Ax [ x ].
            exact H.
         -- apply R'_Ax.
-      * cbn. fold A. fold B. fold C. fold U. fold x. fold y.
+      * simp.
         apply R'_And_e.
         apply R_Or_e with (A := y = A) (B := y = B).
         -- apply R_Imp_e with (A := y ∈ C); [ | apply R'_Ax ].
@@ -284,29 +292,30 @@ Proof.
     + apply R_Imp_i.
       apply R'_Or_e.
       * set (Ax := ∀ _ ∈ U <-> _). inst_axiom Ax [ x ].
-        cbn in H. fold U in H. fold C in H. fold x in H. fold Ax in H.
+        simp.
         apply R_And_e2 in H.
         apply R_Imp_e with (A := (∃ #0 ∈ C /\ x ∈ #0)); [ assumption | ].
-        apply R_Ex_i with (t := A). cbn. fold C. fold A. fold x.
+        apply R_Ex_i with (t := A). simp.
         apply R_And_i.
         -- set (Ax2 := ∀ _ <-> _). inst_axiom Ax2 [ A ].
-           cbn in H0. fold B in H0. fold C in H0. fold A in H0. fold Ax in H0.
+           simp.
            apply R_And_e2 in H0.
            apply R_Imp_e with (A := A = A \/ A = B); [ assumption | ].
            apply R_Or_i1.
            inst_axiom eq_refl [ A ].
         -- apply R'_Ax.
       * set (Ax := ∀ _ ∈ U <-> _). inst_axiom Ax [ x ].
-        cbn in H. fold U in H. fold C in H. fold x in H. fold Ax in H.
+        simp.
         apply R_And_e2 in H.
         apply R_Imp_e with (A := (∃ #0 ∈ C /\ x ∈ #0)); [ assumption | ].
         apply R_Ex_i with (t := B). cbn. fold C. fold B. fold x.
         apply R_And_i.
         -- set (Ax2 := ∀ _ <-> _). inst_axiom Ax2 [ B ].
-           cbn in H0. fold B in H0. fold C in H0. fold A in H0. fold Ax in H0.
+           simp.
            apply R_And_e2 in H0.
            apply R_Imp_e with (A := B = A \/ B = B); [ assumption | ].
            apply R_Or_i2.
            inst_axiom eq_refl [ B ].
         -- apply R'_Ax.
 Qed.
+  

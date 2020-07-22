@@ -12,12 +12,22 @@
 \usepackage{amssymb}
 \usepackage{amsthm}
 \usepackage{multicol}
-\usepackage{hyperref}
-\hypersetup{hidelinks}
+\usepackage[hidelinks]{hyperref}
 \usepackage{color}
 \usepackage{pdfpages}
 \usepackage{ebproof}
+\usepackage{minted}
+\usepackage{manfnt}
 
+\DeclareUnicodeCharacter{393}{$\Gamma$}
+\DeclareUnicodeCharacter{22A2}{$\vdash$}
+\DeclareUnicodeCharacter{2203}{$\exists$}
+\DeclareUnicodeCharacter{2200}{$\forall$}
+
+\makeatletter
+\AtBeginEnvironment{minted}{\dontdofcolorbox}
+\def\dontdofcolorbox{\renewcommand\fcolorbox[4][]{##4}}
+\makeatother
 
 \newcommand{\N}{\ensuremath{\mathbb{N}}}
 \newcommand{\Z}{\ensuremath{\mathbb{Z}}}
@@ -73,8 +83,9 @@
 \date{\today}
 
 \begin{document}
+\includegraphics[scale=0.4]{logo_ens.png} \hfill \includegraphics[scale=0.1]{logo-irif.png}
 \begin{center}
-    \vspace*{4em}
+    \vspace*{1em}
     {\LARGE Rapport de stage} \\ \vspace{1em}
     {\huge Extensions d'un cours de logique du premier ordre certifié en Coq} \\ \vspace{2em}
     
@@ -82,7 +93,7 @@
     
     {\Large Samuel Ben Hamou} \\
     {\large \'Ecole Normale Supérieure Paris-Saclay} \\ 
-    {\large 1ère année, département informatique} \\ \vspace{2em}
+    {\large 1ère année, Département Informatique} \\ \vspace{2em}
     
     {\Large Sous la supervision de Pierre Letouzey} \\
     {\large IRIF, INRIA et CNRS} \vspace{2em}
@@ -90,7 +101,7 @@
 
 
 \begin{abstract}
-Ce stage de recherche de fin de licence avait pour but de proposer des extensions à un encodage en Coq déjà existant de la déduction naturelle. Le dépôt du projet se trouve à l'adresse suivante : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}.
+Ce stage de recherche de fin de licence avait pour but de proposer des extensions à un encodage en Coq déjà existant de la déduction naturelle. Le dépôt du projet se trouve à l'adresse suivante (dans la branche \og Stage \fg{}) : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}.
 
 Dans un premier temps, il a fallu se familiariser avec les outils du stage : à la fois la manipulation de Git mais aussi l'encodage parfois étonnant des notions classiques de la logique (formules closes, variables liées, modèles, etc.). Un fois ce travail de défrichage effectué, nous avons pu enrichir le codage existant en suivant trois axes principaux, qui correspondent aux trois sections principales de ce rapport :
 \begin{itemize}
@@ -125,11 +136,17 @@ Par la suite, il a été à propos d'ajouter d'autres aspects de la logique à c
 
 \subsection{Encodage existant et état de l'art}
 
-% système de déduction naturelle présent (avec séquents et en coq)
-% distinction pr ou valid
-% locally nameless
+L'encodage \verb+NatDed+ existant déjà avant le stage. \`A ce moment là, il contenait déjà un système de déduction naturelle avec des séquents, ainsi qu'un grand nombre de lemmes et résultats utiles, y compris sur la méta-théorie. Deux méthodes sont possibles pour établir une preuve dans cette encodage : une méthode constructive, reposant sur le prédicat \verb+Pr+ dont la définition est donnée en annexe \ref{pr}, qui permet de construire une preuve pas à pas, mais n'est pas forcément pratique à utiliser pour démontrer des résultats méta-théoriques. L'autre méthode, \verb+Valid+, permet de vérifier qu'une dérivation est bien formée (cela implique donc de fournir directement une dérivation complète, ce qui alourdi considérablement le style des preuves). Le choix qui a été fait pour stage est d'utiliser \verb+Pr+ systématiquement.
 
-% premier codage en coq (pas en isabelle) qui permet d'expérimenter des aspects calculatoires (p ex bsubst), la méta théorie (assez poussée, eg complétude) et une approche pédagogique
+En ce qui concerne la façon d'encoder les formules de la logique du premier ordre, Pierre Letouzey avait choisi un système \emph{locally nameless}, i.e. où les variables liées sont représentées par des indices de \textsc{de Bruijn} et les variables libres par un nom du type \verb+FVar string+ (par exemple $x$ s'écrira \verb+FVar "x"+). En parallèle de cette convention, une équivalence avec un système reposant totalement sur des variables nommées était proposées, mais quoiqu'elle eût peut se révéler fort utile, cette équivalence n'a guère été utilisée pendant le stage.
+\medskip
+
+\emph{A priori}, il s'agit du premier codage Coq de la déduction naturelle qui allie les trois aspects suivants :
+\begin{itemize}
+\item Calcul : l'ensemble du système n'est pas purement syntaxique, puisqu'il tire également partie de la capacité de Coq à effectuer un certain nombre de calculs à la place de l'utilisateur. Par exemple, les substitutions sont entièrement gérées par une fonction \verb+bsubst+.
+\item Méta-théorie assez poussée, dans la mesure où un théorème de complétude a pu être démontré.
+\item Pédagogie : avec un peu de patience -- et, je l'espère, en s'aidant du travail effectué pendant le stage -- on peut utiliser ce codage pour illustrer un cours sur la théorie de la démonstration, ou bien justifier que l'on peut admettre un certain nombre de résultats longs à démontrer en exhibant une preuve (plus ou moins lisible à l'\oe il nu) dans ce système.
+\end{itemize}
 
 \subsection{Mise en place de l'environnement de travail}
 
@@ -161,10 +178,33 @@ Pour ce dernier point, il a été utile d'établir l'admissibilité des règles 
 \end{prooftree*}
 \'Evidemment, les règles RAA et absu sont équivalentes, mais la forme RAA était plus commode pour montrer le tiers-exclu.
 
-% Comment présenter du verbatim coq ? faut-il le faire ici ? -> Oui
-% DIRE QUE L'ON A UTILISE DU SUCRE SYNTAXIQUE
-% alltt ?
+\`A titre d'illustration, voici l'énoncé de ces petits résultats tels que démontré dans le projet. On donne également la démonstration du premier, afin d'avoir une idée de ce à quoi ressemble une preuve en déduction naturelle dans cet encodage.
 
+\begin{minted}{coq}
+Lemma ex1 f1 f2 : Provable Intuiti ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
+Proof.
+  apply Provable_alt.
+  apply R_Imp_i.
+  apply R_Or_i1.
+  apply R_And_e1 with (B := f2).
+  apply R_Ax.
+  apply in_eq.
+Qed.
+
+Lemma ex2 f1 f2 f3 : Provable Intuiti ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
+
+Lemma RAA f1 Γ : Pr Classic (Γ ⊢ ~~f1) -> Pr Classic (Γ ⊢ f1).
+
+Lemma DeMorgan f1 f2 Γ : Pr Classic (Γ ⊢ ~(~f1 /\ f2)) -> Pr Classic (Γ ⊢ ~~(f1 \/ ~f2)).
+
+Lemma ExcludedMiddle f1 : Provable Classic ([] ⊢ f1 \/ ~f1).
+\end{minted}
+
+\noindent \begin{minipage}[t]{0.05\linewidth}
+\dbend
+\end{minipage} \begin{minipage}[c]{0.95\linewidth}
+Les symboles \verb+->+, \verb+/\+, \verb+\/+ et \verb+~+ utilisés à l'intérieur des séquents n'ont \emph{rien à voir} avec les opérateurs Coq du même nom : il s'agit d'une surcharge de notation pour rendre les preuves plus lisibles.
+\end{minipage}
 
 \section{Arithmétique de Peano}
 
@@ -197,7 +237,46 @@ Pour ce dernier point, il a été utile d'établir l'admissibilité des règles 
 \appendix
 \newpage
 
-\section{Définition de \texttt{Pr}}
+\section{Définition de \texttt{Pr}} \label{pr}
+
+\begin{minted}{coq}
+Inductive Pr (l:logic) : sequent -> Prop :=
+ | R_Ax Γ A : In A Γ -> Pr l (Γ ⊢ A)
+ | R_Tr_i Γ : Pr l (Γ ⊢ True)
+ | R_Fa_e Γ A : Pr l (Γ ⊢ False) ->
+                  Pr l (Γ ⊢ A)
+ | R_Not_i Γ A : Pr l (A::Γ ⊢ False) ->
+                   Pr l (Γ ⊢ ~A)
+ | R_Not_e Γ A : Pr l (Γ ⊢ A) -> Pr l (Γ ⊢ ~A) ->
+                   Pr l (Γ ⊢ False)
+ | R_And_i Γ A B : Pr l (Γ ⊢ A) -> Pr l (Γ ⊢ B) ->
+                   Pr l (Γ ⊢ A/\B)
+ | R_And_e1 Γ A B : Pr l (Γ ⊢ A/\B) ->
+                    Pr l (Γ ⊢ A)
+ | R_And_e2 Γ A B : Pr l (Γ ⊢ A/\B) ->
+                    Pr l (Γ ⊢ B)
+ | R_Or_i1 Γ A B : Pr l (Γ ⊢ A) ->
+                   Pr l (Γ ⊢ A\/B)
+ | R_Or_i2 Γ A B : Pr l (Γ ⊢ B) ->
+                   Pr l (Γ ⊢ A\/B)
+ | R_Or_e Γ A B C :
+     Pr l (Γ ⊢ A\/B) -> Pr l (A::Γ ⊢ C) -> Pr l (B::Γ ⊢ C) ->
+     Pr l (Γ ⊢ C)
+ | R_Imp_i Γ A B : Pr l (A::Γ ⊢ B) ->
+                     Pr l (Γ ⊢ A->B)
+ | R_Imp_e Γ A B : Pr l (Γ ⊢ A->B) -> Pr l (Γ ⊢ A) ->
+                   Pr l (Γ ⊢ B)
+ | R_All_i x Γ A : ~Names.In x (fvars (Γ ⊢ A)) ->
+                   Pr l (Γ ⊢ bsubst 0 (FVar x) A) ->
+                   Pr l (Γ ⊢ ∀A)
+ | R_All_e t Γ A : Pr l (Γ ⊢ ∀A) -> Pr l (Γ ⊢ bsubst 0 t A)
+ | R_Ex_i t Γ A : Pr l (Γ ⊢ bsubst 0 t A) -> Pr l (Γ ⊢ ∃A)
+ | R_Ex_e x Γ A B : ~Names.In x (fvars (A::Γ⊢B)) ->
+      Pr l (Γ ⊢ ∃A) -> Pr l ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
+      Pr l (Γ ⊢ B)
+ | R_Absu Γ A : l=Classic -> Pr l (Not A :: Γ ⊢ False) ->
+                  Pr l (Γ ⊢ A).
+\end{minted}
 
 \includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour GitLab}\label{gitsheet}]{TutoGitHub.pdf}
 

@@ -236,12 +236,14 @@ Qed.
 Lemma union : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)).
 Proof.
   thm.
-  exists [ pairing; union ].
+  exists [ pairing; union; compat_right; eq_refl ].
   split; auto.
   - simpl. constructor.
     + left. calc.
-    + constructor; [ left; calc | auto ].
-  - set (Γ := [ _ ; _ ]).
+    + constructor. left. calc.
+      constructor. left. calc.
+      constructor; [ left; calc | auto ].
+  - set (Γ := [ _ ; _ ; _ ]).
     app_R_All_i "A" A.
     app_R_All_i "B" B.
     inst_axiom pairing [A; B]; cbn in *. fold A. fold B. fold A in H. fold B in H. reIff.
@@ -272,11 +274,39 @@ Proof.
            set (Ax := ∀ _ <-> _ \/ _). inst_axiom Ax [ y ].
            exact H.
         -- apply R_Or_i1.
-           (* todo avec compat_left *)
-           admit.
+           apply R_Imp_e with (A := x ∈ y /\ y = A).
+           ++ inst_axiom compat_right [ A; y; x ].
+           ++ apply R_And_i; apply R_Ax; calc.
         -- apply R_Or_i2.
-           (* todo *)
-           admit.
+           apply R_Imp_e with (A := x ∈ y /\ y = B).
+           ++ inst_axiom compat_right [ B; y; x ].
+           ++ apply R_And_i; apply R_Ax; calc.
     + apply R_Imp_i.
       apply R'_Or_e.
-      * admit.
+      * set (Ax := ∀ _ ∈ U <-> _). inst_axiom Ax [ x ].
+        cbn in H. fold U in H. fold C in H. fold x in H. fold Ax in H.
+        apply R_And_e2 in H.
+        apply R_Imp_e with (A := (∃ #0 ∈ C /\ x ∈ #0)); [ assumption | ].
+        apply R_Ex_i with (t := A). cbn. fold C. fold A. fold x.
+        apply R_And_i.
+        -- set (Ax2 := ∀ _ <-> _). inst_axiom Ax2 [ A ].
+           cbn in H0. fold B in H0. fold C in H0. fold A in H0. fold Ax in H0.
+           apply R_And_e2 in H0.
+           apply R_Imp_e with (A := A = A \/ A = B); [ assumption | ].
+           apply R_Or_i1.
+           inst_axiom eq_refl [ A ].
+        -- apply R'_Ax.
+      * set (Ax := ∀ _ ∈ U <-> _). inst_axiom Ax [ x ].
+        cbn in H. fold U in H. fold C in H. fold x in H. fold Ax in H.
+        apply R_And_e2 in H.
+        apply R_Imp_e with (A := (∃ #0 ∈ C /\ x ∈ #0)); [ assumption | ].
+        apply R_Ex_i with (t := B). cbn. fold C. fold B. fold x.
+        apply R_And_i.
+        -- set (Ax2 := ∀ _ <-> _). inst_axiom Ax2 [ B ].
+           cbn in H0. fold B in H0. fold C in H0. fold A in H0. fold Ax in H0.
+           apply R_And_e2 in H0.
+           apply R_Imp_e with (A := B = A \/ B = B); [ assumption | ].
+           apply R_Or_i2.
+           inst_axiom eq_refl [ B ].
+        -- apply R'_Ax.
+Qed.

@@ -13,7 +13,15 @@ Local Open Scope eqb_scope.
 Implicit Type t u : term.
 Implicit Type f : formula.
 
-(** [lift] does nothing on a [BClosed] term *)
+(** Properties of [lift] *)
+
+Lemma level_lift t : level (lift t) <= S (level t).
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto with arith.
+ rewrite map_map.
+ apply list_max_map_le. intros a Ha. transitivity (S (level a)); auto.
+ rewrite <- Nat.succ_le_mono. now apply list_max_map_in.
+Qed.
 
 Lemma lift_nop t : BClosed t -> lift t = t.
 Proof.
@@ -23,7 +31,54 @@ Proof.
  - rewrite list_max_map_0. intros H. f_equal. apply map_id_iff; auto.
 Qed.
 
-(** [check] and [lift_above] *)
+Lemma check_lift sign t :
+ check sign (lift t) = check sign t.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ destruct funsymbs; auto.
+ rewrite map_length. case eqb; auto.
+ apply eq_true_iff_eq. rewrite forallb_map, !forallb_forall.
+ split; intros H x Hx. rewrite <- IH; auto. rewrite IH; auto.
+Qed.
+
+Lemma lift_fvars t : fvars (lift t) = fvars t.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
+ induction l; simpl; auto.
+ rewrite IH, IHl; simpl; auto.
+ intros x Hx. apply IH. simpl; auto.
+Qed.
+
+(** Properties of [lift_above] *)
+
+Lemma level_lift_above t k :
+  level (lift_above k t) <= S (level t).
+Proof.
+  induction t using term_ind'; cbn; auto with arith.
+  + destruct (k <=? n); cbn; omega.
+  + rewrite map_map.
+    apply list_max_map_le. intros. transitivity (S (level a)); auto.
+    rewrite<- Nat.succ_le_mono. now apply list_max_map_in.
+Qed.
+
+Lemma level_lift_form_above f k :
+  level (lift_form_above k f) <= S (level f).
+Proof.
+  revert k. induction f; intro; cbn; auto with arith.
+  + rewrite map_map.
+    rewrite list_max_map_le.
+    intros.
+    transitivity (S (level a)).
+    - apply level_lift_above.
+    - apply-> Nat.succ_le_mono.
+      apply list_max_map_in.
+      assumption.
+  + specialize (IHf1 k).
+    specialize (IHf2 k).
+    omega with *.
+  + specialize (IHf (S k)).
+    omega.
+Qed.
 
 Lemma check_lift_above sign t k :
   check sign (lift_above k t) = check sign t.
@@ -49,41 +104,6 @@ Proof.
   + intro. rewrite IHf1. rewrite IHf2. reflexivity.
 Qed.
 
-(** [level] and [lift_above] *)
-
-Lemma level_lift_above t k :
-  level (lift_above k t) <= S (level t).
-Proof.
-  induction t using term_ind'; cbn; auto with arith.
-  + destruct (k <=? n); cbn; omega.
-  + rewrite map_map.
-    apply list_max_map_le. intros. transitivity (S (level a)); auto.
-    rewrite<- Nat.succ_le_mono. now apply list_max_map_in.
-Qed.
-
-Ltac specialise t := specialize t.
-
-Lemma level_lift_form_above f k :
-  level (lift_form_above k f) <= S (level f).
-Proof.
-  revert k. induction f; intro; cbn; auto with arith.
-  + rewrite map_map.
-    rewrite list_max_map_le.
-    intros.
-    transitivity (S (level a)).
-    - apply level_lift_above.
-    - apply-> Nat.succ_le_mono.
-      apply list_max_map_in.
-      assumption.
-  + specialise (IHf1 k).
-    specialise (IHf2 k).
-    omega with *.
-  + specialise (IHf (S k)).
-    omega.
-Qed.
-
-(** [fvars] and [lift_above] *)
-
 Lemma fvars_lift_above t k :
   fvars (lift_above k t) = fvars t.
 Proof.
@@ -104,16 +124,6 @@ Proof.
 Qed.
 
 (** [bsubst] and [check] *)
-
-Lemma check_lift sign t :
- check sign (lift t) = check sign t.
-Proof.
- induction t as [ | | f l IH] using term_ind'; cbn; auto.
- destruct funsymbs; auto.
- rewrite map_length. case eqb; auto.
- apply eq_true_iff_eq. rewrite forallb_map, !forallb_forall.
- split; intros H x Hx. rewrite <- IH; auto. rewrite IH; auto.
-Qed.
 
 Lemma check_bsubst_term sign n (u t:term) :
  check sign u = true -> check sign t = true ->
@@ -144,12 +154,26 @@ Qed.
 
 (** [bsubst] and [level] *)
 
-Lemma level_lift t : level (lift t) <= S (level t).
+Lemma level_bsubst_term_max n (u t:term) :
+  level (bsubst n u t) <= Nat.max (level u) (level t).
 Proof.
- induction t as [ | | f l IH] using term_ind'; cbn; auto with arith.
- rewrite map_map.
- apply list_max_map_le. intros a Ha. transitivity (S (level a)); auto.
- rewrite <- Nat.succ_le_mono. now apply list_max_map_in.
+ revert t. fix IH 1; destruct t; cbn -[Nat.max].
+ - auto with arith.
+ - case eqbspec; cbn -[Nat.max]; omega with *.
+ - revert l. fix IHl 1; destruct l; cbn -[Nat.max].
+   + auto with arith.
+   + specialize (IH t). specialize (IHl l). omega with *.
+Qed.
+
+Lemma level_bsubst_max n u (f:formula) :
+  level (bsubst n u f) <= Nat.max (level u) (level f).
+Proof.
+ revert n u.
+ induction f; intros; cbn -[Nat.max]; auto with arith.
+ - apply (level_bsubst_term_max n u (Fun "" l)).
+ - specialize (IHf1 n u). specialize (IHf2 n u). omega with *.
+ - assert (H := level_lift u).
+   specialize (IHf (S n) (lift u)). omega with *.
 Qed.
 
 Lemma level_bsubst_term n (u t:term) :
@@ -195,14 +219,6 @@ Proof.
 Qed.
 
 (** [bsubst] and [fvars] : over-approximations *)
-
-Lemma lift_fvars t : fvars (lift t) = fvars t.
-Proof.
- induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
- induction l; simpl; auto.
- rewrite IH, IHl; simpl; auto.
- intros x Hx. apply IH. simpl; auto.
-Qed.
 
 Lemma bsubst_term_fvars n (u t:term) :
  Names.Subset (fvars (bsubst n u t)) (Names.union (fvars u) (fvars t)).

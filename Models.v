@@ -554,16 +554,7 @@ Proof.
      apply R_Fa_e.
      apply R_Not_e with A. apply R'_Ax.
      eapply Pr_weakening; eauto. constructor. intros a; simpl; auto.
- - intros (_ & axsAB & FAB & PRAB) (_ & axsA & FA & PRA).
-   split. now rewrite Op_wf in WF.
-   exists (axsAB++axsA). split.
-   rewrite Forall_forall in *; intros x; rewrite !in_app_iff;
-     intros [|]; auto.
-   apply R_Imp_e with A.
-   + clear PRA; eapply Pr_weakening; eauto. constructor.
-       intros a. simpl. rewrite !in_app_iff; auto.
-   + clear PRAB; eapply Pr_weakening; eauto. constructor.
-       intros a. simpl. rewrite !in_app_iff; auto.
+ - apply ModusPonens.
 Qed.
 
 Lemma pr_notex_allnot logic c A :

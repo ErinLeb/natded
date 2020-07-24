@@ -439,9 +439,9 @@ Proof.
 Qed.
 
 Lemma nForall_fclosed n A :
- FClosed A -> FClosed (nForall n A).
+ FClosed A <-> FClosed (nForall n A).
 Proof.
- induction n; simpl; auto.
+ induction n; simpl; easy.
 Qed.
 
 Lemma nForall_level n A :

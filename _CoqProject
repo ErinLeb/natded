@@ -21,5 +21,6 @@ PreModels.v
 Models.v
 Peano.v
 ZF.v
+Skolem.v
 # parser.v
 # FormulaReader.v

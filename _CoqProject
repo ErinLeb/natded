@@ -10,6 +10,7 @@ Nam.v
 Mix.v
 NameProofs.v
 Subst.v
+Restrict.v
 Meta.v
 Equiv.v
 Equiv2.v

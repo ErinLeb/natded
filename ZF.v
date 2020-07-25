@@ -308,7 +308,7 @@ Proof.
         simp.
         apply R_And_e2 in H.
         apply R_Imp_e with (A := (∃ #0 ∈ C /\ x ∈ #0)); [ assumption | ].
-        apply R_Ex_i with (t := B). cbn. fold C. fold B. fold x.
+        apply R_Ex_i with (t := B). simp.
         apply R_And_i.
         -- set (Ax2 := ∀ _ <-> _). inst_axiom Ax2 [ B ].
            simp.
@@ -318,4 +318,12 @@ Proof.
            inst_axiom eq_refl [ B ].
         -- apply R'_Ax.
 Qed.
-  
+
+Lemma Succ : IsTheorem Intuiti ZF
+                       (∀∃∀ (#0 ∈ #1 <-> #0 = #2)
+                        -> ∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)
+                        -> ∀∃ succ (#1) (#0)).
+Admitted.
+
+Lemma Successor : IsTheorem Intuiti ZF (∀∃ succ (#1) (#0)).
+Admitted.

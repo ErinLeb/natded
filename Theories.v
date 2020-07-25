@@ -103,81 +103,26 @@ Proof.
   unfold IsTheorem in *.
   destruct H. destruct H0.
   split.
-  + unfold Wf in *.
-    intuition.
-    * assert (check th (A -> B)%form = true -> check th B = true).
-      {
-        assert (check th (A -> B)%form = check th A && check th B).
-        { auto. }
-        assert (check th A && check th B = check th A &&& check th B).
-        { apply andb_lazy_alt. }
-        rewrite H8 in H5.
-        intro.
-        rewrite H5 in H9.
-        assert (check th A = true /\ check th B = true).
-        { apply andb_true_iff. rewrite H8. assumption. }
-        destruct H10.
-        assumption.
-      }
-      apply H5. assumption.
-    * assert (BClosed (A -> B)%form -> BClosed A /\ BClosed B).
-      {
-        intro.
-        unfold BClosed in *.
-        cbn in H5.
-        apply max_0 in H5.
-        assumption.
-      }
-      apply H5 in H0.
-      destruct H0.
-      assumption.
-    * assert (FClosed (A -> B)%form -> FClosed A /\ FClosed B).
-      {
-        intro.
-        unfold FClosed in *.
-        cbn in H5.
-        assert (forall s s', Names.Empty (Names.union s s') -> Names.Empty s /\ Names.Empty s').
-        { split. namedec. namedec. }
-        eapply H8 in H5.
-        assumption.
-      }
-      apply H5 in H6.
-      destruct H6.
-      assumption.
+  + rewrite Op_wf in H.
+    apply H.
   + destruct H1.
     destruct H2.
     exists (x ++ x0).
     destruct H1. destruct H2.
     split.
-    * assert (forall l l', Forall (IsAxiom th) l -> Forall (IsAxiom th) l' -> Forall (IsAxiom th) (l ++ l')).
-      {
-        intros.
-        induction l.
-        - auto.
-        - simpl. apply Forall_cons.
-          ++ inversion H5. assumption.
-          ++ apply IHl. inversion H5. assumption.
-      }
-      apply H5; assumption.
+    * rewrite Forall_forall in *.
+      intro f.
+      rewrite in_app_iff.
+      intuition.
     * apply R_Imp_e with (A := A).
       - apply Pr_weakening with (s := x ⊢ A -> B); auto.
-        apply SubSeq.
-        assert (forall A (x : list A) x0, ListSubset x (x ++ x0)).
-        { intros. induction x1.
-          ++ unfold ListSubset. intros. inversion H5.
-          ++ unfold ListSubset. intros. inversion H5.
-             ** rewrite H6. simpl. apply in_eq.
-             ** simpl. right. apply IHx1. assumption.
-        }
-        apply H5.
+        apply SubSeq. red.
+        intro f.
+        rewrite in_app_iff. intuition.
       - apply Pr_weakening with (s := x0 ⊢ A); auto.
-        apply SubSeq.
-        assert (forall A (x : list A) x0, ListSubset x0 (x ++ x0)).
-        { intros. induction x1.
-          ++ unfold ListSubset. intros. simpl. assumption.
-          ++ unfold ListSubset. intros. unfold ListSubset in IHx1. simpl. right. apply IHx1. assumption.
-        }
-        apply H5.
+        apply SubSeq. red.
+        intro f.
+        rewrite in_app_iff. intuition.
 Qed.
 
 (** We can "fix" a proof made with things not in the signature,

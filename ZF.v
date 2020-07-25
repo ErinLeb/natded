@@ -241,7 +241,7 @@ Proof.
         apply R_Or_i1; apply R_Ax; calc.
 Qed.
 
-Lemma union : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)).
+Lemma unionset : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)).
 Proof.
   thm.
   exists [ pairing; union; compat_right; eq_refl ].
@@ -256,15 +256,12 @@ Proof.
     app_R_All_i "B" B.
     inst_axiom pairing [A; B]; simp.
     eapply R_Ex_e with (x := "C"); [ | exact H | ]; calc.
-    set (C := FVar "C"). simp.
-    clear H.
+    set (C := FVar "C"). simp. clear H.
     inst_axiom union [C]; simp.
     eapply R_Ex_e with (x := "U"); [ | exact H | ]; calc.
     set (U := FVar "U"). simp. clear H.
-    apply R_Ex_i with (t := U).
-    simp.
-    app_R_All_i "x" x.
-    simp.
+    apply R_Ex_i with (t := U). simp.
+    app_R_All_i "x" x. simp.
     apply R_And_i.
     + apply R_Imp_i.
       apply R_Ex_e with (A := #0 ∈ C /\ x ∈ #0) (x := "y"); set (y := FVar "y").
@@ -320,10 +317,54 @@ Proof.
 Qed.
 
 Lemma Succ : IsTheorem Intuiti ZF
-                       (∀∃∀ (#0 ∈ #1 <-> #0 = #2)
-                        -> ∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)
+                       ((∀∃∀ (#0 ∈ #1 <-> #0 = #2))
+                        -> (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2))
                         -> ∀∃ succ (#1) (#0)).
-Admitted.
-
+Proof.
+  thm.
+  exists [ ].
+  split; auto.
+  repeat apply R_Imp_i.
+  set (Un := ∀ ∀ _). set (Sing := ∀ ∃ _). set (Γ := Un :: Sing :: []).
+  app_R_All_i "x" x. simp.
+  inst_axiom Sing [x]; simp.
+  eapply R_Ex_e with (x := "A"); [ | exact H | ]; calc.
+  set (A := FVar "A"). simp. clear H.
+  inst_axiom Un [ A; x ]. simp.
+  eapply R_Ex_e with (x := "U"); [ | exact H | ]; calc.
+  set (U := FVar "U"). simp. clear H.
+  apply R_Ex_i with (t := U). simp.
+  app_R_All_i "y" y. simp.
+  apply R_And_i.
+  - apply R_Imp_i.
+    apply R_Or_e with (A := y ∈ A) (B := y ∈ x).
+    + set (Ax := ∀ _ ∈ U <-> _).
+      inst_axiom Ax [ y ]. simp.
+      apply R_And_e1 in H.
+      apply R_Imp_e with (A := y ∈ U) in H; [ intuition | apply R'_Ax ].
+    + apply R_Or_i1.
+      set (Ax := ∀ _ ∈ A <-> _).
+      inst_axiom Ax [ y ]. simp.
+      apply R_And_e1 in H.
+      apply R_Imp_e with (A := y ∈ A) in H; [ intuition | apply R'_Ax ].
+    + apply R_Or_i2. apply R'_Ax.
+  - apply R_Imp_i.
+    apply R_Imp_e with (A := y ∈ A \/ y ∈ x).
+    + set (Ax := ∀ _ ∈ U <-> _).
+      inst_axiom Ax [ y ]. simp.
+      apply R_And_e2 in H.
+      assumption.
+    + apply R'_Or_e.
+      * apply R_Or_i1.
+        set (Ax := ∀ _ ∈ A <-> _).
+        inst_axiom Ax [ y ]. simp.
+        apply R_And_e2 in H.
+        apply R_Imp_e with (A := y = x) in H; [ intuition | apply R'_Ax ].
+      * apply R_Or_i2. apply R'_Ax.
+Qed.
+  
 Lemma Successor : IsTheorem Intuiti ZF (∀∃ succ (#1) (#0)).
-Admitted.
+Proof.
+  apply ModusPonens with (A := ∀∀∃∀ #0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2); [ | apply unionset ].
+  apply ModusPonens with (A := ∀∃∀ #0 ∈ #1 <-> #0 = #2); [ apply Succ | apply singleton ].
+Qed.

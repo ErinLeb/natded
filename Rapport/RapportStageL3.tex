@@ -19,6 +19,8 @@
 \usepackage{minted}
 \usepackage{manfnt}
 
+\usemintedstyle{tango}
+
 \DeclareUnicodeCharacter{393}{$\Gamma$}
 \DeclareUnicodeCharacter{22A2}{$\vdash$}
 \DeclareUnicodeCharacter{2203}{$\exists$}
@@ -91,23 +93,23 @@
     
     {\Large Stage effectué du 1 juin au 17 juillet 2020} \\ \vspace{3em}
     
-    {\Large Samuel Ben Hamou} \\
+    {\Large Samuel Ben Hamou} \\ \smallskip
     {\large \'Ecole Normale Supérieure Paris-Saclay} \\ 
     {\large 1ère année, Département Informatique} \\ \vspace{2em}
     
-    {\Large Sous la supervision de Pierre Letouzey} \\
+    {\Large Sous la supervision de Pierre Letouzey} \\ \smallskip
     {\large IRIF, INRIA et CNRS} \vspace{2em}
 \end{center}
 
 
 \begin{abstract}
-Ce stage de recherche de fin de licence avait pour but de proposer des extensions à un encodage en Coq déjà existant de la déduction naturelle. Le dépôt du projet se trouve à l'adresse suivante (dans la branche \og Stage \fg{}) : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}.
+Ce stage de recherche de fin de licence avait pour but de proposer des extensions à un encodage en Coq déjà existant de la déduction naturelle. Le dépôt du projet se trouve dans la branche \og Stage \fg{} à l'adresse suivante : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}.
 
 Dans un premier temps, il a fallu se familiariser avec les outils du stage : à la fois la manipulation de Git mais aussi l'encodage parfois étonnant des notions classiques de la logique (formules closes, variables liées, modèles, etc.). Un fois ce travail de défrichage effectué, nous avons pu enrichir le codage existant en suivant trois axes principaux, qui correspondent aux trois sections principales de ce rapport :
 \begin{itemize}
-\item l'arithmétique de Peano, qui avait déjà été encodée mais où tout restait à faire du point de vue des exemples et de la maniabilité des preuves,
-\item la théorie des ensembles $\ZF$, où il s'est agit non seulement d'encoder les axiomes et de faire quelques preuves exemples, mais aussi de montrer qu'elle était plus générale que $\PA$, en ce sens qu'on peut démontrer dans $\ZF$ l'ensemble des axiomes de $\PA$. En pratique, il n'a pas vraiment été démontré $\ZF \vdash \PA$, par manque de temps, mais on a défini dans $\ZF$ des fonctions zéro et successeur, qui servent de base à l'arithmétique de Peano.
-\item le $\lambda$-calcul enfin
+\item l'arithmétique de \textsc{Peano}, qui avait déjà été encodée mais où tout restait à faire du point de vue des exemples et de la maniabilité des preuves,
+\item la théorie des ensembles $\ZF$, où il s'est agit non seulement d'encoder les axiomes et de faire quelques preuves exemples, mais aussi de proposer une construction de $\N$,
+\item le $\lambda$-calcul enfin, où nous avons pu démontrer et mettre en \oe uvre la correspondance de \textsc{Curry-Howard} pour des logiques de plus en plus expressives.
 \end{itemize}
 \end{abstract}
 
@@ -141,11 +143,11 @@ L'encodage \verb+NatDed+ existant déjà avant le stage. \`A ce moment là, il c
 En ce qui concerne la façon d'encoder les formules de la logique du premier ordre, Pierre Letouzey avait choisi un système \emph{locally nameless}, i.e. où les variables liées sont représentées par des indices de \textsc{de Bruijn} et les variables libres par un nom du type \verb+FVar string+ (par exemple $x$ s'écrira \verb+FVar "x"+). En parallèle de cette convention, une équivalence avec un système reposant totalement sur des variables nommées était proposée, mais quoiqu'elle eût peut se révéler fort utile, cette équivalence n'a guère été utilisée pendant le stage.
 \medskip
 
-\emph{A priori}, il s'agit du premier codage Coq de la déduction naturelle qui allie les trois aspects suivants :
+A priori, il s'agit du premier codage Coq de la déduction naturelle qui allie les trois aspects suivants :
 \begin{itemize}
-\item Calcul : l'ensemble du système n'est pas purement syntaxique, puisqu'il tire également partie de la capacité de Coq à effectuer un certain nombre de calculs à la place de l'utilisateur. Par exemple, les substitutions sont entièrement gérées par une fonction \verb+bsubst+.
-\item Méta-théorie assez poussée, dans la mesure où un théorème de complétude a pu être démontré.
-\item Pédagogie : avec un peu de patience -- et, je l'espère, en s'aidant du travail effectué pendant le stage -- on peut utiliser ce codage pour illustrer un cours sur la théorie de la démonstration, ou bien justifier que l'on peut admettre un certain nombre de résultats longs à démontrer en exhibant une preuve (plus ou moins lisible à l'\oe il nu) dans ce système.
+\item \emph{Calcul} : l'ensemble du système n'est pas purement syntaxique, puisqu'il tire également partie de la capacité de Coq à effectuer un certain nombre de calculs à la place de l'utilisateur. Par exemple, les substitutions sont entièrement gérées par une fonction \verb+bsubst+.
+\item \emph{Méta-théorie} assez poussée, dans la mesure où un théorème de complétude a pu être démontré.
+\item \emph{Pédagogie} : avec un peu de patience -- et, je l'espère, en s'aidant du travail effectué pendant le stage -- on peut utiliser ce codage pour illustrer un cours sur la théorie de la démonstration, ou bien justifier que l'on peut admettre un certain nombre de résultats longs à démontrer en exhibant une preuve (plus ou moins lisible à l'\oe il nu) dans ce système.
 \end{itemize}
 
 \subsection{Mise en place de l'environnement de travail}
@@ -206,25 +208,39 @@ Lemma ExcludedMiddle f1 : Provable Classic ([] ⊢ f1 \/ ~f1).
 Les symboles \verb+->+, \verb+/\+, \verb+\/+ et \verb+~+ utilisés à l'intérieur des séquents n'ont \emph{rien à voir} avec les opérateurs Coq du même nom : il s'agit d'une surcharge de notation pour rendre les preuves plus lisibles.
 \end{minipage}
 
-\section{Arithmétique de Peano}
+\section{Arithmétique de {\sc Peano}}
 
 \subsection{Constats de départ}
+
+L'encodage de $\PA$ ainsi que quelques éléments méta-théoriques.
 
 \subsection{Définition de nouvelles tactiques}
 
 % Parler de la généralité de la tactique rec
 
 
-\section{Théorie des ensembles de Zermelo-Fraenkel}
+\section{Théorie des ensembles de {\sc Zermelo-Fraenkel}}
 
 \subsection{Encodage des axiomes et méta-théorèmes}
 
 \subsection{Preuves exemples}
 
-\subsection{Autour de $\ZF \vdash \PA$}
+\subsection{Construction de $\N$}
 
 
 \section{Lien avec le $\lambda$-calcul}
+
+\subsection{Choix de codage}
+
+\subsection{Correspondance de {\sc Curry-Howard}}
+
+Cette partie reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}.
+
+\subsubsection{Logique minimale intuitionniste}
+
+\subsubsection{Faux et opérateur $\nabla$}
+
+\subsubsection{Conjonction : couples et projections}
 
 
 \section{Conclusion}

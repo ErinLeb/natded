@@ -343,32 +343,52 @@ La syntaxe des $\lambda$-termes est la suivante :
 u, v, \ldots ::&= x & \text{variable}\\
 &| \; uv & \text{application} \\
 &| \; \lambda x \cdot u & \text{abstraction} \\
-&| \; \nabla u & \text{erreur}
+&| \; \nabla u & \text{erreur} \\
+&| \; \langle u, v \rangle & \text{couple} \\
+&| \; \pi_1 u & \text{première projection} \\
+&| \; \pi_2 u & \text{seconde projection}
 \end{align*} et celle des types est \begin{align*}
 \sigma, \tau, \ldots ::&= a & \text{variable de type} \\
 &| \; \sigma \Rightarrow \tau & \text{type flèche} \\
-&| \; \bot & \text{faux}.
+&| \; \bot & \text{faux} \\
+&| \; \sigma \wedge \tau & \text{type conjonction}.
 \end{align*}
 
 Les règles de typage sont :
-\[ \begin{array}{lr}
+\[ \begin{array}{lcr}
 \text{\begin{prooftree}
 \infer0[ax]{\Gamma, x : \tau \vdash x : \tau}
-\end{prooftree}} &
+\end{prooftree}} & &
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \Rightarrow \tau}
 \hypo{\Gamma \vdash v : \sigma}
 \infer2[app]{\Gamma \vdash uv : \tau}
 \end{prooftree}} \\
-& \\
+& & \\
 \text{\begin{prooftree}
 \hypo{\Gamma, x : \sigma \vdash u : \tau}
 \infer1[abs]{\Gamma \vdash \lambda x \cdot u : \sigma \Rightarrow \tau}
-\end{prooftree}} &
+\end{prooftree}} & &
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \bot}
 \infer1[$\nabla$]{\Gamma \vdash \nabla u : \tau}
-\end{prooftree}}
+\end{prooftree}} \\
+& & \\
+\text{\begin{prooftree}
+\hypo{\Gamma \vdash u : \sigma \wedge \tau}
+\infer1[$\pi_1$]{\Gamma \vdash \pi_1 u : \sigma}
+\end{prooftree}} & &
+\text{\begin{prooftree}
+\hypo{\Gamma \vdash u : \sigma \wedge \tau}
+\infer1[$\pi_2$]{\Gamma \vdash \pi_2 u : \tau}
+\end{prooftree}} \\
+& & \\
+& \text{
+\begin{prooftree}
+\hypo{\Gamma \vdash u : \sigma}
+\hypo{\Gamma \vdash v : \tau}
+\infer2[coup]{\Gamma \vdash \langle u, v \rangle : \sigma \wedge \tau}
+\end{prooftree}} &
 \end{array} \]
 
 % syntaxe des termes et des types + règles de typage

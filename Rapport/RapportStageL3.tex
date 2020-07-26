@@ -18,6 +18,7 @@
 \usepackage{ebproof}
 \usepackage{minted}
 \usepackage{manfnt}
+\usepackage[bottom]{footmisc}
 
 \usemintedstyle{tango}
 
@@ -38,6 +39,7 @@
 \newcommand{\G}{\Gamma}
 \DeclareMathOperator{\fv}{\mathrm{fv}}
 \DeclareMathOperator{\bv}{\mathrm{bv}}
+\DeclareMathOperator{\Succ}{\mathrm{Succ}}
 \renewcommand{\epsilon}{\varepsilon}
 \renewcommand{\leq}{\leqslant}
 \renewcommand{\geq}{\geqslant}
@@ -212,9 +214,43 @@ Les symboles \verb+->+, \verb+/\+, \verb+\/+ et \verb+~+ utilisés à l'intérie
 
 \subsection{Constats de départ}
 
-L'encodage de $\PA$ ainsi que quelques éléments méta-théoriques.
+L'encodage de $\PA$ contenait déjà les axiomes ainsi que quelques éléments méta-théoriques. En outre, un prédicat \verb+IsTheorem+ définit comme suit :
+\begin{minted}{coq}
+Definition IsTheorem th T :=
+  Wf th T /\
+  exists axs,
+    Forall th.(IsAxiom) axs /\
+    Pr logic (axs ⊢ T).
+\end{minted}
+dans le fichier \verb+Theories.v+ permet d'énoncer des théorèmes en prenant en compte le fait que les séquents à dériver respectent bien la signature de la théorie, et que les axiomes choisis sont licites.
 
-\subsection{Définition de nouvelles tactiques}
+Mon premier travail a été de mettre cet encodage à l'épreuve, afin de pouvoir ensuite déterminer les points à améliorer, et comparer la longueur des preuves avec et sans tactiques adjuvantes. Le but, bien entendu, était d'écrire les tactiques les plus générales possible, et ce pari a été plutôt réussi puisque certaines d'entre elles ont pu être réutilisées dans \verb+ZF.v+ par la suite. \'A cet effet, les résultats suivants ont été démontrés :
+\begin{minted}{coq}
+Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
+
+Lemma SuccRight : IsTheorem Intuiti PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Succ(#0))).
+
+Lemma Comm :
+  IsTheorem Intuiti PeanoTheory
+            ((∀ #0 = #0 + Zero) -> (∀∀ Succ(#1 + #0) = #1 + Succ(#0)) ->
+               (∀∀ #0 + #1 = #1 + #0)).
+
+Lemma Commutativity : IsTheorem Intuiti PeanoTheory (∀∀ #0 + #1 = #1 + #0).
+\end{minted}
+Le but initial a été de démontrer la commutativité de la loi $+$ dans le cadre de $\PA$, cependant, quelques lemmes intermédiaires furent nécessaires. L'existence d'un lemme \verb+Comm+ et d'un autre lemme \verb+Commutativity+ illustre la première pierre d'achoppement de l'encodage existant des théories : l'impossibilité d'utiliser des lemmes auxiliaires dans le corps d'une preuve. La solution proposée dans ce problème est détaillée en section \ref{sol}.
+
+Par ailleurs, les débuts de preuve avaient tendance à être particulièrement inintéressants et répétitifs : passer la liste des axiomes de \textsc{Peano} en argument à la quantification existentielle\footnote{Avec toutefois un petit problème lorsqu'il s'agissait de raisonner par récurrence, puisque le schéma d'axiome de récurrence engendre une infinité d'axiomes, ce que Coq a beaucoup de mal à gérer.}, justifier que la formule que l'on souhaite montrer respecte bien la signature de $\PA$, initier un raisonnement par récurrence avec la bonne instance du schéma d'axiome de récurrence si nécessaire. Tous ces éléments rendaient les preuves lourdes et paraissaient pourtant hautement automatisables.
+
+Quelques propriétés utiles étaient par ailleurs sans cesse utilisées. Si la transitivité et la symétrie de l'égalité font partie de toute théorie égalitaire qui se respecte, le besoin de règles de dérivation telles que \begin{prooftree*}
+\hypo{\Gamma \vdash u = v}
+\infer1[sym]{\Gamma \vdash v = u}
+\end{prooftree*} se fait cruellement ressentir. En l'état, l'utilisation de l'axiome de symétrie de l'égalité nécessitait d'avoir recours à la tactique \verb+assert+ pour rajouter un jugement précisant que le séquent $\PA \vdash \forall x \forall y, x = y \Rightarrow y = x$ était dérivable, puis d'utiliser les règles d'élimination adéquates. Il en va de même pour les axiomes du type $\forall x \forall y, x = y \Rightarrow \Succ (x) = \Succ (y)$.
+
+Enfin, certaines tactiques et règles définies dans l'encodage de \verb+NatDed+ étaient passablement pénibles à utiliser. Entre autres, on peut citer \verb+R_All_i+, la règle d'introduction du quantificateur universel, qui engendrait un grand nombre de buts ennuyants à démontrer. On peut également mentionner tous les résultats faisant intervenir des ensembles finis, par exemple le lemme d'affaiblissement, car la représentation de ces ensembles en Coq est surprenante et se prête fort mal à des tactiques de simplification usuelles telles que \verb+cbn+ ou \verb+omega+.
+
+\subsection{Définition de nouvelles tactiques}\label{sol}
+
+Afin de régler les susmentionnés problèmes, j'ai mis au point un certain nombre de tactiques censées rendre les preuves plus courtes et plus lisibles, en somme plus proches des preuves que l'ont ferait sur papier. L'objectif ultime étant que l'on puisse facilement voir émerger l'arbre de dérivation du séquent que l'on est en train de démontrer. Afin de constater l'apport de ces nouvelles tactiques, une mise en regard des preuves du lemme \verb+ZeroRight+ avant et après simplifications et proposée en annexe \ref{beforeafter_zeroright}.
 
 % Parler de la généralité de la tactique rec
 
@@ -234,7 +270,7 @@ L'encodage de $\PA$ ainsi que quelques éléments méta-théoriques.
 
 \subsection{Correspondance de {\sc Curry-Howard}}
 
-Cette partie reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}.
+Cette partie reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}. Par ailleurs, on se placera toujours dans le cadre de la \emph{logique intuitionniste}.
 
 \subsubsection{Logique minimale intuitionniste}
 
@@ -296,6 +332,6 @@ Inductive Pr (l:logic) : sequent -> Prop :=
 
 \includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour GitLab}\label{gitsheet}]{TutoGitHub.pdf}
 
-\section{Commutativité de l'addition : avant-après}\label{beforeafter_comm_+}
+\section{Preuve de \texttt{ZeroRight} : avant-après}\label{beforeafter_zeroright}
 
 \end{document}

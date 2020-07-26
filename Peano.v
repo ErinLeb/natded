@@ -99,7 +99,9 @@ Definition PeanoTheory :=
 
 Import PeanoAx.
 
-Lemma Symmetry : forall logic A B Γ, BClosed A -> In ax2 Γ -> Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ B = A).
+Lemma Symmetry :
+  forall logic A B Γ, BClosed A -> In ax2 Γ -> Pr logic (Γ ⊢ A = B) ->
+                      Pr logic (Γ ⊢ B = A).
 Proof.
   intros.
   apply R_Imp_e with (A := A = B); [ | assumption ].
@@ -115,7 +117,9 @@ Proof.
   exact AX2.
 Qed.
 
-Lemma Transitivity : forall logic A B C Γ, BClosed A -> BClosed B -> In ax3 Γ -> Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ B = C) -> Pr logic (Γ ⊢ A = C).
+Lemma Transitivity :
+  forall logic A B C Γ, BClosed A -> BClosed B -> In ax3 Γ ->
+                        Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ B = C) -> Pr logic (Γ ⊢ A = C).
 Proof.
   intros.
   apply R_Imp_e with (A := A = B /\ B = C); [ | apply R_And_i; assumption ].
@@ -138,7 +142,9 @@ Proof.
   assumption.
 Qed.
 
-Lemma Hereditarity : forall logic A B Γ, BClosed A -> In ax4 Γ -> Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ Succ A = Succ B).
+Lemma Hereditarity :
+  forall logic A B Γ, BClosed A -> In ax4 Γ -> Pr logic (Γ ⊢ A = B) ->
+                      Pr logic (Γ ⊢ Succ A = Succ B).
 Proof.
   intros.
   apply R_Imp_e with (A := A = B); [ | assumption ].
@@ -155,7 +161,9 @@ Proof.
   assumption.
 Qed.
 
-Lemma AntiHereditarity : forall logic A B Γ, BClosed A -> In ax13 Γ -> Pr logic (Γ ⊢ Succ A = Succ B) -> Pr logic (Γ ⊢ A = B).
+Lemma AntiHereditarity :
+  forall logic A B Γ, BClosed A -> In ax13 Γ -> Pr logic (Γ ⊢ Succ A = Succ B) ->
+                      Pr logic (Γ ⊢ A = B).
 Proof.
   intros.
   apply R_Imp_e with (A := Succ A = Succ B); [ | assumption ].

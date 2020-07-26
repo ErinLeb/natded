@@ -338,6 +338,39 @@ Inductive Pr (l:logic) : sequent -> Prop :=
 
 \section{Syntaxe et règles de typage du $\lambda$-calcul utilisé}
 
+La syntaxe des $\lambda$-termes est la suivante :
+\begin{align*}
+u, v, \ldots ::&= x & \text{variable}\\
+&| \; uv & \text{application} \\
+&| \; \lambda x \cdot u & \text{abstraction} \\
+&| \; \nabla u & \text{erreur}
+\end{align*} et celle des types est \begin{align*}
+\sigma, \tau, \ldots ::&= a & \text{variable de type} \\
+&| \; \sigma \Rightarrow \tau & \text{type flèche} \\
+&| \; \bot & \text{faux}.
+\end{align*}
+
+Les règles de typage sont :
+\[ \begin{array}{lr}
+\text{\begin{prooftree}
+\infer0[ax]{\Gamma, x : \tau \vdash x : \tau}
+\end{prooftree}} &
+\text{\begin{prooftree}
+\hypo{\Gamma \vdash u : \sigma \Rightarrow \tau}
+\hypo{\Gamma \vdash v : \sigma}
+\infer2[app]{\Gamma \vdash uv : \tau}
+\end{prooftree}} \\
+& \\
+\text{\begin{prooftree}
+\hypo{\Gamma, x : \sigma \vdash u : \tau}
+\infer1[abs]{\Gamma \vdash \lambda x \cdot u : \sigma \Rightarrow \tau}
+\end{prooftree}} &
+\text{\begin{prooftree}
+\hypo{\Gamma \vdash u : \bot}
+\infer1[$\nabla$]{\Gamma \vdash \nabla u : \tau}
+\end{prooftree}}
+\end{array} \]
+
 % syntaxe des termes et des types + règles de typage
 
 \end{document}

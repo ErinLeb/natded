@@ -9,20 +9,24 @@ Open Scope list.
 Inductive term :=
   | Var : nat -> term
   | App : term -> term -> term
-  | Abs : term -> term.
+  | Abs : term -> term
+  | Nabla : term -> term.
 
 Inductive type :=
   | Arr : type -> type -> type
-  | Atom : name -> type.
+  | Atom : name -> type
+  | Bot : type.
 
 Definition context := list type.
 
 Inductive typed : context -> term -> type -> Prop :=
   | Type_Ax : forall Γ τ n, nth_error Γ n = Some τ -> typed Γ (Var n) τ
   | Type_App : forall Γ u v σ μ, typed Γ u (Arr σ μ) -> typed Γ v σ -> typed Γ (App u v) μ
-  | Type_Abs : forall Γ u σ μ,  typed (σ :: Γ) u μ -> typed Γ (Abs u) (Arr σ μ).
+  | Type_Abs : forall Γ u σ μ,  typed (σ :: Γ) u μ -> typed Γ (Abs u) (Arr σ μ)
+  | Type_Nabla : forall Γ u τ, typed Γ u Bot -> typed Γ (Nabla u) τ.
 
 Notation "u @ v" := (App u v) (at level 20) : lambda_scope.
+Notation "∇ u" := (Nabla u) (at level 20) : lambda_scope.
 Notation "σ -> μ" := (Arr σ μ) : lambda_scope.
 Notation "# n" := (Var n) (at level 20, format "# n") : lambda_scope.
 
@@ -38,6 +42,7 @@ Fixpoint to_form (t : type) : formula :=
   match t with
     | Arr u v => ((to_form u) -> (to_form v))%form
     | Atom a => Pred a []
+    | Bot => False
   end.
 
 Definition to_ctxt (Γ : context) := List.map to_form Γ.
@@ -84,5 +89,10 @@ Proof.
     rewrite<- H3 in H. clear H3.
     specialize IHu with (τ := μ) (Γ := σ :: Γ).
     cbn. apply R_Imp_i.
+    intuition.
+  - intros.
+    inversion H. clear Γ0 u0 τ0 H1 H0 H3.
+    specialize IHu with (τ := Bot) (Γ := Γ). cbn in IHu.
+    apply R_Fa_e.
     intuition.
 Qed.

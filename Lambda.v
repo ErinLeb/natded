@@ -1,33 +1,44 @@
 
 (* A link with Lambda Calculus. *)
 
+(** The NatDed development, Pierre Letouzey, 2019.
+    This file is released under the CC0 License, see the LICENSE file *)
+
 Require Import Defs Mix List.
 Import ListNotations.
-
 Open Scope list.
 
 Inductive term :=
   | Var : nat -> term
   | App : term -> term -> term
   | Abs : term -> term
-  | Nabla : term -> term.
+  | Nabla : term -> term
+  | Couple : term -> term -> term
+  | Pi1 : term -> term
+  | Pi2 : term -> term.
 
 Inductive type :=
   | Arr : type -> type -> type
   | Atom : name -> type
-  | Bot : type.
+  | Bot : type
+  | And : type -> type -> type.
 
 Definition context := list type.
 
 Inductive typed : context -> term -> type -> Prop :=
-  | Type_Ax : forall Γ τ n, nth_error Γ n = Some τ -> typed Γ (Var n) τ
-  | Type_App : forall Γ u v σ μ, typed Γ u (Arr σ μ) -> typed Γ v σ -> typed Γ (App u v) μ
-  | Type_Abs : forall Γ u σ μ,  typed (σ :: Γ) u μ -> typed Γ (Abs u) (Arr σ μ)
-  | Type_Nabla : forall Γ u τ, typed Γ u Bot -> typed Γ (Nabla u) τ.
+  | Type_Var : forall Γ τ n, nth_error Γ n = Some τ -> typed Γ (Var n) τ
+  | Type_App : forall Γ u v σ τ, typed Γ u (Arr σ τ) -> typed Γ v σ -> typed Γ (App u v) τ
+  | Type_Abs : forall Γ u σ τ,  typed (σ :: Γ) u τ -> typed Γ (Abs u) (Arr σ τ)
+  | Type_Nabla : forall Γ u τ, typed Γ u Bot -> typed Γ (Nabla u) τ
+  | Type_Couple : forall Γ u v σ τ, typed Γ u σ -> typed Γ v τ -> typed Γ (Couple u v) (And σ τ)
+  | Type_Pi1 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi1 u) σ
+  | Type_Pi2 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi2 u) τ.
 
 Notation "u @ v" := (App u v) (at level 20) : lambda_scope.
 Notation "∇ u" := (Nabla u) (at level 20) : lambda_scope.
-Notation "σ -> μ" := (Arr σ μ) : lambda_scope.
+Notation "u , v" := (Couple u v) (at level 20) : lambda_scope.
+Notation "σ -> τ" := (Arr σ τ) : lambda_scope.
+Notation "σ /\ τ" := (And σ τ) : lambda_scope.
 Notation "# n" := (Var n) (at level 20, format "# n") : lambda_scope.
 
 Delimit Scope lambda_scope with lam.
@@ -43,6 +54,7 @@ Fixpoint to_form (t : type) : formula :=
     | Arr u v => ((to_form u) -> (to_form v))%form
     | Atom a => Pred a []
     | Bot => False
+    | And u v => ((to_form u) /\ (to_form v))%form
   end.
 
 Definition to_ctxt (Γ : context) := List.map to_form Γ.
@@ -87,12 +99,30 @@ Proof.
   - intros.
     inversion H. clear Γ0 u0 H1 H0.
     rewrite<- H3 in H. clear H3.
-    specialize IHu with (τ := μ) (Γ := σ :: Γ).
+    specialize IHu with (τ := τ0) (Γ := σ :: Γ).
     cbn. apply R_Imp_i.
     intuition.
   - intros.
     inversion H. clear Γ0 u0 τ0 H1 H0 H3.
     specialize IHu with (τ := Bot) (Γ := Γ). cbn in IHu.
     apply R_Fa_e.
+    intuition.
+  - intros.
+    inversion H. clear Γ0 H2 H0 H1.
+    rewrite<- H4 in H. clear H4.
+    cbn. apply R_And_i.
+    + specialize IHu1 with (τ := σ) (Γ := Γ).
+      intuition.
+    + specialize IHu1 with (τ := τ) (Γ := Γ).
+      intuition.
+  - intros.
+    inversion H. clear Γ0 u0 σ H1 H0 H3.
+    apply R_And_e1 with (B := to_form τ0).
+    specialize IHu with (τ := τ /\ τ0) (Γ := Γ).
+    intuition.
+  - intros.
+    inversion H. clear Γ0 u0 τ0 H1 H0 H3.
+    apply R_And_e2 with (A := to_form σ).
+    specialize IHu with (τ := σ /\ τ) (Γ := Γ).
     intuition.
 Qed.

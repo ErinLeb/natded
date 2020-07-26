@@ -3,7 +3,6 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import ROmega.
 Require Import Defs NameProofs Mix Meta Theories PreModels Models Peano.
 Import ListNotations.
 Local Open Scope bool_scope.

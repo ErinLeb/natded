@@ -110,7 +110,7 @@ Dans un premier temps, il a fallu se familiariser avec les outils du stage : à 
 \begin{itemize}
 \item l'arithmétique de \textsc{Peano}, qui avait déjà été encodée mais où tout restait à faire du point de vue des exemples et de la maniabilité des preuves,
 \item la théorie des ensembles $\ZF$, où il s'est agit non seulement d'encoder les axiomes et de faire quelques preuves exemples, mais aussi de proposer une construction de $\N$,
-\item le $\lambda$-calcul enfin, où nous avons pu démontrer et mettre en \oe uvre la correspondance de \textsc{Curry-Howard} pour des logiques de plus en plus expressives.
+\item le $\lambda$-calcul enfin, où nous avons pu établir la correspondance de \textsc{Curry-Howard} pour des logiques de plus en plus expressives.
 \end{itemize}
 \end{abstract}
 
@@ -243,21 +243,69 @@ Par ailleurs, les débuts de preuve avaient tendance à être particulièrement 
 Quelques propriétés utiles étaient par ailleurs sans cesse utilisées. Si la transitivité et la symétrie de l'égalité font partie de toute théorie égalitaire qui se respecte, le besoin de règles de dérivation telles que \begin{prooftree*}
 \hypo{\Gamma \vdash u = v}
 \infer1[sym]{\Gamma \vdash v = u}
-\end{prooftree*} se fait cruellement ressentir. En l'état, l'utilisation de l'axiome de symétrie de l'égalité nécessitait d'avoir recours à la tactique \verb+assert+ pour rajouter un jugement précisant que le séquent $\PA \vdash \forall x \forall y, x = y \Rightarrow y = x$ est dérivable, puis d'utiliser les règles d'élimination adéquates. Il en va de même pour les axiomes du type $\forall x \forall y, x = y \Rightarrow \Succ (x) = \Succ (y)$.
+\end{prooftree*} se fait cruellement ressentir. En l'état, l'utilisation de l'axiome de symétrie de l'égalité nécessitait d'avoir recours à la tactique \verb+assert+ pour rajouter un jugement précisant que le séquent $\PA \vdash \forall x, \forall y \cdot x = y \Rightarrow y = x$ est dérivable, puis d'utiliser les règles d'élimination adéquates. Il en va de même pour les axiomes du type $\forall x, \forall y \cdot x = y \Rightarrow \Succ (x) = \Succ (y)$.
 
 Enfin, certaines tactiques et règles définies dans l'encodage de \verb+NatDed+ étaient passablement pénibles à utiliser. Entre autres, on peut citer \verb+R_All_i+, la règle d'introduction du quantificateur universel, qui engendrait un grand nombre de buts ennuyants à démontrer. On peut également mentionner tous les résultats faisant intervenir des ensembles finis, par exemple le lemme d'affaiblissement, car la représentation de ces ensembles en Coq est surprenante et se prête fort mal à des tactiques de simplification usuelles telles que \verb+cbn+ ou \verb+omega+.
 
-\subsection{Définition de nouvelles tactiques}\label{sol}
+\subsection{Définition de nouvelles tactiques}
 
 Afin de régler les susmentionnés problèmes, j'ai mis au point un certain nombre de tactiques censées rendre les preuves plus courtes et plus lisibles, en somme plus proches des preuves que l'ont ferait sur papier. L'objectif ultime étant que l'on puisse facilement voir émerger l'arbre de dérivation du séquent que l'on est en train de démontrer. Afin de constater l'apport de ces nouvelles tactiques, une mise en regard des preuves du lemme \verb+ZeroRight+ avant et après simplifications et proposée en annexe \ref{beforeafter_zeroright}.
 
 \subsubsection{Pour les débuts de preuve}
 
-% Parler de la généralité de la tactique rec
+Dans l'objectif d'alléger les débuts de preuve, j'ai mis en place deux tactiques distinctes.
+\smallskip
+
+La première, \verb+thm+, permet de traiter à peu de frais le but \verb+Wf th T+, qui permet juste de vérifier que la formule à démontrer respecte la signature de la théorie $T$. Sa mise en place a été relativement aisée car la preuve du but qu'elle entend éliminer est toujours la même, indépendamment du théorème à démontrer ou de la théorie considérée. Il a donc suffit de copier-coller la preuve donnée dans \verb+ZeroRight+ (par exemple) pour obtenir cette tactique qui a fonctionné quasiment du premier coup. \'Evidemment, le stage avançant, la tactique a été enrichie par d'autres tactiques permettant notamment de calculer plus efficacement sur les listes, etc.
+\smallskip
+
+La seconde tactique élaborée n'est pas à utiliser systématiquement. Elle permet, à partir du but fourni par la tactique \verb+thm+ de trouver la bonne instance $A$ du schéma d'axiome de récurrence et d'instancier ensuite la quantification existentielle par \verb$(induction_schema A) :: axioms_list$.
+
+Concrètement, cette tactique s'appuie sur une tactique auxiliaire \verb+parse+ qui prend en argument une formule $\phi$ contenant au moins une quantification universelle sous la forme non-restrictive \[ \phi_1 \Rightarrow \cdots \Rightarrow \forall x \cdot \phi_n \] avec éventuellement $n = 1$, et qui retourne $\phi_n$. Une fois la formule $\phi_n$ identifiée, \verb+rec+ l'utilise pour instancier le schéma d'axiome de récurrence et initie la preuve, de sorte que l'utilise se retrouve avec deux buts, qui correspondent à l'initialisation et à l'hérédité de la preuve par récurrence. Pour ce faire, j'ai eu besoin de prouver deux lemmes auxiliaires qui permettent essentiellement de montrer que l'instance du schéma d'axiome de récurrence choisie est bien licite, et qui proposent une forme plus facilement manipulable du principe de récurrence.
+
+Il est à noter que, en allant chercher le premier quantificateur universel qu'elle trouve dans la formule, \verb+parse+ ne restreint pas la généralité de la tactique \verb+rec+. En effet,
+% TODO
+% Parler de la généralité de la tactique rec, comment faire ?
 
 \subsubsection{Pour raccourcir certains raisonnements}
 
-\subsubsection{Pour utiliser des lemmes auxiliaires}
+La création de tactiques permettant d'utiliser rapidement des propriétés telles que la symétrie de l'égalité ou sa compatibilité avec le prédicat $\Succ$ s'est fait en deux étapes.
+
+Dans un premier temps, j'ai démontré les lemmes suivants :
+\begin{minted}{coq}
+Lemma Symmetry :
+  forall logic A B Γ, BClosed A -> In ax2 Γ -> Pr logic (Γ ⊢ A = B) ->
+                      Pr logic (Γ ⊢ B = A).
+
+Lemma Transitivity :
+  forall logic A B C Γ, BClosed A -> BClosed B -> In ax3 Γ ->
+                        Pr logic (Γ ⊢ A = B) -> Pr logic (Γ ⊢ B = C) -> Pr logic (Γ ⊢ A = C).
+
+Lemma Hereditarity :
+  forall logic A B Γ, BClosed A -> In ax4 Γ -> Pr logic (Γ ⊢ A = B) ->
+                      Pr logic (Γ ⊢ Succ A = Succ B).
+
+Lemma AntiHereditarity :
+  forall logic A B Γ, BClosed A -> In ax13 Γ -> Pr logic (Γ ⊢ Succ A = Succ B) ->
+                      Pr logic (Γ ⊢ A = B).
+\end{minted}
+
+Une fois ces résultats établis, j'ai facilement pu créer les tactiques qui nous intéressaient, où il s'agissait essentiellement d'appliquer le théorème idoine et de simplifier à l'aide de tactiques de calcul spécifiques, telles que \verb+calc+ ou \verb+cbm+ qui ont été écrites par Pierre Letouzey pour faciliter la manipulation d'ensembles finis et de listes.
+\smallskip
+
+% TODO
+% Parler de R_All_i et inst_axiom
+
+\subsubsection{Pour utiliser des lemmes auxiliaires}\label{sol}
+
+Le principal problème posé par l'usage de lemmes auxiliaires est le fait qu'ils sont toujours de la forme \verb+IsTheorem+, alors que le corps d'une preuve fait plutôt intervenir le prédicat \verb+Pr+. La solution proposée pour palier à cela a été d'établir une espèce de modus ponens sur \verb+IsTheorem+. Plus précisément, on a démontré
+\begin{minted}{coq}
+Lemma ModusPonens th :
+  forall A B , IsTheorem th (A -> B) -> IsTheorem th A ->
+               IsTheorem th B.
+
+\end{minted}
+Grâce à ce résultat, la preuve d'un théorème $\phi$ utilisant des lemmes auxiliaires se fait en deux temps : dans un premier temps, on montre que $\phi$ est effectivement impliqué par tous les lemmes auxiliaires $\psi_1, \ldots, \psi_n$ que l'on souhaite utiliser (c'est là que repose toute la preuve), et dans un second temps, on utilise \verb+ModusPonens+ pour montrer que $\psi_1, \ldots, \psi_n$ sont bien des théorèmes eux aussi.
 
 
 \section{Théorie des ensembles de {\sc Zermelo-Fraenkel}}
@@ -341,6 +389,55 @@ Inductive Pr (l:logic) : sequent -> Prop :=
 
 \section{Preuve de \texttt{ZeroRight} : avant-après}\label{beforeafter_zeroright}
 
+% TODO
+% Retrouver la preuve originelle
+
+\begin{minipage}{0.45\linewidth}
+\begin{minted}{coq}
+Lemma ZeroRight :
+  IsTheorem Intuiti PeanoTheory
+            (∀ (#0 = #0 + Zero)).
+Proof.
+ thm.
+ rec.
+ + sym.
+   inst_axiom ax9 [Zero].
+ + app_R_All_i "y" y.
+   apply R_Imp_i. set (H1 := _ = _).
+   sym.
+   trans (Succ (y + Zero)).
+   - inst_axiom ax10 [y; Zero].
+   - ahered.
+     sym.
+     apply R_Ax.
+     apply in_eq.
+ Qed.    
+\end{minted}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\linewidth}
+\begin{minted}{coq}
+Lemma ZeroRight :
+  IsTheorem Intuiti PeanoTheory
+            (∀ (#0 = #0 + Zero)).
+Proof.
+ thm.
+ rec.
+ + sym.
+   inst_axiom ax9 [Zero].
+ + app_R_All_i "y" y.
+   apply R_Imp_i. set (H1 := _ = _).
+   sym.
+   trans (Succ (y + Zero)).
+   - inst_axiom ax10 [y; Zero].
+   - ahered.
+     sym.
+     apply R_Ax.
+     apply in_eq.
+Qed.
+\end{minted}
+\end{minipage}
+
 \section{Syntaxe et règles de typage du $\lambda$-calcul utilisé}
 
 La syntaxe des $\lambda$-termes est la suivante :
@@ -395,7 +492,5 @@ Les règles de typage sont :
 \infer2[coup]{\Gamma \vdash \langle u, v \rangle : \sigma \wedge \tau}
 \end{prooftree}} &
 \end{array} \]
-
-% syntaxe des termes et des types + règles de typage
 
 \end{document}

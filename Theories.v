@@ -97,7 +97,9 @@ Hint Unfold IsTheorem IsTheoremStrict.
 
 (** A theorem to build proofs using former lemmas. *)
 
-Lemma ModusPonens th : forall A B , IsTheorem th (A -> B) -> IsTheorem th A -> IsTheorem th B.
+Lemma ModusPonens th :
+  forall A B , IsTheorem th (A -> B) -> IsTheorem th A ->
+               IsTheorem th B.
 Proof.
   intros.
   unfold IsTheorem in *.

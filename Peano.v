@@ -279,7 +279,9 @@ Ltac rec :=
             
 (** Some basic proofs in Peano arithmetics. *)
 
-Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
+Lemma ZeroRight :
+  IsTheorem Intuiti PeanoTheory
+            (∀ (#0 = #0 + Zero)).
 Proof.
  thm.
  rec.

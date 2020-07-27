@@ -331,6 +331,7 @@ Cette partie reprend les concepts et les constructions du cours de $\lambda$-cal
 
 % TODO
 % on utilise la preuve pour redémontrer le premier résultat démontré dans le stage
+% lambda terme utilisé : lambda x . i1 pi1 x
 
 \subsubsection{Logique minimale intuitionniste}
 
@@ -524,7 +525,61 @@ u, v, \ldots ::&= x, y, \ldots & \text{variables}\\
 \end{align*}
 
 Les règles de typage sont :
-\[ \begin{array}{lr}
+%\[ \begin{array}{lr}
+%\text{\begin{prooftree}
+%\infer0[var]{\Gamma, x : \tau \vdash x : \tau}
+%\end{prooftree}} &
+%\text{\begin{prooftree}
+%\hypo{\Gamma \vdash u : \sigma \Rightarrow \tau}
+%\hypo{\Gamma \vdash v : \sigma}
+%\infer2[app]{\Gamma \vdash uv : \tau}
+%\end{prooftree}} \\
+%& \\
+%\text{\begin{prooftree}
+%\hypo{\Gamma, x : \sigma \vdash u : \tau}
+%\infer1[abs]{\Gamma \vdash \lambda x \cdot u : \sigma \Rightarrow \tau}
+%\end{prooftree}} &
+%\text{\begin{prooftree}
+%\hypo{\Gamma \vdash u : \bot}
+%\infer1[$\nabla$]{\Gamma \vdash \nabla u : \tau}
+%\end{prooftree}} \\
+%& \\
+%\text{\begin{prooftree}
+%\hypo{\Gamma \vdash u : \sigma \wedge \tau}
+%\infer1[$\pi_1$]{\Gamma \vdash \pi_1 u : \sigma}
+%\end{prooftree}} &
+%\text{\begin{prooftree}
+%\hypo{\Gamma \vdash u : \sigma \wedge \tau}
+%\infer1[$\pi_2$]{\Gamma \vdash \pi_2 u : \tau}
+%\end{prooftree}} \\
+%& \\
+%\text{
+%\begin{prooftree}
+%\hypo{\Gamma \vdash u : \sigma}
+%\hypo{\Gamma \vdash v : \tau}
+%\infer2[coup]{\Gamma \vdash \langle u, v \rangle : \sigma \wedge \tau}
+%\end{prooftree}} &
+%\text{
+%\begin{prooftree}
+%\hypo{\Gamma \vdash u : \sigma \vee \tau}
+%\hypo{\Gamma, x_1 : \sigma \vdash v_1 : \mu}
+%\hypo{\Gamma, x_2 : \tau \vdash v_2 : \mu}
+%\infer3[pattern]{\Gamma \vdash \mathtt{case} \, u \, \mathtt{of} \, \iota_1 x_1 \mapsto v_1 \; | \; \iota_2 x_2 \mapsto v_2 : \mu}
+%\end{prooftree}} \\
+%& \\
+%\text{
+%\begin{prooftree}
+%\hypo{\Gamma \vdash u : \sigma}
+%\infer1[$\iota_1$]{\Gamma \vdash \iota_1 u : \sigma \vee \tau}
+%\end{prooftree}} &
+%\text{
+%\begin{prooftree}
+%\hypo{\Gamma \vdash u : \tau}
+%\infer1[$\iota_2$]{\Gamma \vdash \iota_2 u : \sigma \vee \tau}
+%\end{prooftree}}
+%\end{array} \]
+
+\[ \begin{array}{lcr}
 \text{\begin{prooftree}
 \infer0[var]{\Gamma, x : \tau \vdash x : \tau}
 \end{prooftree}} &
@@ -532,17 +587,18 @@ Les règles de typage sont :
 \hypo{\Gamma \vdash u : \sigma \Rightarrow \tau}
 \hypo{\Gamma \vdash v : \sigma}
 \infer2[app]{\Gamma \vdash uv : \tau}
-\end{prooftree}} \\
-& \\
+\end{prooftree}} &
 \text{\begin{prooftree}
 \hypo{\Gamma, x : \sigma \vdash u : \tau}
 \infer1[abs]{\Gamma \vdash \lambda x \cdot u : \sigma \Rightarrow \tau}
-\end{prooftree}} &
+\end{prooftree}} \\
+& & \\
+&
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \bot}
 \infer1[$\nabla$]{\Gamma \vdash \nabla u : \tau}
-\end{prooftree}} \\
-& \\
+\end{prooftree}} & \\
+& & \\
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \wedge \tau}
 \infer1[$\pi_1$]{\Gamma \vdash \pi_1 u : \sigma}
@@ -550,32 +606,33 @@ Les règles de typage sont :
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \wedge \tau}
 \infer1[$\pi_2$]{\Gamma \vdash \pi_2 u : \tau}
-\end{prooftree}} \\
-& \\
+\end{prooftree}} &
 \text{
 \begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma}
 \hypo{\Gamma \vdash v : \tau}
-\infer2[coup]{\Gamma \vdash \langle u, v \rangle : \sigma \wedge \tau}
-\end{prooftree}} &
+\infer2[paire]{\Gamma \vdash \langle u, v \rangle : \sigma \wedge \tau}
+\end{prooftree}}\\
+& & \\
+\text{
+\begin{prooftree}
+\hypo{\Gamma \vdash u : \sigma}
+\infer1[$\iota_1$]{\Gamma \vdash \iota_1 u : \sigma \vee \tau}
+\end{prooftree}} & &
+\text{
+\begin{prooftree}
+\hypo{\Gamma \vdash u : \tau}
+\infer1[$\iota_2$]{\Gamma \vdash \iota_2 u : \sigma \vee \tau}
+\end{prooftree}} \\
+& & \\
+&
 \text{
 \begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \vee \tau}
 \hypo{\Gamma, x_1 : \sigma \vdash v_1 : \mu}
 \hypo{\Gamma, x_2 : \tau \vdash v_2 : \mu}
 \infer3[pattern]{\Gamma \vdash \mathtt{case} \, u \, \mathtt{of} \, \iota_1 x_1 \mapsto v_1 \; | \; \iota_2 x_2 \mapsto v_2 : \mu}
-\end{prooftree}} \\
-& \\
-\text{
-\begin{prooftree}
-\hypo{\Gamma \vdash u : \sigma}
-\infer1[$\iota_1$]{\Gamma \vdash \iota_1 u : \sigma \vee \tau}
 \end{prooftree}} &
-\text{
-\begin{prooftree}
-\hypo{\Gamma \vdash u : \tau}
-\infer1[$\iota_2$]{\Gamma \vdash \iota_2 u : \sigma \vee \tau}
-\end{prooftree}}
 \end{array} \]
 
 \end{document}

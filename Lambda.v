@@ -44,7 +44,6 @@ Inductive typed : context -> term -> type -> Prop :=
 
 Notation "u @ v" := (App u v) (at level 20) : lambda_scope.
 Notation "∇ u" := (Nabla u) (at level 20) : lambda_scope.
-Notation "u , v" := (Couple u v) (at level 20) : lambda_scope.
 Notation "σ -> τ" := (Arr σ τ) : lambda_scope.
 Notation "σ /\ τ" := (And σ τ) : lambda_scope.
 Notation "σ \/ τ" := (Or σ τ) : lambda_scope.
@@ -85,4 +84,23 @@ Proof.
   - apply R_Or_e with (A := to_form τ1) (B := to_form τ2); intuition.
   - apply R_Or_i1 with (B := to_form τ). intuition.
   - apply R_Or_i2 with (A := to_form σ). intuition.
+Qed.
+
+Lemma ex : Pr Intuiti ([] ⊢ (Pred "A" [] /\ Pred "B" []) -> (Pred "A" [] \/ Pred "B" [])).
+Proof.
+  set (A := Pred "A" []). set (B := Pred "B" []).
+  set (form := (_ -> _)%form). set (typ := Atom "A" /\ Atom "B" -> Atom "A" \/ Atom "B").
+  assert (to_form typ = form).
+  { intuition. }
+  rewrite<- H.
+  assert (to_ctxt [] = []).
+  { intuition. }
+  rewrite<- H0.
+  apply CurryHoward with (u := (Abs (I1 (Pi1 (#0))))).
+  unfold typ.
+  apply Type_Abs.
+  apply Type_I1.
+  apply Type_Pi1 with (τ := Atom "B").
+  apply Type_Var.
+  intuition.
 Qed.

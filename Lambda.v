@@ -37,8 +37,8 @@ Inductive typed : context -> term -> type -> Prop :=
   | Type_Couple : forall Γ u v σ τ, typed Γ u σ -> typed Γ v τ -> typed Γ (Couple u v) (And σ τ)
   | Type_Pi1 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi1 u) σ
   | Type_Pi2 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi2 u) τ
-  | Type_Case : forall Γ u v1 v2 τ1 τ2 σ, typed Γ u (Or τ1 τ2) -> typed Γ v1 (Arr τ1 σ)
-                                          -> typed Γ v2 (Arr τ2 σ) -> typed Γ (Case u v1 v2) σ
+  | Type_Case : forall Γ u v1 v2 τ1 τ2 σ, typed Γ u (Or τ1 τ2) -> typed (τ1 :: Γ) v1 σ
+                                          -> typed (τ2 :: Γ) v2 σ -> typed Γ (Case u v1 v2) σ
   | Type_I1 : forall Γ u σ τ, typed Γ u σ -> typed Γ (I1 u) (Or σ τ)
   | Type_I2 : forall Γ u σ τ, typed Γ u τ -> typed Γ (I2 u) (Or σ τ).
 
@@ -82,6 +82,7 @@ Proof.
   - apply R_And_i; intuition.
   - apply R_And_e1 with (B := to_form τ). intuition.
   - apply R_And_e2 with (A := to_form σ). intuition.
-  - apply R_Or_e with (A := to_form τ1) (B := to_form τ2); intuition; cbn in *.
-    + 
+  - apply R_Or_e with (A := to_form τ1) (B := to_form τ2); intuition.
+  - apply R_Or_i1 with (B := to_form τ). intuition.
+  - apply R_Or_i2 with (A := to_form σ). intuition.
 Qed.

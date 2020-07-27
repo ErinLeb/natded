@@ -290,7 +290,7 @@ Lemma AntiHereditarity :
                       Pr logic (Γ ⊢ A = B).
 \end{minted}
 
-Une fois ces résultats établis, j'ai facilement pu créer les tactiques qui nous intéressaient, où il s'agissait essentiellement d'appliquer le théorème idoine et de simplifier à l'aide de tactiques de calcul spécifiques, telles que \verb+calc+ ou \verb+cbm+ qui ont été écrites par Pierre Letouzey pour faciliter la manipulation d'ensembles finis et de listes.
+Une fois ces résultats établis, j'ai facilement pu créer les tactiques qui nous intéressaient, où il s'agissait essentiellement d'appliquer le théorème idoine et de simplifier à l'aide de tactiques de calcul spécifiques, telles que \verb+calc+ ou \verb+cbm+, qui ont été écrites par Pierre Letouzey pour faciliter la manipulation d'ensembles finis et de listes.
 \smallskip
 
 % TODO
@@ -328,6 +328,9 @@ Grâce à ce résultat, la preuve d'un théorème $\phi$ utilisant des lemmes au
 \subsection{Correspondance de {\sc Curry-Howard}}
 
 Cette partie reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}. Par ailleurs, on se placera toujours dans le cadre de la \emph{logique intuitionniste}.
+
+% TODO
+% on utilise la preuve pour redémontrer le premier résultat démontré dans le stage
 
 \subsubsection{Logique minimale intuitionniste}
 
@@ -509,7 +512,7 @@ u, v, \ldots ::&= x, y, \ldots & \text{variables}\\
 &| \; \langle u, v \rangle & \text{couple} \\
 &| \; \pi_1 u & \text{première projection} \\
 &| \; \pi_2 u & \text{seconde projection} \\
-&| \; \mathtt{case} \, u \, \mathtt{of} \, v_1 \; | \; v_2 & \text{filtrage par motif} \\
+&| \; \mathtt{case} \, u \, \mathtt{of} \, \iota_1 x_1 \mapsto v_1 \; | \; \iota_2 x_2 \mapsto v_2 & \text{filtrage par motif} \\
 &| \; \iota_1 u & \text{première injection} \\
 &| \; \iota_2 u & \text{seconde injection}
 \end{align*} et celle des types est \begin{align*}
@@ -558,9 +561,9 @@ Les règles de typage sont :
 \text{
 \begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \vee \tau}
-\hypo{\Gamma \vdash v_1 : \sigma \Rightarrow \mu}
-\hypo{\Gamma \vdash v_2 : \tau \Rightarrow \mu}
-\infer3[pattern]{\Gamma \vdash \mathtt{case} \, u \, \mathtt{of} \, v_1 \; | \; v_2 : \mu}
+\hypo{\Gamma, x_1 : \sigma \vdash v_1 : \mu}
+\hypo{\Gamma, x_2 : \tau \vdash v_2 : \mu}
+\infer3[pattern]{\Gamma \vdash \mathtt{case} \, u \, \mathtt{of} \, \iota_1 x_1 \mapsto v_1 \; | \; \iota_2 x_2 \mapsto v_2 : \mu}
 \end{prooftree}} \\
 & \\
 \text{

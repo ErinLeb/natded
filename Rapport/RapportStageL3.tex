@@ -223,7 +223,7 @@ Definition IsTheorem th T :=
 \end{minted}
 dans le fichier \verb+Theories.v+ permet d'énoncer des théorèmes en prenant en compte le fait que les séquents à dériver respectent bien la signature de la théorie, et que les axiomes choisis sont licites.
 
-Mon premier travail a été de mettre cet encodage à l'épreuve, afin de pouvoir ensuite déterminer les points à améliorer, et comparer la longueur des preuves avec et sans tactiques adjuvantes. Le but, bien entendu, était d'écrire les tactiques les plus générales possible, et ce pari a été plutôt réussi puisque certaines d'entre elles ont pu être réutilisées dans \verb+ZF.v+ par la suite. \'A cet effet, les résultats suivants ont été démontrés :
+Mon premier travail a été de mettre cet encodage à l'épreuve, afin de pouvoir ensuite déterminer les points à améliorer, et comparer la longueur des preuves avec et sans tactiques adjuvantes. Le but, bien entendu, était d'écrire les tactiques les plus générales possible, et ce pari a été plutôt réussi puisque certaines d'entre elles ont pu être réutilisées dans \verb+ZF.v+ par la suite. \`A cet effet, les résultats suivants ont été démontrés :
 \begin{minted}{coq}
 Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
 
@@ -316,10 +316,14 @@ Grâce à ce résultat, la preuve d'un théorème $\phi$ utilisant des lemmes au
 
 \subsection{Construction de $\N$}
 
+% construction de von Neumann
+
 
 \section{Lien avec le $\lambda$-calcul}
 
 \subsection{Choix de codage}
+
+% à la Church
 
 \subsection{Correspondance de {\sc Curry-Howard}}
 
@@ -332,6 +336,8 @@ Cette partie reprend les concepts et les constructions du cours de $\lambda$-cal
 % la négation se déduit facilement du faux : non A = A -> faux
 
 \subsubsection{Conjonction : couples et projections}
+
+\subsubsection{Disjonction : filtrage par motif et injections}
 
 
 \section{Conclusion}
@@ -389,33 +395,88 @@ Inductive Pr (l:logic) : sequent -> Prop :=
 
 \section{Preuve de \texttt{ZeroRight} : avant-après}\label{beforeafter_zeroright}
 
-% TODO
-% Retrouver la preuve originelle
-
-\begin{minipage}{0.45\linewidth}
+La preuve originelle était :
 \begin{minted}{coq}
 Lemma ZeroRight :
   IsTheorem Intuiti PeanoTheory
             (∀ (#0 = #0 + Zero)).
 Proof.
- thm.
- rec.
- + sym.
-   inst_axiom ax9 [Zero].
- + app_R_All_i "y" y.
-   apply R_Imp_i. set (H1 := _ = _).
-   sym.
-   trans (Succ (y + Zero)).
-   - inst_axiom ax10 [y; Zero].
-   - ahered.
-     sym.
-     apply R_Ax.
-     apply in_eq.
+  unfold IsTheorem.
+  split.
+  + unfold Wf. split; [ auto | split; auto ].
+  + exists ((PeanoAx.induction_schema (#0 = #0 + Zero))::axioms_list).
+    split.
+    - apply Forall_forall.
+      intros. destruct H.
+      * simpl. unfold IsAx.
+        right. exists (#0 = #0 + Zero).
+        split; [ auto | split ; [ auto | auto ] ].
+      * simpl. unfold IsAx. left. exact H.
+    - apply R_Imp_e with
+      (A := (nForall (Nat.pred (level (# 0 = # 0 + Zero)))
+       ((∀ bsubst 0 Zero (# 0 = # 0 + Zero)) /\
+        (∀ # 0 = # 0 + Zero -> bsubst 0 (Succ (# 0)) (# 0 = # 0 + Zero))))).
+      * apply R_Ax. unfold induction_schema. apply in_eq.
+      * simpl. apply R_And_i. cbn.
+        change (Fun "O" []) with Zero.
+        apply R_All_i with (x := "x").
+        ++ compute. inversion 1.
+        ++ cbn. change (Fun "O" []) with Zero.
+           eapply R_Imp_e. set (hyp := (_ -> _)%form).
+           assert ( sym : Pr Intuiti (hyp::axioms_list ⊢ ∀∀ (#1 = #0 -> #0 = #1))).
+           { apply R_Ax. compute; intuition. }
+           apply R_All_e with (t := Zero + Zero) in sym. cbn in sym.
+           apply R_All_e with (t := Zero) in sym. cbn in sym. exact sym.
+           -- reflexivity.
+           -- reflexivity.
+           -- set (hyp := (_ -> _)%form). change (Fun "O" []) with Zero.
+              change (Zero + Zero = Zero) with (bsubst 0 Zero (Zero + #0 = #0)).
+              apply R_All_e. reflexivity.
+              apply R_Ax. compute; intuition.
+       ++ cbn. change (Fun "O" []) with Zero.
+          apply R_All_i with (x := "y").
+          -- compute. inversion 1.
+          -- cbn. change (Fun "O" []) with Zero.
+             apply R_Imp_i. set (H1 := FVar _ = _). set (H2 := _ -> _).
+             assert (hyp : Pr Intuiti
+                              (H1 :: H2 :: axioms_list ⊢ Fun "S" [FVar "y"] =
+                               Fun "S" [FVar "y" + Zero] /\
+                               Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero)).
+             { apply R_And_i.
+               - assert (AX4 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax4)).
+                 { apply R_Ax. compute; intuition. }
+                 apply R_Imp_e with (A := (FVar "y" = FVar "y" + Zero)%form);
+                   [ | apply R_Ax; compute; intuition ].
+                 unfold ax4 in AX4. apply R_All_e with (t := FVar "y") in AX4; [ | auto ].
+                 apply R_All_e with (t := FVar "y" + Zero) in AX4; [ | auto ].
+                 cbn in AX4. exact AX4. 
+               - apply R_Imp_e with (A := Fun "S" [FVar "y"] + Zero = Fun "S" [FVar "y" + Zero]).
+                 + assert (AX2 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax2)).
+                   { apply R_Ax. compute; intuition. }
+                   unfold ax2 in AX2.
+                   apply R_All_e with (t := Fun "S" [FVar "y"] + Zero) in AX2; [ | auto ].
+                   apply R_All_e with (t := Fun "S" [FVar "y" + Zero]) in AX2; [ | auto ].
+                   cbn in AX2. exact AX2.
+                 + assert (AX10 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax10)).
+                   { apply R_Ax. compute; intuition. }
+                   unfold ax10 in AX10.
+                   apply R_All_e with (t:= FVar "y") in AX10; [ | auto ].
+                   apply R_All_e with (t := Zero) in AX10; [ | auto ].
+                   cbn in AX10. exact AX10. }
+             apply R_Imp_e with
+             (A :=  Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\
+                    Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero).
+             ** assert (AX3 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax3)).
+                { apply R_Ax. compute; intuition. }
+                unfold ax3 in AX3.
+                apply R_All_e with (t:= Fun "S" [FVar "y"]) in AX3; [ | auto ].
+                apply R_All_e with (t := Fun "S" [FVar "y" + Zero]) in AX3; [ | auto ].
+                apply R_All_e with (t := Fun "S" [FVar "y"] + Zero) in AX3; [ | auto ].
+                cbn in AX3. exact AX3.
+             ** exact hyp.
  Qed.    
 \end{minted}
-\end{minipage}
-\hfill
-\begin{minipage}{0.45\linewidth}
+et en fin de stage, elle était devenue
 \begin{minted}{coq}
 Lemma ZeroRight :
   IsTheorem Intuiti PeanoTheory
@@ -436,7 +497,6 @@ Proof.
      apply in_eq.
 Qed.
 \end{minted}
-\end{minipage}
 
 \section{Syntaxe et règles de typage du $\lambda$-calcul utilisé}
 
@@ -448,49 +508,71 @@ u, v, \ldots ::&= x, y, \ldots & \text{variables}\\
 &| \; \nabla u & \text{nabla} \\
 &| \; \langle u, v \rangle & \text{couple} \\
 &| \; \pi_1 u & \text{première projection} \\
-&| \; \pi_2 u & \text{seconde projection}
+&| \; \pi_2 u & \text{seconde projection} \\
+&| \; \mathtt{case} \, u \, \mathtt{of} \, v_1 \; | \; v_2 & \text{filtrage par motif} \\
+&| \; \iota_1 u & \text{première injection} \\
+&| \; \iota_2 u & \text{seconde injection}
 \end{align*} et celle des types est \begin{align*}
 \sigma, \tau, \ldots ::&= a, b, \ldots & \text{variables de type} \\
 &| \; \sigma \Rightarrow \tau & \text{type flèche} \\
 &| \; \bot & \text{faux} \\
-&| \; \sigma \wedge \tau & \text{type conjonction}.
+&| \; \sigma \wedge \tau & \text{type conjonction} \\
+&| \; \sigma \vee \tau & \text{type disjonction}.
 \end{align*}
 
 Les règles de typage sont :
-\[ \begin{array}{lcr}
+\[ \begin{array}{lr}
 \text{\begin{prooftree}
 \infer0[var]{\Gamma, x : \tau \vdash x : \tau}
-\end{prooftree}} & &
+\end{prooftree}} &
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \Rightarrow \tau}
 \hypo{\Gamma \vdash v : \sigma}
 \infer2[app]{\Gamma \vdash uv : \tau}
 \end{prooftree}} \\
-& & \\
+& \\
 \text{\begin{prooftree}
 \hypo{\Gamma, x : \sigma \vdash u : \tau}
 \infer1[abs]{\Gamma \vdash \lambda x \cdot u : \sigma \Rightarrow \tau}
-\end{prooftree}} & &
+\end{prooftree}} &
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \bot}
 \infer1[$\nabla$]{\Gamma \vdash \nabla u : \tau}
 \end{prooftree}} \\
-& & \\
+& \\
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \wedge \tau}
 \infer1[$\pi_1$]{\Gamma \vdash \pi_1 u : \sigma}
-\end{prooftree}} & &
+\end{prooftree}} &
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \wedge \tau}
 \infer1[$\pi_2$]{\Gamma \vdash \pi_2 u : \tau}
 \end{prooftree}} \\
-& & \\
-& \text{
+& \\
+\text{
 \begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma}
 \hypo{\Gamma \vdash v : \tau}
 \infer2[coup]{\Gamma \vdash \langle u, v \rangle : \sigma \wedge \tau}
 \end{prooftree}} &
+\text{
+\begin{prooftree}
+\hypo{\Gamma \vdash u : \sigma \vee \tau}
+\hypo{\Gamma \vdash v_1 : \sigma \Rightarrow \mu}
+\hypo{\Gamma \vdash v_2 : \tau \Rightarrow \mu}
+\infer3[pattern]{\Gamma \vdash \mathtt{case} \, u \, \mathtt{of} \, v_1 \; | \; v_2 : \mu}
+\end{prooftree}} \\
+& \\
+\text{
+\begin{prooftree}
+\hypo{\Gamma \vdash u : \sigma}
+\infer1[$\iota_1$]{\Gamma \vdash \iota_1 u : \sigma \vee \tau}
+\end{prooftree}} &
+\text{
+\begin{prooftree}
+\hypo{\Gamma \vdash u : \tau}
+\infer1[$\iota_2$]{\Gamma \vdash \iota_2 u : \sigma \vee \tau}
+\end{prooftree}}
 \end{array} \]
 
 \end{document}

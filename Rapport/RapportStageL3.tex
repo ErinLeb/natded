@@ -263,9 +263,9 @@ La seconde tactique élaborée n'est pas à utiliser systématiquement. Elle per
 
 Concrètement, cette tactique s'appuie sur une tactique auxiliaire \verb+parse+ qui prend en argument une formule $\phi$ contenant au moins une quantification universelle sous la forme non-restrictive \[ \phi_1 \Rightarrow \cdots \Rightarrow \forall x \cdot \phi_n \] avec éventuellement $n = 1$, et qui retourne $\phi_n$. Une fois la formule $\phi_n$ identifiée, \verb+rec+ l'utilise pour instancier le schéma d'axiome de récurrence et initie la preuve, de sorte que l'utilise se retrouve avec deux buts, qui correspondent à l'initialisation et à l'hérédité de la preuve par récurrence. Pour ce faire, j'ai eu besoin de prouver deux lemmes auxiliaires qui permettent essentiellement de montrer que l'instance du schéma d'axiome de récurrence choisie est bien licite, et qui proposent une forme plus facilement manipulable du principe de récurrence.
 
-Il est à noter que, en allant chercher le premier quantificateur universel qu'elle trouve dans la formule, \verb+parse+ ne restreint pas la généralité de la tactique \verb+rec+. En effet,
+Il est à noter que, en allant chercher le premier quantificateur universel qu'elle trouve dans la formule, \verb+parse+ ne restreint pas la généralité de la tactique \verb+rec+. En effet, les quantificateurs universels commutent évidemment, et si un le théorème $\phi$ à démontrer contient un quantificateur existentiel, on peut toujours éliminer les quantificateurs qui le précèdent (avec les règles \verb+R_All_i+ et \verb+R_Ex_i+) afin d'appliquer la tactique \verb+rec+, puis les réintroduire avec \verb+R_All_e+ et \verb+R_Ex_e+. Cela revient essentiellement à utiliser les tactiques \verb+intro+ et \verb+exists+ avant de lancer un \verb+induction+ en Coq, puis d'utiliser \verb+revert+ pour rétablir le théorème initial.
 % TODO
-% Parler de la généralité de la tactique rec, comment faire ?
+% nom de l'analogue de revert pour exists
 
 \subsubsection{Pour raccourcir certains raisonnements}
 
@@ -293,8 +293,7 @@ Lemma AntiHereditarity :
 Une fois ces résultats établis, j'ai facilement pu créer les tactiques qui nous intéressaient, où il s'agissait essentiellement d'appliquer le théorème idoine et de simplifier à l'aide de tactiques de calcul spécifiques, telles que \verb+calc+ ou \verb+cbm+, qui ont été écrites par Pierre Letouzey pour faciliter la manipulation d'ensembles finis et de listes.
 \smallskip
 
-% TODO
-% Parler de R_All_i et inst_axiom
+En plus de cela, j'ai aussi défini des tactiques qui permettent de gérer plus facilement la règle \verb+R_All_i+ ou d'ajouter la dérivabilité d'axiomes dans les hypothèses, pour pouvoir raisonner à rebours (i.e. de haut de bas de l'arbre de dérivation). Ces tactiques très simples ne sont finalement que des macros qui évitent d'avoir à réécrire plusieurs fois les mêmes petits bouts de preuve et de se concentrer sur l'aspect déduction naturelle plutôt que sur l'aspect Coq.
 
 \subsubsection{Pour utiliser des lemmes auxiliaires}\label{sol}
 
@@ -329,9 +328,7 @@ Grâce à ce résultat, la preuve d'un théorème $\phi$ utilisant des lemmes au
 
 Cette partie reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}. Par ailleurs, on se placera toujours dans le cadre de la \emph{logique intuitionniste}.
 
-% TODO
-% on utilise la preuve pour redémontrer le premier résultat démontré dans le stage
-% lambda terme utilisé : lambda x . i1 pi1 x
+Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontrer le premier résultat du stage, à la savoir que le séquent $\vdash (\phi_1 \wedge \phi_2) \Rightarrow (\phi_1 \vee \phi_2)$ était dérivable. Pour ce faire il a suffit d'exhiber le $\lambda$-terme $\lambda x \cdot \iota_1 \pi_1 x$, qui est un témoin de preuve beaucoup plus aisé à manipuler qu'un arbre de dérivation complet.
 
 \subsubsection{Logique minimale intuitionniste}
 
@@ -525,60 +522,6 @@ u, v, \ldots ::&= x, y, \ldots & \text{variables}\\
 \end{align*}
 
 Les règles de typage sont :
-%\[ \begin{array}{lr}
-%\text{\begin{prooftree}
-%\infer0[var]{\Gamma, x : \tau \vdash x : \tau}
-%\end{prooftree}} &
-%\text{\begin{prooftree}
-%\hypo{\Gamma \vdash u : \sigma \Rightarrow \tau}
-%\hypo{\Gamma \vdash v : \sigma}
-%\infer2[app]{\Gamma \vdash uv : \tau}
-%\end{prooftree}} \\
-%& \\
-%\text{\begin{prooftree}
-%\hypo{\Gamma, x : \sigma \vdash u : \tau}
-%\infer1[abs]{\Gamma \vdash \lambda x \cdot u : \sigma \Rightarrow \tau}
-%\end{prooftree}} &
-%\text{\begin{prooftree}
-%\hypo{\Gamma \vdash u : \bot}
-%\infer1[$\nabla$]{\Gamma \vdash \nabla u : \tau}
-%\end{prooftree}} \\
-%& \\
-%\text{\begin{prooftree}
-%\hypo{\Gamma \vdash u : \sigma \wedge \tau}
-%\infer1[$\pi_1$]{\Gamma \vdash \pi_1 u : \sigma}
-%\end{prooftree}} &
-%\text{\begin{prooftree}
-%\hypo{\Gamma \vdash u : \sigma \wedge \tau}
-%\infer1[$\pi_2$]{\Gamma \vdash \pi_2 u : \tau}
-%\end{prooftree}} \\
-%& \\
-%\text{
-%\begin{prooftree}
-%\hypo{\Gamma \vdash u : \sigma}
-%\hypo{\Gamma \vdash v : \tau}
-%\infer2[coup]{\Gamma \vdash \langle u, v \rangle : \sigma \wedge \tau}
-%\end{prooftree}} &
-%\text{
-%\begin{prooftree}
-%\hypo{\Gamma \vdash u : \sigma \vee \tau}
-%\hypo{\Gamma, x_1 : \sigma \vdash v_1 : \mu}
-%\hypo{\Gamma, x_2 : \tau \vdash v_2 : \mu}
-%\infer3[pattern]{\Gamma \vdash \mathtt{case} \, u \, \mathtt{of} \, \iota_1 x_1 \mapsto v_1 \; | \; \iota_2 x_2 \mapsto v_2 : \mu}
-%\end{prooftree}} \\
-%& \\
-%\text{
-%\begin{prooftree}
-%\hypo{\Gamma \vdash u : \sigma}
-%\infer1[$\iota_1$]{\Gamma \vdash \iota_1 u : \sigma \vee \tau}
-%\end{prooftree}} &
-%\text{
-%\begin{prooftree}
-%\hypo{\Gamma \vdash u : \tau}
-%\infer1[$\iota_2$]{\Gamma \vdash \iota_2 u : \sigma \vee \tau}
-%\end{prooftree}}
-%\end{array} \]
-
 \[ \begin{array}{lcr}
 \text{\begin{prooftree}
 \infer0[var]{\Gamma, x : \tau \vdash x : \tau}

@@ -1382,7 +1382,7 @@ Proof.
  - rewrite <- Names.is_empty_spec. namedec.
  - rewrite <- Names.is_empty_spec. namedec.
  - apply (term_fclosed_spec (Fun "" l)).
- - rewrite <- andb_lazy_alt, andb_true_iff, IHf1, IHf2.
+ - rewrite lazy_andb_iff, IHf1, IHf2.
    intuition.
 Qed.
 

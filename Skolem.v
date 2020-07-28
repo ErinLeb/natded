@@ -208,7 +208,7 @@ Proof.
  { induction t as [ | | f l IH] using term_ind'; cbn; trivial.
    - unfold BogusPoint. now rewrite <- SO.
    - destruct (funsymbs sign f) as [ar|] eqn:E; try easy.
-     rewrite <- andb_lazy_alt, andb_true_iff. intros (_ & F) genv lenv.
+     rewrite lazy_andb_iff. intros (_ & F) genv lenv.
      destruct (FU f) as [Hf|Hf].
      + exfalso. now rewrite (funsOk mo f), Hf in E.
      + rewrite <- Hf. destruct (funs mo f) as [(p,q)|]; auto.
@@ -219,12 +219,12 @@ Proof.
  - intuition.
  - intuition.
  - destruct (predsymbs sign p) as [ar|] eqn:E; try easy.
-   rewrite <- andb_lazy_alt, andb_true_iff. intros (_ & F) genv lenv.
+   rewrite lazy_andb_iff. intros (_ & F) genv lenv.
    rewrite <- PR. destruct (preds mo p) as [(u,v)|]; try easy.
    f_equiv. apply map_ext_in. intros a Ha. apply Ht.
    rewrite forallb_forall in F; auto.
  - intros WA genv lenv. now rewrite IHA.
- - rewrite <- andb_lazy_alt, andb_true_iff.
+ - rewrite lazy_andb_iff.
    intros (WA1,WA2) genv lenv.
    specialize (IHA1 WA1 genv lenv).
    specialize (IHA2 WA2 genv lenv).

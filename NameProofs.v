@@ -26,6 +26,7 @@ Qed.
 
 Import Names.
 Import Logic. (* for [eq] *)
+Local Open Scope nat. (* needed for Coq 8.11 *)
 
 Lemma mem_false x vs :
  ~In x vs -> mem x vs = false.

@@ -20,6 +20,7 @@ Theories.v
 PreModels.v
 Models.v
 Peano.v
+contribs/zfc/zfc.v
 ZF.v
 Skolem.v
 # parser.v

@@ -123,6 +123,17 @@ Fixpoint list_max l :=
   | n::l => Nat.max n (list_max l)
   end.
 
+(** Remove the n-th element of a list (if it exists) *)
+
+Fixpoint list_drop {A} n (l:list A) :=
+ match n, l with
+ | 0, a::l => l
+ | S n, a::l => a::list_drop n l
+ | _, [] => l
+ end.
+
+(** Properties of these functions on lists *)
+
 Ltac cons := constructor; congruence.
 
 Instance eqb_inst_list {A}`{Eqb A} : Eqb (list A) := list_forallb2 eqb.
@@ -313,6 +324,20 @@ Lemma unassoc_in {A B}`{EqbSpec A} x a b (l : list (A*B)) :
 Proof.
  unfold list_unassoc.
  now rewrite filter_In, <- eqb_neq, negb_true_iff.
+Qed.
+
+Lemma list_drop_nth_high {A} n k (l:list A) d :
+  n <= k ->
+  nth k (list_drop n l) d = nth (S k) l d.
+Proof.
+ revert k l. induction n; destruct l, k; cbn; auto with arith; omega.
+Qed.
+
+Lemma list_drop_nth_low {A} n k (l:list A) d :
+  k < n ->
+  nth k (list_drop n l) d = nth k l d.
+Proof.
+ revert k l. induction n; destruct l, k; cbn; auto with arith; omega.
 Qed.
 
 (** Max and lists *)

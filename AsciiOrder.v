@@ -28,12 +28,8 @@ Definition ascii_eqb c c' := (N_of_ascii c =? N_of_ascii c')%N.
 Definition ascii_ltb c c' := (N_of_ascii c <? N_of_ascii c')%N.
 Definition ascii_leb c c' := (N_of_ascii c <=? N_of_ascii c')%N.
 
-Infix "<" := ascii_lt : char_scope.
-Infix "<=" := ascii_le : char_scope.
-Infix "?=" := ascii_compare (at level 70) : char_scope.
-Infix "=?" := ascii_eqb : char_scope.
-Infix "<?" := ascii_ltb : char_scope.
-Infix "<=?" := ascii_leb : char_scope.
+Local Infix "<" := ascii_lt.
+Local Infix "<=" := ascii_le.
 
 Lemma ascii_lt_strorder : StrictOrder ascii_lt.
 Proof.
@@ -49,25 +45,25 @@ Proof.
 Qed.
 
 Lemma ascii_compare_spec (c c' : ascii) :
-  CompareSpec (c=c') (c<c') (c'<c) (c ?= c').
+  CompareSpec (c=c') (c<c') (c'<c) (ascii_compare c c').
 Proof.
   unfold ascii_compare, ascii_lt.
   case N.compare_spec; simpl; auto using ascii_N_inj.
 Qed.
 
-Lemma ascii_eqb_spec (c c' : ascii) : reflect (c = c') (c =? c').
+Lemma ascii_eqb_spec c c' : reflect (c = c') (ascii_eqb c c').
 Proof.
   unfold ascii_eqb.
   case N.eqb_spec; intros; simpl; constructor;
    now rewrite <- ascii_N_iff.
 Qed.
 
-Lemma ascii_ltb_spec (c c' : ascii) : BoolSpec (c < c') (c' <= c) (c <? c').
+Lemma ascii_ltb_spec c c' : BoolSpec (c < c') (c' <= c) (ascii_ltb c c').
 Proof.
   unfold ascii_ltb. case N.ltb_spec; simpl; auto.
 Qed.
 
-Lemma ascii_leb_spec (c c' : ascii) : BoolSpec (c <= c') (c' < c) (c <=? c').
+Lemma ascii_leb_spec c c' : BoolSpec (c <= c') (c' < c) (ascii_leb c c').
 Proof.
   unfold ascii_leb. case N.leb_spec; simpl; auto.
 Qed.

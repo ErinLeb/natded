@@ -7,6 +7,7 @@
 Require Import Defs NameProofs Mix Meta Theories PreModels Models.
 Import ListNotations.
 Local Open Scope bool_scope.
+Local Open Scope string_scope.
 Local Open Scope eqb_scope.
 
 (** The Peano axioms *)
@@ -87,7 +88,6 @@ Qed.
 
 End PeanoAx.
 
-Local Open Scope string.
 Local Open Scope formula_scope.
 
 Definition PeanoTheory :=
@@ -389,16 +389,14 @@ Lemma PeanoFuns_ok s :
  funsymbs PeanoSign s = get_arity (PeanoFuns s).
 Proof.
  unfold PeanoSign, peano_sign, PeanoFuns. simpl.
- unfold eqb, eqb_inst_string.
- repeat (case string_eqb; auto).
+ repeat (case eqbspec; auto); congruence.
 Qed.
 
 Lemma PeanoPreds_ok s :
  predsymbs PeanoSign s = get_arity (PeanoPreds s).
 Proof.
  unfold PeanoSign, peano_sign, PeanoPreds. simpl.
- unfold eqb, eqb_inst_string.
- case string_eqb; auto.
+ repeat (case eqbspec; auto); congruence.
 Qed.
 
 Definition PeanoPreModel : PreModel nat PeanoTheory :=

@@ -84,11 +84,11 @@ Definition eq_trans := ∀∀∀ (#2 = #1 /\ #1 = #0 -> #2 = #0).
 Definition compat_left := ∀∀∀ (#0 = #1 /\ #0 ∈ #2 -> #1 ∈ #2).
 Definition compat_right := ∀∀∀ (#0 ∈ #1 /\ #1 = #2 -> #0 ∈ #2).
 
-Definition ext := ∀∀ (∀ (#0 ∈ #2 <-> #0 ∈ #1) -> #2 = #1).
+Definition ext := ∀∀ ((∀ #0 ∈ #2 <-> #0 ∈ #1) -> #1 = #0).
 Definition pairing := ∀∀∃∀ (#0 ∈ #1 <-> #0 = #3 \/ #0 = #2).
 Definition union := ∀∃∀ (#0 ∈ #1 <-> ∃ (#0 ∈ #3 /\ #1 ∈ #0)).
 Definition powerset := ∀∃∀ (#0 ∈ #1 <-> ∀ (#0 ∈ #1 -> #0 ∈ #3)).
-Definition infinity := ∃ (∃ (#0 ∈ #1 /\ zero (#0)) /\ ∀ (#0 ∈ #1 -> (∃ (#0 ∈ #2 /\ succ (#1) (#0))))).
+Definition infinity := ∃ (∃ ((#0 ∈ #1 /\ zero (#0)) /\ ∀ (#0 ∈ #1 -> (∃ (#0 ∈ #2 /\ succ (#1) (#0)))))).
 
 Definition axioms_list :=
  [ eq_refl; eq_sym; eq_trans; compat_left; compat_right; ext; pairing; union; powerset; infinity ].
@@ -127,7 +127,7 @@ Definition replacement_schema A :=
   nForall
     ((level A) - 3)
     (∀ (∀ (#0 ∈ #1 -> exists_uniq A)) ->
-       ∃∀ (#0 ∈ #2 -> ∃ (#0 ∈ #3 /\ lift_form_above 2 A))).
+       ∃∀ (#0 ∈ #2 -> ∃ (#0 ∈ #2 /\ lift_form_above 2 A))).
 
 Local Close Scope formula_scope.
 

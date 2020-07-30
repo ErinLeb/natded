@@ -365,7 +365,7 @@ Proof.
 Qed.
 
 Lemma fresh_loop_ok names id n :
- (cardinal names < n + String.length id)%nat ->
+ cardinal names < n + String.length id ->
  Subset (strict_prefixes id) names ->
  ~In (fresh_loop names id n) names.
 Proof.

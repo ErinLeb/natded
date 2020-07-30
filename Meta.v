@@ -15,61 +15,55 @@ Implicit Type f : formula.
 
 (** Properties of [lift] *)
 
-Lemma level_lift t : level (lift t) <= S (level t).
+Lemma level_lift k t : level (lift k t) <= S (level t).
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto with arith.
- rewrite map_map.
- apply list_max_map_le. intros a Ha. transitivity (S (level a)); auto.
- rewrite <- Nat.succ_le_mono. now apply list_max_map_in.
+ - case Nat.leb_spec; auto.
+ - rewrite map_map.
+   apply list_max_map_le. intros a Ha. transitivity (S (level a)); auto.
+   rewrite <- Nat.succ_le_mono. now apply list_max_map_in.
 Qed.
 
-Lemma lift_nop t : BClosed t -> lift t = t.
-Proof.
- unfold BClosed.
- induction t as [ | | f l IH] using term_ind'; cbn; auto.
- - easy.
- - rewrite list_max_map_0. intros H. f_equal. apply map_id_iff; auto.
-Qed.
-
-Lemma check_lift sign t :
- check sign (lift t) = check sign t.
+Lemma lift_nop_le k t : level t <= k -> lift k t = t.
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto.
- destruct funsymbs; auto.
- rewrite map_length. case eqb; auto.
- apply eq_true_iff_eq. rewrite forallb_map, !forallb_forall.
- split; intros H x Hx. rewrite <- IH; auto. rewrite IH; auto.
+ - case Nat.leb_spec; auto. omega.
+ - rewrite list_max_map_le. intros H. f_equal. apply map_id_iff; auto.
 Qed.
 
-Lemma lift_fvars t : fvars (lift t) = fvars t.
+Lemma lift_nop k t : BClosed t -> lift k t = t.
+Proof.
+ unfold BClosed. intros H. apply lift_nop_le. rewrite H; omega.
+Qed.
+
+Lemma check_lift sign k t :
+ check sign (lift k t) = check sign t.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ - case Nat.leb_spec; auto.
+ - destruct funsymbs; auto.
+   rewrite map_length. case eqb; auto.
+   apply eq_true_iff_eq. rewrite forallb_map, !forallb_forall.
+   split; intros H x Hx. rewrite <- IH; auto. rewrite IH; auto.
+Qed.
+
+Lemma fvars_lift k t : fvars (lift k t) = fvars t.
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
- induction l; simpl; auto.
- rewrite IH, IHl; simpl; auto.
- intros x Hx. apply IH. simpl; auto.
+ - case Nat.leb_spec; auto.
+ - induction l; simpl; auto.
+   rewrite IH, IHl; simpl; auto.
+   intros x Hx. apply IH. simpl; auto.
 Qed.
 
-(** Properties of [lift_above] *)
-
-Lemma level_lift_above t k :
-  level (lift_above k t) <= S (level t).
-Proof.
-  induction t using term_ind'; cbn; auto with arith.
-  + destruct (k <=? n); cbn; omega.
-  + rewrite map_map.
-    apply list_max_map_le. intros. transitivity (S (level a)); auto.
-    rewrite<- Nat.succ_le_mono. now apply list_max_map_in.
-Qed.
-
-Lemma level_lift_form_above f k :
-  level (lift_form_above k f) <= S (level f).
+Lemma level_lift_form k f : level (lift k f) <= S (level f).
 Proof.
   revert k. induction f; intro; cbn; auto with arith.
   + rewrite map_map.
     rewrite list_max_map_le.
     intros.
     transitivity (S (level a)).
-    - apply level_lift_above.
+    - apply level_lift.
     - apply-> Nat.succ_le_mono.
       apply list_max_map_in.
       assumption.
@@ -80,46 +74,25 @@ Proof.
     omega.
 Qed.
 
-Lemma check_lift_above sign t k :
-  check sign (lift_above k t) = check sign t.
-Proof.
-  induction t as [ | | f l IH] using term_ind'; cbn; auto.
-  + destruct (k <=? n); auto.
-  + destruct funsymbs; auto.
-    rewrite map_length. case eqb; auto.
-    apply eq_true_iff_eq. rewrite forallb_map, !forallb_forall.
-    split; intros H x Hx. rewrite<- IH; auto. rewrite IH; auto.
-Qed.
-
-Lemma check_lift_form_above sign f k :
-  check sign (lift_form_above k f) = check sign f.
+Lemma check_lift_form sign f k :
+  check sign (lift k f) = check sign f.
 Proof.
   revert k. induction f; cbn; auto.
   + destruct (predsymbs sign p); auto.
     intro. rewrite map_length. case eqb; auto.
     apply eq_true_iff_eq. rewrite forallb_map, !forallb_forall.
     split; intros.
-    - destruct H with (x := x); auto. rewrite check_lift_above. reflexivity.
-    - destruct H with (x := x); auto. rewrite check_lift_above. reflexivity.
+    - destruct H with (x := x); auto. rewrite check_lift. reflexivity.
+    - destruct H with (x := x); auto. rewrite check_lift. reflexivity.
   + intro. rewrite IHf1. rewrite IHf2. reflexivity.
 Qed.
 
-Lemma fvars_lift_above t k :
-  fvars (lift_above k t) = fvars t.
-Proof.
-  induction t as [ | | f l IH] using term_ind'; cbn; auto with *.
-  - destruct (k <=? n); auto.
-  - induction l; simpl; auto.
-    rewrite IH, IHl; simpl; auto.
-    intros x Hx. apply IH. simpl; auto.
-Qed.
-
-Lemma fvars_lift_form_above f k :
-  fvars (lift_form_above k f) = fvars f.
+Lemma fvars_lift_form f k :
+  fvars (lift k f) = fvars f.
 Proof.
   revert k. induction f; intro; cbn; auto with *.
   - induction l; simpl; auto.
-    rewrite fvars_lift_above, IHl; simpl; auto.
+    rewrite fvars_lift, IHl; simpl; auto.
   - rewrite IHf1. rewrite IHf2. auto.
 Qed.
 
@@ -172,8 +145,8 @@ Proof.
  induction f; intros; cbn -[Nat.max]; auto with arith.
  - apply (level_bsubst_term_max n u (Fun "" l)).
  - specialize (IHf1 n u). specialize (IHf2 n u). omega with *.
- - assert (H := level_lift u).
-   specialize (IHf (S n) (lift u)). omega with *.
+ - assert (H := level_lift 0 u).
+   specialize (IHf (S n) (lift 0 u)). omega with *.
 Qed.
 
 Lemma level_bsubst_term n (u t:term) :
@@ -234,7 +207,7 @@ Proof.
  induction f; cbn; intros; auto with *.
  - apply (bsubst_term_fvars n u (Fun "" l)).
  - rewrite IHf1, IHf2. namedec.
- - rewrite IHf. now rewrite lift_fvars.
+ - rewrite IHf. now rewrite fvars_lift.
 Qed.
 
 Lemma bsubst_ctx_fvars n u (c:context) :
@@ -494,16 +467,17 @@ Qed.
 Definition BClosed_sub (h:variable->term) :=
  forall v, BClosed (h v).
 
-Lemma lift_vmap (h:variable->term) t :
- lift (vmap h t) = vmap (fun v => lift (h v)) (lift t).
+Lemma lift_vmap (h:variable->term) k t :
+ lift k (vmap h t) = vmap (fun v => lift k (h v)) (lift k t).
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto.
- f_equal. rewrite !map_map. apply map_ext_iff; auto.
+ - case Nat.leb_spec; auto.
+ - f_equal. rewrite !map_map. apply map_ext_iff; auto.
 Qed.
 
-Lemma lift_vmap' (h:variable->term) t :
+Lemma lift_vmap' (h:variable->term) k t :
  BClosed_sub h ->
- lift (vmap h t) = vmap h (lift t).
+ lift k (vmap h t) = vmap h (lift k t).
 Proof.
  intros CL. rewrite lift_vmap.
  apply term_vmap_ext. intros v _. now apply lift_nop.
@@ -1398,8 +1372,8 @@ Proof.
 Qed.
 
 Lemma fclosed_lift_above n f :
-  form_fclosed (lift_form_above n f) = form_fclosed f.
+  form_fclosed (lift n f) = form_fclosed f.
 Proof.
  apply eq_true_iff_eq. rewrite !form_fclosed_spec.
- unfold FClosed. now rewrite fvars_lift_form_above.
+ unfold FClosed. now rewrite fvars_lift_form.
 Qed.

@@ -49,7 +49,7 @@ Proof.
 Qed.
 
 Lemma Prefix_length s s' :
-  Prefix s s' -> (String.length s <= String.length s')%nat.
+  Prefix s s' -> String.length s <= String.length s'.
 Proof.
  induction 1; simpl; auto with arith.
 Qed.

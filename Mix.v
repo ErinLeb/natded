@@ -106,6 +106,10 @@ Arguments fvars {_} {_} !_.
 Class VMap (A : Type) := vmap : (variable -> term) -> A -> A.
 Arguments vmap {_} {_} _ !_.
 
+(** Lifting of bound variables that are above some threshold *)
+Class Lift (A : Type) := lift : nat -> A -> A.
+Arguments lift {_} {_} _ !_.
+
 (** Some generic definitions based on the previous ones *)
 
 Definition BClosed {A}`{Level A} (a:A) := level a = 0.
@@ -218,20 +222,15 @@ Instance term_eqb : Eqb term :=
   | _, _ => false
   end.
 
-Fixpoint lift t :=
- match t with
- | BVar n => BVar (S n)
- | FVar v => FVar v
- | Fun f args => Fun f (List.map lift args)
- end.
+(** [lift k] adds 1 to [BVar] indices that are >= k *)
 
-(* +1 sur les dB >= k *)
-Fixpoint lift_above k t :=
- match t with
- | BVar n => if (k <=? n)%nat then BVar (S n) else t
- | FVar v => FVar v
- | Fun f args => Fun f (List.map (lift_above k) args)
- end.
+Instance term_lift : Lift term :=
+ fix term_lift k t :=
+  match t with
+  | BVar n => if k <=? n then BVar (S n) else t
+  | FVar v => FVar v
+  | Fun f args => Fun f (List.map (term_lift k) args)
+  end.
 
 (** Formulas *)
 
@@ -347,7 +346,7 @@ Instance form_bsubst : BSubst formula :=
   | Pred p args => Pred p (List.map (bsubst n t) args)
   | Not f => Not (form_bsubst n t f)
   | Op o f f' => Op o (form_bsubst n t f) (form_bsubst n t f')
-  | Quant q f' => Quant q (form_bsubst (S n) (lift t) f')
+  | Quant q f' => Quant q (form_bsubst (S n) (lift 0 t) f')
  end.
 
 Instance form_fvars : FVars formula :=
@@ -391,14 +390,17 @@ Compute eqb
         (∀ (Pred "A" [ #0 ] -> Pred "A" [ #0 ]))%form
         (∀ (Pred "A" [FVar "z"] -> Pred "A" [FVar "z"]))%form.
 
-(* +1 sur les dB >= k *)
-Fixpoint lift_form_above k f :=
+(** [lift k f] adds 1 to [BVar] indices that are >= k.
+    Note that this threshold is increased when entering a quantifier. *)
+
+Instance form_lift : Lift formula :=
+ fix form_lift k f :=
  match f with
  | True | False => f
- | Pred p l => Pred p (map (lift_above k) l)
- | Not f => Not (lift_form_above k f)
- | Op o f f' => Op o (lift_form_above k f) (lift_form_above k f')
- | Quant q f => Quant q (lift_form_above (S k) f)
+ | Pred p l => Pred p (map (lift k) l)
+ | Not f => Not (form_lift k f)
+ | Op o f f' => Op o (form_lift k f) (form_lift k f')
+ | Quant q f => Quant q (form_lift (S k) f)
  end.
 
 (** Contexts *)

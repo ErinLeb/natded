@@ -171,14 +171,15 @@ Proof.
    f_equal. rewrite !map_map. apply map_ext_iff; auto.
 Qed.
 
-Lemma restrict_lift sign x t :
- restrict_term sign x (lift t) = lift (restrict_term sign x t).
+Lemma restrict_lift sign x t k :
+ restrict_term sign x (lift k t) = lift k (restrict_term sign x t).
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn; auto.
- destruct funsymbs; cbn; auto with *.
- rewrite map_length.
- case eqbspec; cbn; auto.
- intros _. f_equal. rewrite !map_map. apply map_ext_iff; auto.
+ - case Nat.leb_spec; auto.
+ - destruct funsymbs; cbn; auto with *.
+   rewrite map_length.
+   case eqbspec; cbn; auto.
+   intros _. f_equal. rewrite !map_map. apply map_ext_iff; auto.
 Qed.
 
 Lemma restrict_bsubst sign x n t f :
@@ -532,12 +533,12 @@ Proof.
  - f_equal. rewrite !map_map. apply map_ext_iff; auto.
 Qed.
 
-Lemma forcelevel_lift n x u :
-  forcelevel_term (S n) x (lift u) = lift (forcelevel_term n x u).
+Lemma forcelevel_lift0 n x u :
+  forcelevel_term (S n) x (lift 0 u) = lift 0 (forcelevel_term n x u).
 Proof.
- induction u using term_ind'; simpl; auto.
+ induction u using term_ind'; cbn -[Nat.ltb]; auto.
  - change (S n0 <? S n) with (n0 <? n).
-   case Nat.ltb_spec; simpl; auto.
+   case Nat.ltb_spec; cbn; auto.
  - f_equal. rewrite !map_map. apply map_ext_in; auto.
 Qed.
 
@@ -550,7 +551,7 @@ Proof.
  - rewrite !map_map. apply map_ext_iff.
    auto using forcelevel_bsubst_term.
  - rewrite IHf.
-   f_equal. apply forcelevel_lift.
+   f_equal. apply forcelevel_lift0.
 Qed.
 
 Ltac solver' :=

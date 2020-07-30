@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Mix Meta Theories PreModels Models.
+Require Import Defs NameProofs Mix Meta Theories Nary PreModels Models.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope string_scope.
@@ -372,18 +372,18 @@ Qed.
 
 (** A Coq model of this Peano theory, based on the [nat] type *)
 
-Definition PeanoFuns : modfuns nat :=
+Definition PeanoFuns : string -> optnfun nat nat :=
   fun f =>
-  if f =? "O" then Some (existT _ 0 0)
-  else if f =? "S" then Some (existT _ 1 S)
-  else if f =? "+" then Some (existT _ 2 Nat.add)
-  else if f =? "*" then Some (existT _ 2 Nat.mul)
-  else None.
+  if f =? "O" then NFun 0 0
+  else if f =? "S" then NFun 1 S
+  else if f =? "+" then NFun 2 Nat.add
+  else if f =? "*" then NFun 2 Nat.mul
+  else Nop.
 
-Definition PeanoPreds : modpreds nat :=
+Definition PeanoPreds : string -> optnfun nat Prop :=
   fun p =>
-  if p =? "=" then Some (existT _ 2 (@Logic.eq nat))
-  else None.
+  if p =? "=" then NFun 2 Logic.eq
+  else Nop.
 
 Lemma PeanoFuns_ok s :
  funsymbs PeanoSign s = get_arity (PeanoFuns s).

@@ -17,6 +17,7 @@ Equiv2.v
 AltSubst.v
 Countable.v
 Theories.v
+Nary.v
 PreModels.v
 Models.v
 Peano.v

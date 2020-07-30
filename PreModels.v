@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs Mix NameProofs Meta Restrict.
+Require Import Defs Mix NameProofs Meta Restrict NaryFunctions Nary.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
@@ -18,25 +18,12 @@ Set Implicit Arguments.
     of the theories, and the facts that their interpretations are
     valid. *)
 
-Fixpoint arity_fun A n B :=
-  match n with
-  | O => B
-  | S n => A -> (arity_fun A n B)
-  end.
-
-Definition get_arity {A B} (o : option { n:nat & arity_fun A n B}) :=
-  match o with
-  | None => None
-  | Some (existT _ n _) => Some n
-  end.
-
-Definition modfuns M := string -> option { n:nat & arity_fun M n M }.
-Definition modpreds M := string -> option { n:nat & arity_fun M n Prop }.
+(** TODO: a word why nfun (to use pristine functions like Nat.add in models *)
 
 Record PreModel (M:Type)(sign:signature) :=
   { someone : M; (* M is non-empty *)
-    funs : modfuns M;
-    preds : modpreds M;
+    funs : string -> optnfun M M;
+    preds : string -> optnfun M Prop;
     funsOk : forall s, sign.(funsymbs) s = get_arity (funs s);
     predsOk : forall s, sign.(predsymbs) s = get_arity (preds s)
   }.
@@ -54,30 +41,17 @@ Section PREMODEL.
  Variable M:Type.
  Variable Mo : PreModel M sign.
 
-Definition build_args {A B} :=
-  fix build n (l : list A)(def:B) : arity_fun A n B -> B :=
-    match n, l with
-    | 0, [] => fun f => f
-    | S n, a :: l => fun f => build n l def (f a)
-    | _, _ => fun _ => def
-    end.
-
 (** In case of ill-formed term (w.r.t. signature [sign]), we'll
     use the arbitrary point [Mo.(someone)]. Same if we encounter
     a local variable larger than the local environment *)
 Definition BogusPoint := Mo.(someone).
 
-Definition interp_term genv lenv :=
+Definition interp_term G L :=
   fix interp t :=
     match t with
-    | FVar x => genv x
-    | BVar n => nth n lenv BogusPoint
-    | Fun f args =>
-      match Mo.(funs) f with
-      | Some (existT _ n f) =>
-        build_args n (List.map interp args) BogusPoint f
-      | None => BogusPoint
-      end
+    | FVar x => G x
+    | BVar n => nth n L BogusPoint
+    | Fun f args => optnapply (funs Mo f) (List.map interp args) BogusPoint
     end.
 
 Definition interp_op o :=
@@ -91,29 +65,24 @@ Definition interp_op o :=
     evaluate to the arbitrary proposition [False]. *)
 Definition BogusProp := Logic.False.
 
-Definition interp_form genv :=
-  fix interp lenv f :=
+Definition interp_form G :=
+  fix interp L f :=
     match f with
     | True => Logic.True
     | False => Logic.False
-    | Not f => ~(interp lenv f)
-    | Op o f1 f2 => interp_op o (interp lenv f1) (interp lenv f2)
+    | Not f => ~(interp L f)
+    | Op o f1 f2 => interp_op o (interp L f1) (interp L f2)
     | Pred p args =>
-      match Mo.(preds) p with
-      | Some (existT _ n f) =>
-        build_args n (List.map (interp_term genv lenv) args) BogusProp f
-      | None => BogusProp
-      end
-    | Quant All f => forall (m:M), interp (m::lenv) f
-    | Quant Ex f => exists (m:M), interp (m::lenv) f
+      optnapply (preds Mo p) (List.map (interp_term G L) args) BogusProp
+    | Quant All f => forall (m:M), interp (m::L) f
+    | Quant Ex f => exists (m:M), interp (m::L) f
     end.
 
-Definition interp_ctx genv lenv l :=
-  forall f, In f l -> interp_form genv lenv f.
+Definition interp_ctx G L l :=
+  forall f, In f l -> interp_form G L f.
 
-Definition interp_seq genv lenv '(Γ⊢C) :=
-  interp_ctx genv lenv Γ ->
-  interp_form genv lenv C.
+Definition interp_seq G L '(Γ⊢C) :=
+  interp_ctx G L Γ -> interp_form G L C.
 
 Lemma interp_term_ext genv genv' lenv t :
  (forall v, Names.In v (fvars t) -> genv v = genv' v) ->
@@ -121,8 +90,7 @@ Lemma interp_term_ext genv genv' lenv t :
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn;
   intros H; auto with set.
- case (Mo.(funs) f) as [(n,fn)|]; cbn; auto. f_equal.
- apply map_ext_in. eauto with set.
+ f_equal. apply map_ext_in. eauto with set.
 Qed.
 
 Lemma interp_form_ext genv genv' lenv f :
@@ -131,9 +99,7 @@ Lemma interp_form_ext genv genv' lenv f :
 Proof.
  revert lenv.
  induction f; cbn; auto; intros; f_equal; auto with set.
- - case (Mo.(preds) p) as [(n,fn)|]; cbn; [|reflexivity]; clear p.
-   f_equiv. clear n fn. apply map_ext_in.
-   eauto using interp_term_ext with set.
+ - f_equiv. apply map_ext_in. eauto using interp_term_ext with set.
  - rewrite IHf; intuition.
  - destruct o; cbn; rewrite IHf1, IHf2; intuition.
  - destruct q.
@@ -165,9 +131,7 @@ Proof.
  induction t as [ | |f l IH] using term_ind'; cbn; intros H.
  - reflexivity.
  - rewrite app_nth1; trivial.
- - case (Mo.(funs) f) as [(k,fk)|]; cbn in *; auto. f_equal.
-   apply map_ext_in.
-   rewrite list_max_map_le in H. auto.
+ - f_equiv. apply map_ext_in. rewrite list_max_map_le in H. auto.
 Qed.
 
 Lemma interp_term_closed genv lenv t :
@@ -184,9 +148,7 @@ Lemma interp_form_more_lenv genv lenv lenv' f :
 Proof.
  revert lenv.
  induction f; cbn; intros lenv LE; try tauto.
- - case (Mo.(preds) p) as [(k,fk)|]; cbn; [|reflexivity]; clear p.
-   f_equiv.
-   apply map_ext_in. intros a Ha.
+ - f_equiv. apply map_ext_in. intros a Ha.
    apply interp_term_more_lenv.
    transitivity (list_max (map level l)); auto.
    now apply list_max_map_in.
@@ -214,8 +176,7 @@ Lemma interp_lift genv lenv m t :
  interp_term genv (m :: lenv) (lift 0 t) = interp_term genv lenv t.
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn; auto.
- case (funs Mo f) as [(k,fk)|]; cbn; auto. f_equal.
- rewrite map_map. apply map_ext_iff; auto.
+ f_equiv. rewrite map_map. apply map_ext_iff; auto.
 Qed.
 
 Lemma interp_term_bsubst_gen genv lenv lenv' u m n t :
@@ -230,8 +191,7 @@ Proof.
  - case eqbspec; intros; subst; auto.
    + symmetry. now apply nth_error_some_nth.
    + cbn. apply nth_error_ext; auto. symmetry; auto.
- - case (Mo.(funs) f) as [(k,fk)|]; cbn; auto. f_equal.
-   rewrite map_map. apply map_ext_in; auto.
+ - f_equiv. rewrite map_map. apply map_ext_in; auto.
 Qed.
 
 Lemma interp_term_bsubst genv lenv u m n t :
@@ -261,9 +221,7 @@ Lemma interp_form_bsubst_gen genv lenv lenv' u m n f :
 Proof.
  revert n u lenv lenv'.
  induction f; cbn; auto; intros; f_equal; auto; try reflexivity.
- - case (Mo.(preds) p) as [(k,fk)|]; cbn; [|reflexivity]; clear p.
-   f_equiv.
-   rewrite map_map. apply map_ext_in. intros a _.
+ - f_equiv. rewrite map_map. apply map_ext_in. intros a _.
    eapply interp_term_bsubst_gen; eauto.
  - rewrite (IHf n u lenv lenv'); intuition.
  - destruct o; cbn;

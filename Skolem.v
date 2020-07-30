@@ -6,8 +6,8 @@
 
 
 Require Import ChoiceFacts.
-Require Vector.
-Require Import Defs NameProofs Mix Meta Theories PreModels Models.
+Require Import Defs NameProofs Mix Meta.
+Require Import Theories NaryFunctions Nary PreModels Models.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
@@ -66,46 +66,6 @@ Proof.
  revert l E. induction n; destruct l; cbn; intros; try easy.
  f_equal. rewrite <- seq_shift, map_map. apply IHn. now injection E.
 Qed.
-
-(** N-ary curry / uncurry conversions :
-    isomorphism between [arity_fun] and functions expecting a [Vector.t]
-    as first argument. *)
-
-Section Curry.
-Context {A B : Type}.
-Import Vector.VectorNotations.
-Local Notation "A ^ n" := (Vector.t A n) : types_scope.
-Local Open Scope types_scope.
-Local Open Scope vector_scope.
-
-Fixpoint uncurry {n} : arity_fun A n B -> A^n -> B :=
-  match n with
-  | 0 => fun b _ => b
-  | S n => fun f v => uncurry (f (Vector.hd v)) (Vector.tl v)
-  end.
-
-Fixpoint curry {n} : (A^n -> B) -> arity_fun A n B :=
- match n with
- | 0 => fun f => f (Vector.nil _)
- | S n => fun f a => curry (fun v => f (a::v))
- end.
-
-Lemma uncurry_curry n (phi : A^n -> B) v :
-  uncurry (curry phi) v = phi v.
-Proof.
- induction v; cbn; auto. now rewrite IHv.
-Qed.
-
-Lemma to_vect n (l:list A) :
-  length l = n -> exists v : Vector.t A n, Vector.to_list v = l.
-Proof.
- revert n; induction l as [|a l IH]; simpl.
- - intros n <-. now exists [].
- - destruct n as [|n]; intros [= E].
-   destruct (IH n E) as (v & Hv). exists (a::v). cbn; f_equal; auto.
-Qed.
-
-End Curry.
 
 (** Skolem extension : from a theorem [∀..∀∃A],
     adding a new symbol [f] giving existential witnesses
@@ -183,10 +143,10 @@ Variable th : theory.
 Variable NC : NewCsts th.
 
 Definition Skolem_premodel_ext sign M (mo:PreModel M sign)
- f n (phi : arity_fun M n M) : PreModel M (Skolem_sign sign f n).
+ f n (phi : M^^n-->M) : PreModel M (Skolem_sign sign f n).
 Proof.
 set (sign' := Skolem_sign _ _ _).
-set (funs' := fun s => if s =? f then Some (existT _ n phi) else funs mo s).
+set (funs' := fun s => if s =? f then NFun n phi else funs mo s).
 eapply (Build_PreModel sign' (someone mo) funs' (preds mo)); intros s.
 - unfold funs'. cbn. case eqbspec; intros; auto using funsOk.
 - cbn. apply predsOk.
@@ -195,7 +155,7 @@ Defined.
 Lemma interp_form_premodel_ext sign sign' M
  (mo:PreModel M sign) (mo':PreModel M sign') :
   (someone mo = someone mo') ->
-  (forall f, funs mo f = None \/ funs mo f = funs mo' f) ->
+  (forall f, funs mo f = Nop \/ funs mo f = funs mo' f) ->
   (forall p, preds mo p = preds mo' p) ->
   (forall A, check sign A = true ->
     forall genv lenv,
@@ -211,8 +171,7 @@ Proof.
      rewrite lazy_andb_iff. intros (_ & F) genv lenv.
      destruct (FU f) as [Hf|Hf].
      + exfalso. now rewrite (funsOk mo f), Hf in E.
-     + rewrite <- Hf. destruct (funs mo f) as [(p,q)|]; auto.
-       unfold BogusPoint. rewrite <- SO. f_equal.
+     + rewrite <- Hf. f_equiv; auto.
        apply map_ext_in. intros a Ha.
        apply IH; auto. rewrite forallb_forall in F; auto. }
  induction A; cbn.
@@ -220,8 +179,7 @@ Proof.
  - intuition.
  - destruct (predsymbs sign p) as [ar|] eqn:E; try easy.
    rewrite lazy_andb_iff. intros (_ & F) genv lenv.
-   rewrite <- PR. destruct (preds mo p) as [(u,v)|]; try easy.
-   f_equiv. apply map_ext_in. intros a Ha. apply Ht.
+   rewrite <- PR. f_equiv. apply map_ext_in. intros a Ha. apply Ht.
    rewrite forallb_forall in F; auto.
  - intros WA genv lenv. now rewrite IHA.
  - rewrite lazy_andb_iff.
@@ -233,7 +191,7 @@ Proof.
    destruct q; setoid_rewrite IHA; firstorder.
 Qed.
 
-Lemma interp_form_skolem_premodel_ext sign M f n (F:arity_fun M n M)
+Lemma interp_form_skolem_premodel_ext sign M f n (F:M^^n-->M)
  (mo:PreModel M sign) (mo':PreModel M (Skolem_sign sign f n))
  (E':mo'=Skolem_premodel_ext sign M mo f n F)
  (E:sign.(funsymbs) f = None) :
@@ -245,7 +203,7 @@ Proof.
  intros f0. unfold Skolem_premodel_ext. cbn.
  case eqbspec; auto.
  intros ->. left. rewrite (funsOk mo f) in E.
- now destruct (funs mo f) as [(p,q)|].
+ now destruct (funs mo f).
 Qed.
 
 Definition interp_phi {n th M} (mo:Model M th)(phi : Vector.t M n -> M) A :=
@@ -284,7 +242,7 @@ intros A0 [ | -> ] genv.
     cbn. rewrite eqb_refl.
     rewrite interp_downvars, <- Hv by (now rewrite rev_length in H).
     symmetry. clear -v. unfold Phi.
-    rewrite <- (uncurry_curry _ phi v). induction v; cbn; auto.
+    rewrite <- (uncurry_curry _ phi v). cbn. induction v; cbn; auto.
   + destruct k; try easy.
 Qed.
 

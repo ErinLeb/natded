@@ -4,7 +4,8 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Eqdep_dec Defs Mix NameProofs Meta Theories PreModels.
+Require Import Eqdep_dec Defs Mix NameProofs Meta.
+Require Import Theories NaryFunctions Nary PreModels.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
@@ -146,22 +147,6 @@ Proof.
    rewrite UIP_refl_bool. apply UIP_refl_bool.
 Qed.
 
-Fixpoint map_arity {A B B'}(f:B->B') n
- : arity_fun A n B -> arity_fun A n B' :=
- match n with
- | 0 => f
- | S n => fun ab a => map_arity f n (ab a)
- end.
-
-Lemma build_map_arity {A B B'} n (l : list A)(f:B->B')(any:B)(any':B') :
- length l = n ->
- forall (a : arity_fun A n B),
- build_args n l any' (map_arity f n a) =
- f (build_args n l any a).
-Proof.
- intros <-. induction l; simpl; auto.
-Qed.
-
 Section SyntacticPreModel.
 Variable logic : Defs.logic.
 Variable th : theory.
@@ -183,14 +168,14 @@ Qed.
 Definition sized_wf_listterm n :=
   {l : list term | length l = n /\ Forall (Wf_term th) l}.
 
-Fixpoint mk_args n : arity_fun M n (sized_wf_listterm n) :=
+Fixpoint mk_args n : M^^n --> sized_wf_listterm n :=
  match n with
  | 0 => exist _ [] (conj eq_refl (Forall_nil _))
  | S n => fun t =>
           map_arity (fun '(exist _ l Hl) =>
                        let '(exist _ t Ht) := t in
                        exist _ (t::l) (cons_ok t l n Ht Hl))
-                    n (mk_args n)
+                    (mk_args n)
  end.
 
 Definition one_listterm n : sized_wf_listterm n.
@@ -203,7 +188,7 @@ Qed.
 
 Lemma build_mk n (l : list M) (any:sized_wf_listterm n) :
  length l = n ->
- proj1_sig (build_args n l any (mk_args n)) =
+ proj1_sig (build_args l any (mk_args n)) =
  map (@proj1_sig _ _) l.
 Proof.
  intros <-.
@@ -215,7 +200,7 @@ Proof.
 Qed.
 
 Definition fun_core f n :
-  (th.(funsymbs) f = Some n) -> arity_fun M n M.
+  (th.(funsymbs) f = Some n) -> M^^n-->M.
 Proof.
  intros E.
  generalize (mk_args n).
@@ -224,28 +209,28 @@ Proof.
 Defined.
 
 Definition rich_funs f :
-  { o : option { n:nat & arity_fun M n M } |
+  { o : optnfun M M |
     th.(funsymbs) f = get_arity o /\
     match o with
-    | None => Logic.True
-    | Some (existT _ n a) =>
+    | Nop => Logic.True
+    | NFun n a =>
       forall (l: list M)(any : M), length l = n ->
-        proj1_sig (build_args n l any a) =
+        proj1_sig (build_args l any a) =
         Fun f (map (@proj1_sig _ _) l)
     end }.
 Proof.
  destruct (th.(funsymbs) f) as [n|] eqn:E.
  - set (r := fun_core f n E).
-   exists (Some (existT _ n r)); split; auto.
+   exists (NFun _ r); split; auto.
    intros l any Hl.
    unfold r, fun_core.
    rewrite build_map_arity with (any0 := one_listterm n); auto.
    rewrite <- (build_mk n l (one_listterm n) Hl).
    destruct build_args. now cbn.
- - now exists None.
+ - now exists Nop.
 Defined.
 
-Definition mk_funs : modfuns M :=
+Definition mk_funs : string -> optnfun M M :=
   fun f => proj1_sig (rich_funs f).
 
 Lemma mk_funs_ok f : th.(funsymbs) f = get_arity (mk_funs f).
@@ -253,15 +238,15 @@ Proof.
  unfold mk_funs. now destruct (rich_funs f).
 Qed.
 
-Definition mk_preds : modpreds M.
+Definition mk_preds : string -> optnfun M Prop.
 Proof.
  intro p.
  destruct (th.(predsymbs) p) as [n|].
- - apply Some. exists n.
+ - apply (NFun n).
    generalize (mk_args n).
    apply map_arity.
    exact (fun sl => IsTheorem logic th (Pred p (proj1_sig sl))).
- - apply None.
+ - apply Nop.
 Defined.
 
 Lemma mk_preds_ok p : th.(predsymbs) p = get_arity (mk_preds p).
@@ -428,7 +413,7 @@ Proof.
  unfold BClosed. cbn.
  destruct (predsymbs th p) as [n|] eqn:E; [|easy].
  rewrite lazy_andb_iff, eqb_eq. intros (L,CK) BC genv.
- unfold mk_preds; rewrite E. clear E.
+ unfold mk_preds; rewrite E. cbn. clear E.
  set (l0 := one_listterm th oneconst Honeconst n).
  rewrite build_map_arity with (any := l0) by now rewrite map_length.
  rewrite build_mk with (oneconst := oneconst) by (auto; now rewrite map_length).
@@ -446,7 +431,7 @@ Proof.
    rewrite lazy_andb_iff, eqb_eq.
    intros (L,CK) BC genv.
    unfold mk_funs.
-   destruct rich_funs as ([(n',a)| ] & Ho & Ho'); cbn in *.
+   destruct rich_funs as ([n' a| ] & Ho & Ho'); cbn in *.
    2: congruence.
    assert (Hn : n' = n) by congruence.
    subst n'.
@@ -796,11 +781,11 @@ Lemma premodel_restrict sign sign' M :
 Proof.
  intros SE mo.
  set (fs := fun f => match sign.(funsymbs) f with
-                     | None => None
+                     | None => Nop
                      | _ => mo.(funs) f
                      end).
  set (ps := fun f => match sign.(predsymbs) f with
-                     | None => None
+                     | None => Nop
                      | _ => mo.(preds) f
                      end).
  apply Build_PreModel with fs ps.
@@ -826,8 +811,7 @@ Proof.
  induction t as [ | | f args IH ] using term_ind'; cbn; auto.
  destruct (funsymbs sign f); [|easy].
  case eqbspec; [|easy]. intros _ F.
- destruct (funs mo f) as [(n,ar)|]; auto.
- f_equal. apply map_ext_iff. intros t Ht.
+ f_equiv. apply map_ext_iff. intros t Ht.
  apply IH; auto. rewrite forallb_forall in F; auto.
 Qed.
 
@@ -842,7 +826,6 @@ Proof.
  try (rewrite lazy_andb_iff in Hf; destruct Hf); try reflexivity.
  - destruct (predsymbs sign p); [|easy].
    rewrite lazy_andb_iff in Hf. destruct Hf as (_,Hf).
-   destruct (preds mo p) as [(n,ar)|]; [|reflexivity].
    f_equiv. apply map_ext_iff. intros t Ht.
    apply interp_term_restrict. rewrite forallb_forall in Hf; auto.
  - now rewrite IHf.

@@ -211,7 +211,7 @@ Proof.
 Qed.
 
 Lemma interp_lift genv lenv m t :
- interp_term genv (m :: lenv) (lift t) = interp_term genv lenv t.
+ interp_term genv (m :: lenv) (lift 0 t) = interp_term genv lenv t.
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn; auto.
  case (funs Mo f) as [(k,fk)|]; cbn; auto. f_equal.

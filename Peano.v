@@ -111,8 +111,8 @@ Proof.
   apply R_All_e with (t := A) in AX2.
   apply R_All_e with (t := B) in AX2.
   cbn in AX2.
-  assert (bsubst 0 B (lift A) = A).
-  { assert (lift A = A). { apply lift_nop. exact H. } rewrite H2. apply bclosed_bsubst_id. exact H. }
+  assert (bsubst 0 B (lift 0 A) = A).
+  { assert (lift 0 A = A). { apply lift_nop. exact H. } rewrite H2. apply bclosed_bsubst_id. exact H. }
   rewrite H2 in AX2.
   exact AX2.
 Qed.
@@ -130,12 +130,12 @@ Proof.
   apply R_All_e with (t := B) in AX3.
   apply R_All_e with (t := C) in AX3.
   cbn in AX3.
-  assert (bsubst 0 C (lift B) = B).
-  { assert (lift B = B). {apply lift_nop. assumption. } rewrite H4. apply bclosed_bsubst_id. assumption. }
+  assert (bsubst 0 C (lift 0 B) = B).
+  { assert (lift 0 B = B). {apply lift_nop. assumption. } rewrite H4. apply bclosed_bsubst_id. assumption. }
   rewrite H4 in AX3.
-  assert (bsubst 0 C (bsubst 1 (lift B) (lift (lift A))) = A).
-  { assert (lift A = A). { apply lift_nop. assumption. } rewrite H5. rewrite H5.
-    assert (lift B = B). { apply lift_nop. assumption. } rewrite H6.
+  assert (bsubst 0 C (bsubst 1 (lift 0 B) (lift 0 (lift 0 A))) = A).
+  { assert (lift 0 A = A). { apply lift_nop. assumption. } rewrite H5. rewrite H5.
+    assert (lift 0 B = B). { apply lift_nop. assumption. } rewrite H6.
     assert (bsubst 1 B A = A). { apply bclosed_bsubst_id. assumption. } rewrite H7.
     apply bclosed_bsubst_id. assumption. }
   rewrite H5 in AX3.
@@ -154,8 +154,8 @@ Proof.
   apply R_All_e with (t := A) in AX4.
   apply R_All_e with (t := B) in AX4.
   cbn in AX4.
-  assert (bsubst 0 B (lift A) = A).
-  { assert (lift A = A). { apply lift_nop. assumption. } rewrite H2.
+  assert (bsubst 0 B (lift 0 A) = A).
+  { assert (lift 0 A = A). { apply lift_nop. assumption. } rewrite H2.
     apply bclosed_bsubst_id. assumption. }
   rewrite H2 in AX4.
   assumption.
@@ -173,8 +173,8 @@ Proof.
   apply R_All_e with (t := A) in AX13.
   apply R_All_e with (t := B) in AX13.
   cbn in AX13.
-  assert (bsubst 0 B (lift A) = A).
-  { assert (lift A = A). { apply lift_nop. assumption. } rewrite H2.
+  assert (bsubst 0 B (lift 0 A) = A).
+  { assert (lift 0 A = A). { apply lift_nop. assumption. } rewrite H2.
     apply bclosed_bsubst_id. assumption. }
   rewrite H2 in AX13.
   assumption.

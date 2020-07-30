@@ -75,8 +75,8 @@ Notation "x ∉ y" := (~ x ∈ y) (at level 70) : formula_scope.
 Module ZFAx.
 Local Open Scope formula_scope.
 
-Definition zero s := ∀ #0 ∉ lift s.
-Definition succ x y := ∀ (#0 ∈ lift y <-> #0 = lift x \/ #0 ∈ lift x).
+Definition zero s := ∀ #0 ∉ lift 0 s.
+Definition succ x y := ∀ (#0 ∈ lift 0 y <-> #0 = lift 0 x \/ #0 ∈ lift 0 x).
 
 Definition eq_refl := ∀ (#0 = #0).
 Definition eq_sym := ∀∀ (#1 = #0 -> #0 = #1).
@@ -93,32 +93,16 @@ Definition infinity := ∃ (∃ ((#0 ∈ #1 /\ zero (#0)) /\ ∀ (#0 ∈ #1 -> (
 Definition axioms_list :=
  [ eq_refl; eq_sym; eq_trans; compat_left; compat_right; ext; pairing; union; powerset; infinity ].
 
-Fixpoint occur_term n t :=
-  match t with
-  | BVar m => n =? m
-  | FVar _ => false
-  | Fun _ l => existsb (occur_term n) l
-  end.
-
-Fixpoint occur_form n f :=
-  match f with
-    | True | False => false
-    | Pred _ l => existsb (occur_term n) l
-    | Not f' => occur_form n f'
-    | Op _ f1 f2 => (occur_form n f1) &&& (occur_form n f2)
-    | Quant _ f' => occur_form (S n) f'
-  end.
-
 (* POUR SEPARATION:
   dB dans A :  0=>x 1=>a n>=2:z_i
   dB dans (lift_above 1 A) 0=>x ... 2=>a (n>=3:z_i) *)
 Definition separation_schema A :=
   nForall
     ((level A) - 2)
-    (∀∃∀ (#0 ∈ #1 <-> (#0 ∈ #2 /\ lift_form_above 1 A))).
+    (∀∃∀ (#0 ∈ #1 <-> (#0 ∈ #2 /\ lift 1 A))).
 
 Definition exists_uniq A :=
-∃ (A /\ ∀ (lift_form_above 1 A -> #0 = #1)).
+∃ (A /\ ∀ (lift 1 A -> #0 = #1)).
 
 (* POUR REPLACEMENT:
    dB dans A :  0=>y 1=>x 2=>a n>=3:z_i
@@ -127,7 +111,7 @@ Definition replacement_schema A :=
   nForall
     ((level A) - 3)
     (∀ (∀ (#0 ∈ #1 -> exists_uniq A)) ->
-       ∃∀ (#0 ∈ #2 -> ∃ (#0 ∈ #2 /\ lift_form_above 2 A))).
+       ∃∀ (#0 ∈ #2 -> ∃ (#0 ∈ #2 /\ lift 2 A))).
 
 Local Close Scope formula_scope.
 
@@ -155,25 +139,25 @@ Proof.
    simpl in IN. intuition; subst; reflexivity.
  - repeat split; unfold separation_schema; cbn.
    + rewrite nForall_check. cbn.
-     rewrite !check_lift_form_above, HB.
+     rewrite !check_lift_form, HB.
      easy.
    + red. rewrite nForall_level.
      cbn -[Nat.max].
      rewrite !pred_max. simpl.
-     assert (H := level_lift_form_above B 1).
+     assert (H := level_lift_form 1 B).
      apply Nat.sub_0_le.
      repeat apply Nat.max_lub; omega with *.
    + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.
      cbn. now rewrite fclosed_lift_above, HB'.
  - repeat split; unfold replacement_schema; cbn.
    + rewrite nForall_check. cbn.
-     rewrite !check_lift_form_above, HC.
+     rewrite !check_lift_form, HC.
      easy.
    + red. rewrite nForall_level.
      cbn -[Nat.max].
      rewrite !pred_max. simpl.
-     assert (H := level_lift_form_above C 1).
-     assert (H' := level_lift_form_above C 2).
+     assert (H := level_lift_form 1 C).
+     assert (H' := level_lift_form 2 C).
      apply Nat.sub_0_le.
      repeat apply Nat.max_lub; omega with *.
    + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.

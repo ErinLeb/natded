@@ -7,7 +7,7 @@
 
 Require Import ChoiceFacts.
 Require Import Defs NameProofs Mix Meta.
-Require Import Theories NaryFunctions Nary PreModels Models.
+Require Import Wellformed Theories NaryFunctions Nary PreModels Models.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
@@ -92,13 +92,13 @@ Qed.
 Definition Skolem_axiom A f n :=
  nForall (S n) (bsubst 0 (Fun f (downvars n)) A).
 
-Lemma Skolem_axiom_wf sign f n A :
+Lemma Skolem_axiom_wc sign f n A :
   funsymbs sign f = Some n ->
-  Wf sign (nForall n (∃ A)) ->
-  Wf sign (Skolem_axiom A f n).
+  WC sign (nForall n (∃ A)) ->
+  WC sign (Skolem_axiom A f n).
 Proof.
  unfold Skolem_axiom.
- intros Hf (CA & LA & FA). repeat split.
+ intros Hf ((CA & LA) & FA). repeat split.
  - rewrite nForall_check, check_bsubst in *; auto.
    cbn. rewrite Hf.
    clear. induction n; simpl; auto.
@@ -119,13 +119,13 @@ Definition SkolemAx Ax (A:formula) f n :=
 Lemma SkolemAxWf th A f n :
  th.(funsymbs) f = None ->
  IsTheorem K th (nForall n (∃A)) ->
- forall B, SkolemAx th.(IsAxiom) A f n B -> Wf (Skolem_sign th f n) B.
+ forall B, SkolemAx th.(IsAxiom) A f n B -> WC (Skolem_sign th f n) B.
 Proof.
- intros Hc (CL & _) B [HB| -> ].
- - eauto using signext_wf, Skolem_signext, WfAxiom.
- - apply Skolem_axiom_wf.
+ intros Hc (W,_) B [HB| -> ].
+ - eauto using signext_wc, Skolem_signext, WCAxiom.
+ - apply Skolem_axiom_wc.
    + simpl. now rewrite eqb_refl.
-   + eauto using signext_wf, Skolem_signext.
+   + eauto using signext_wc, Skolem_signext.
 Qed.
 
 Definition Skolem_ext th A f n
@@ -133,7 +133,7 @@ Definition Skolem_ext th A f n
  (Thm:IsTheorem K th (nForall n (∃A))) :=
  {| sign := Skolem_sign th f n;
     IsAxiom := SkolemAx th.(IsAxiom) A f n;
-    WfAxiom := SkolemAxWf th A f n E Thm |}.
+    WCAxiom := SkolemAxWf th A f n E Thm |}.
 
 Section SkolemTheorem.
 Variable EM : forall A:Prop, A\/~A.
@@ -225,7 +225,7 @@ intros A0 [ | -> ] genv.
 - unfold th'. simpl.
   rewrite <- (interp_form_skolem_premodel_ext th M f n Phi mo); auto.
   + now apply AxOk.
-  + now apply WfAxiom.
+  + now apply WCAxiom.
 - unfold Skolem_axiom.
   rewrite interp_nforall. intros. rewrite app_nil_r.
   destruct stk as [|m l]; try easy.
@@ -236,7 +236,7 @@ intros A0 [ | -> ] genv.
   + unfold th'. simpl.
     rewrite <- (interp_form_skolem_premodel_ext th M f n Phi mo); auto.
     * rewrite <- (rev_involutive l), <- Hv. apply Hphi.
-    * clear -Thm. destruct Thm as ((CA & _ & _),_).
+    * clear -Thm. destruct Thm as (((CA,_),_),_).
       rewrite nForall_check in CA. apply CA.
   + simpl nth_error. f_equal.
     cbn. rewrite eqb_refl.
@@ -267,14 +267,14 @@ Proof.
  - rewrite extend_alt. split.
    + now apply Skolem_signext.
    + intros B HB. split.
-     * apply signext_wf with th.
+     * apply signext_wc with th.
        now apply Skolem_signext.
-       now apply WfAxiom.
+       now apply WCAxiom.
      * exists [B]. split. constructor; auto. simpl. red. now left.
        apply R'_Ax.
  - intros T HT CT.
    apply completeness_theorem; auto.
-   + split; auto. apply HT.
+   + eapply WC_new_sign; auto. apply HT.
    + intros M mo genv.
      set (th' := Skolem_ext _ _ _ _ _ _) in *.
      assert (interp_form mo genv [] (nForall n (∃ A))).
@@ -290,7 +290,7 @@ Proof.
      assert (Hphi' : forall genv v,
                 interp_form mo genv (phi v :: rev (Vector.to_list v)) A).
      { intros genv' v. rewrite interp_form_ext; eauto.
-       intros. clear - H Thm. destruct Thm as ((_ & _ & FA),_).
+       intros. clear - H Thm. destruct Thm as ((_,FA),_).
        apply nForall_fclosed in FA. red in FA. cbn in FA.
        now destruct (FA v0). }
      set (mo' := Skolem_model_ext A f n E Thm M mo phi Hphi').

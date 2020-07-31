@@ -81,6 +81,12 @@ Qed.
 
 (** List stuff *)
 
+Lemma Forall_app A (P:A->Prop) (l l':list A) :
+ Forall P (l++l') <-> Forall P l /\ Forall P l'.
+Proof.
+ rewrite !Forall_forall. setoid_rewrite in_app_iff. firstorder.
+Qed.
+
 Fixpoint list_assoc {A B}`{Eqb A} x (l:list (A*B)) :=
  match l with
  | [] => None

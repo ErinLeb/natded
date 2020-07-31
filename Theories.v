@@ -4,128 +4,97 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Mix Meta Restrict Countable.
+Require Import Defs NameProofs Mix Meta Wellformed Restrict Countable.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
 
-(** Well-formed formulas over a particular signature,
-    that are moreover :
-    - with bounded variables that are indeed bounded
-    - without free variables *)
-
-Definition Wf (sign:signature) (A:formula) :=
-  check sign A = true /\ BClosed A /\ FClosed A.
-
-Hint Unfold Wf.
-
-Definition isWf sign (A:formula) :=
-  check sign A && (level A =? 0) && form_fclosed A.
-
-Lemma Wf_spec sign A : reflect (Wf sign A) (isWf sign A).
-Proof.
- unfold Wf, isWf, BClosed.
- destruct check; simpl; [ | constructor; easy].
- case eqbspec; simpl; intros; [ | constructor; easy ].
- destruct (form_fclosed A) eqn:E.
- - rewrite form_fclosed_spec in E. now constructor.
- - constructor. rewrite <- form_fclosed_spec, E. easy.
-Qed.
-
-Lemma Wf_iff sign A : Wf sign A <-> isWf sign A = true.
-Proof.
- apply reflect_iff, Wf_spec.
-Qed.
-
-Lemma Wf_dec sign A : { Wf sign A }+{ ~Wf sign A}.
-Proof.
- destruct (isWf sign A) eqn:E; [left|right].
- - now apply Wf_iff.
- - now rewrite Wf_iff, E.
-Qed.
-
-Lemma False_wf sign : Wf sign False.
-Proof.
- repeat split. red. cbn. namedec.
-Qed.
-
-Lemma Op_wf sign o A B :
- Wf sign (Op o A B) <-> Wf sign A /\ Wf sign B.
-Proof.
- unfold Wf, BClosed, FClosed. cbn.
- rewrite lazy_andb_iff. rewrite max_0. intuition.
-Qed.
-
-Lemma bsubst_cst_wf sign c A :
- sign.(funsymbs) c = Some 0 ->
- Wf sign (∃A) -> Wf sign (bsubst 0 (Cst c) A).
-Proof.
- intros E (CK & BC & FC).
- repeat split; unfold BClosed, FClosed in *; cbn in *.
- - rewrite check_bsubst; auto. cbn. now rewrite E, eqb_refl.
- - apply Nat.le_0_r, level_bsubst; auto with *.
- - rewrite bsubst_fvars. cbn - [Names.union]. namedec.
-Qed.
-
-Definition ValidDerivOn logic (sign:signature) d :=
-  check sign d = true /\ BClosed d /\ Valid logic d.
-
 Record theory :=
   { sign :> signature;
     IsAxiom : formula -> Prop;
-    WfAxiom : forall A, IsAxiom A -> Wf sign A }.
+    WCAxiom : forall A, IsAxiom A -> WC sign A }.
 
 Implicit Type th : theory.
+
+Definition ValidDerivOn logic (sign:signature) d :=
+  WF sign d /\ Valid logic d.
 
 Section SomeLogic.
 Variable logic : Defs.logic.
 
 Definition IsTheoremStrict th (T:formula) :=
-  Wf th T /\
+  WC th T /\
   exists d axs,
     ValidDerivOn logic th d /\
     Forall th.(IsAxiom) axs /\
     Claim d (axs ⊢ T).
 
 Definition IsTheorem th T :=
-  Wf th T /\
+  WC th T /\
   exists axs,
     Forall th.(IsAxiom) axs /\
     Pr logic (axs ⊢ T).
 
 Hint Unfold IsTheorem IsTheoremStrict.
 
-(** A theorem to build proofs using former lemmas. *)
+(** Some derivation rules lifted on [IsTheorem]. *)
 
-Lemma ModusPonens th :
-  forall A B , IsTheorem th (A -> B) -> IsTheorem th A ->
-               IsTheorem th B.
+Lemma Thm_Imp_e th A B :
+  IsTheorem th (A -> B) -> IsTheorem th A -> IsTheorem th B.
 Proof.
-  intros.
-  unfold IsTheorem in *.
-  destruct H. destruct H0.
-  split.
-  + rewrite Op_wf in H.
-    apply H.
-  + destruct H1.
-    destruct H2.
-    exists (x ++ x0).
-    destruct H1. destruct H2.
-    split.
-    * rewrite Forall_forall in *.
-      intro f.
-      rewrite in_app_iff.
-      intuition.
-    * apply R_Imp_e with (A := A).
-      - apply Pr_weakening with (s := x ⊢ A -> B); auto.
-        apply SubSeq. red.
-        intro f.
-        rewrite in_app_iff. intuition.
-      - apply Pr_weakening with (s := x0 ⊢ A); auto.
-        apply SubSeq. red.
-        intro f.
-        rewrite in_app_iff. intuition.
+  intros (W & l & F & P) (W' & l' & F' & P'). split.
+  - now rewrite Op_WC in W.
+  - exists (l ++ l'); split.
+    + now apply Forall_app.
+    + apply R_Imp_e with A. now apply Pr_app_l. now apply Pr_app_r.
 Qed.
+
+Definition ModusPonens := Thm_Imp_e. (* old name *)
+
+Lemma Thm_Not_e th A :
+ IsTheorem th A -> IsTheorem th (~A) -> IsTheorem th False.
+Proof.
+ intros (_ & l & F & P) (_ & l' & F' & P'). split.
+ - apply False_WC.
+ - exists (l++l'); split.
+   + now apply Forall_app.
+   + apply R_Not_e with A. now apply Pr_app_l. now apply Pr_app_r.
+Qed.
+
+Lemma Thm_And th A B :
+  IsTheorem th A /\ IsTheorem th B <-> IsTheorem th (A /\ B).
+Proof.
+ split.
+ - intros ((W & l & F & P), (W' & l' & F' & P')).
+   split; [now apply Op_WC|].
+   exists (l++l'); split.
+   + now apply Forall_app.
+   + apply R_And_i. now apply Pr_app_l. now apply Pr_app_r.
+ - intros (W & l & F & P); rewrite Op_WC in W. split.
+   + split; [easy|]. exists l; split; auto. now apply R_And_e1 with B.
+   + split; [easy|]. exists l; split; auto. now apply R_And_e2 with A.
+Qed.
+
+Lemma Thm_or_i th A B : WC th (A\/B) ->
+  IsTheorem th A \/ IsTheorem th B -> IsTheorem th (A \/ B).
+Proof.
+ intros W [(_ & l & F & P)|(_ & l & F & P)]; split; auto; exists l; auto.
+Qed.
+
+Lemma Thm_All_e th A t : WC th t ->
+ IsTheorem th (∀A) -> IsTheorem th (bsubst 0 t A).
+Proof.
+ intros Wt (W & l & F & P).
+ split. apply bsubst_WC; auto. exists l. auto.
+Qed.
+
+Lemma Thm_Ex_i th A t : WC th (∃A) ->
+ IsTheorem th (bsubst 0 t A) -> IsTheorem th (∃A).
+Proof.
+ intros W (_ & l & F & P).
+ split; auto. exists l. split; auto. apply R_Ex_i with t; auto.
+Qed.
+
 
 (** We can "fix" a proof made with things not in the signature,
     or a signature badly used, or with remaining bounded vars. *)
@@ -155,12 +124,12 @@ Proof.
      * assert (check th axs = true).
        { unfold check, check_list.
          apply forallb_forall.
-         intros A HA. apply WfAxiom; auto. }
+         intros A HA. apply WCAxiom; auto. }
        rewrite check_restrict_ctx_id by auto.
        apply forcelevel_ctx_id.
        unfold BClosed, level, level_list.
        apply list_max_map_0.
-       intros A HA. apply (WfAxiom th A); auto.
+       intros A HA. apply (WCAxiom th A); auto.
      * rewrite check_restrict_id by apply WF.
        apply forcelevel_id.
        assert (level T = 0) by apply WF.
@@ -177,12 +146,12 @@ Lemma ax_thm th A : IsAxiom th A -> IsTheorem th A.
 Proof.
  intros Ax.
  repeat split.
- - now apply WfAxiom.
- - eapply WfAxiom; eauto.
- - eapply WfAxiom; eauto.
+ - now apply WCAxiom.
+ - eapply WCAxiom; eauto.
+ - eapply WCAxiom; eauto.
  - exists [A]; split.
-   + apply Forall_forall. simpl; intuition; now subst.
-   + apply R_Ax; simpl; auto.
+   + constructor; auto.
+   + apply R'_Ax.
 Qed.
 
 Definition Inconsistent th := IsTheorem th False.
@@ -237,10 +206,10 @@ Proof.
  rewrite !lazy_andb_iff; intuition.
 Qed.
 
-Lemma signext_wf sign sign' (f:formula) :
-  SignExtend sign sign' -> Wf sign f -> Wf sign' f.
+Lemma signext_wc sign sign' (f:formula) :
+  SignExtend sign sign' -> WC sign f -> WC sign' f.
 Proof.
- intros SE (CK & H). split; eauto using signext_check.
+ intros SE ((CK & BC) & FV). split; eauto using signext_check.
 Qed.
 
 Definition Extend th1 th2 :=
@@ -283,7 +252,7 @@ Proof.
  - intros (SE,AT); split; auto.
    intros T (CL & axs & Haxs & PR).
    split.
-   + eapply signext_wf; eauto.
+   + eapply signext_wc; eauto.
    + assert (exists axs2, Forall (IsAxiom th2) axs2 /\
                           forall A, In A axs -> Pr logic (axs2 ⊢ A)).
      { clear SE CL PR.
@@ -293,12 +262,8 @@ Proof.
          destruct IHaxs as (axs2 & U & V); auto.
          destruct (AT a) as (_ & axa & Haxa & PR); auto.
          exists (axa ++ axs2); split.
-         + rewrite Forall_forall in *. intros x. rewrite in_app_iff. intuition.
-         + simpl. intros A [->|HA].
-           * eapply Pr_weakening; eauto. constructor.
-             intros x Hx. rewrite in_app_iff. intuition.
-           * eapply Pr_weakening with (axs2 ⊢ A); eauto. constructor.
-             intros x Hx. rewrite in_app_iff. intuition. }
+         + now apply Forall_app.
+         + simpl. intros A [->|HA]; auto using Pr_app_l, Pr_app_r. }
      destruct H as (axs2 & Haxs2 & PR').
      exists axs2; split; auto.
      apply Pr_relay with axs; auto.
@@ -317,7 +282,7 @@ Definition IsEqualityTheory th :=
 
 Definition ConservativeExt th1 th2 :=
  Extend th1 th2 /\
- forall T, IsTheorem th2 T /\ Wf th1 T <-> IsTheorem th1 T.
+ forall T, IsTheorem th2 T /\ WC th1 T <-> IsTheorem th1 T.
 
 Lemma consext_alt th1 th2 :
  ConservativeExt th1 th2 <->
@@ -325,7 +290,8 @@ Lemma consext_alt th1 th2 :
   forall T, IsTheorem th2 T -> check th1 T = true -> IsTheorem th1 T).
 Proof.
  split; intros (U,V); split; auto.
- - intros T HT CK. apply V. do 2 (split; auto). apply HT.
+ - intros T HT CK. apply V; split; auto.
+   eapply WC_new_sign; eauto. apply HT.
  - intros T. split.
    + intros (W,X). apply V; auto. apply X.
    + split. now apply U. apply H.
@@ -376,7 +342,7 @@ Proof.
  - apply extend_alt. split; auto.
    intros A. rewrite EQ. apply ax_thm.
  - intros T (CL & axs & F & PR) CK. split.
-   + split; auto. apply CL.
+   + eapply WC_new_sign; eauto.
    + exists axs. split; auto.
      rewrite Forall_forall in *. intros x Hx. rewrite EQ; auto.
 Qed.
@@ -407,17 +373,17 @@ Proof.
  intros a. case eqbspec; intros; subst; auto.
 Qed.
 
-Lemma Henkin_ax_wf th A c :
+Lemma Henkin_ax_wc th A c :
  th.(funsymbs) c = None ->
  IsTheorem th (∃A) ->
  forall B, Henkin_axiom th.(IsAxiom) A c B ->
-           Wf (Henkin_sign th c) B.
+           WC (Henkin_sign th c) B.
 Proof.
  intros Hc (CL & _) B [HB| -> ].
- - eauto using signext_wf, Henkin_signext, WfAxiom.
- - apply bsubst_cst_wf.
+ - eauto using signext_wc, Henkin_signext, WCAxiom.
+ - apply bsubst_cst_WC.
    + simpl. now rewrite eqb_refl.
-   + eauto using signext_wf, Henkin_signext.
+   + eauto using signext_wc, Henkin_signext.
 Qed.
 
 Definition Henkin_ext th A c
@@ -425,7 +391,7 @@ Definition Henkin_ext th A c
  (Thm:IsTheorem th (∃A)) :=
  {| sign := Henkin_sign th c;
     IsAxiom := Henkin_axiom th.(IsAxiom) A c;
-    WfAxiom := Henkin_ax_wf th A c E Thm
+    WCAxiom := Henkin_ax_wc th A c E Thm
  |}.
 
 Lemma Henkin_consext th A c
@@ -441,7 +407,7 @@ Proof.
      apply ax_thm; simpl; left; auto.
  - intros T (CL & axs & F & PR) CK; simpl in *.
    split.
-   + split; auto. apply CL.
+   + eapply WC_new_sign; eauto.
    + set (newAx := bsubst 0 (Cst c) A).
      set (axs' := filter (fun f => negb (f =? newAx)) axs).
      simpl in *.
@@ -453,8 +419,7 @@ Proof.
        intros (IN,NE); auto. apply F in IN.
        unfold Henkin_axiom in IN; intuition. }
      exists (axs' ++ axsA); split.
-     * rewrite Forall_forall in *.
-       intros x. rewrite in_app_iff; intuition.
+     * now apply Forall_app.
      * assert (PR' : Pr logic (newAx::axs' ⊢ T)).
        { eapply Pr_weakening; eauto.
          constructor. unfold axs'.
@@ -468,7 +433,7 @@ Proof.
          rewrite unionmap_in.
          intros (a & Hv & Ha).
          rewrite in_app_iff in Ha.
-         revert v Hv. apply (WfAxiom th).
+         revert v Hv. apply (WCAxiom th).
          rewrite Forall_forall in F', FA; intuition. }
        apply NamesP.empty_is_empty_1 in H.
        set (vars := Names.union (fvars A) (fvars d)).
@@ -480,7 +445,7 @@ Proof.
        assert (map (restrict th x) axs' = axs').
        { apply map_id_iff. intros a Ha.
          apply check_restrict_id.
-         apply WfAxiom. rewrite Forall_forall in F'; auto. }
+         apply WCAxiom. rewrite Forall_forall in F'; auto. }
        rewrite H0 in C'; clear H0.
        assert (restrict th x newAx = bsubst 0 (FVar x) A).
        { unfold newAx.
@@ -493,13 +458,8 @@ Proof.
        { cbn. rewrite H. destruct d.
          unfold vars in Hx. cbn in C. subst s.
          cbn in Hx. namedec. }
-       { clear PR V.
-         eapply Pr_weakening; eauto.
-         constructor. intros v. rewrite in_app_iff; auto. }
-       { clear PR PRA.
-         eapply Pr_weakening; eauto.
-         constructor. intros v. simpl.
-         rewrite in_app_iff; intuition. }
+       { now apply Pr_app_r. }
+       { now apply (Pr_app_l _ (bsubst 0 (FVar x) A :: axs') axsA). }
 Qed.
 
 (** A variant of Henkin where the constant is already
@@ -520,12 +480,12 @@ Proof.
 Qed.
 
 Definition AxiomsWithout th c :=
- forall A, IsAxiom th A -> Wf (delcst th c) A.
+ forall A, IsAxiom th A -> WC (delcst th c) A.
 
 Definition delcst_th th c (AW : AxiomsWithout th c) :=
  {| sign := delcst th c;
     IsAxiom := IsAxiom th;
-    WfAxiom := AW
+    WCAxiom := AW
  |}.
 
 Lemma delcst_consext th c (AW : AxiomsWithout th c) :
@@ -538,11 +498,11 @@ Qed.
 Lemma Henkin_ax_wf' th A c :
  th.(funsymbs) c = Some 0 ->
  IsTheorem th (∃A) ->
- forall B, Henkin_axiom th.(IsAxiom) A c B -> Wf th B.
+ forall B, Henkin_axiom th.(IsAxiom) A c B -> WC th B.
 Proof.
  intros E Thm B [HB| -> ].
- - now apply WfAxiom.
- - apply bsubst_cst_wf; auto. apply Thm.
+ - now apply WCAxiom.
+ - apply bsubst_cst_WC; auto. apply Thm.
 Qed.
 
 Definition Henkin_halfext th A c
@@ -551,7 +511,7 @@ Definition Henkin_halfext th A c
  :=
  {| sign := th;
     IsAxiom := Henkin_axiom th.(IsAxiom) A c;
-    WfAxiom := Henkin_ax_wf' th A c E Thm
+    WCAxiom := Henkin_ax_wf' th A c E Thm
  |}.
 
 (** The extension from [th - c] to [Henkin_halfext] is
@@ -580,15 +540,15 @@ Proof.
    { cbn. now rewrite eqb_refl. }
    assert (Thm' : IsTheorem (delcst_th th c AW) (∃A)).
    { apply delcst_consext; split; auto. cbn.
-     split. now cbn. apply Thm. }
+     eapply WC_new_sign; eauto. apply Thm. }
    assert (HC := Henkin_consext _ _ _ E' Thm').
    rewrite consext_alt in HC.
    intros HT CKT.
    apply HC; auto.
    split.
-   + eapply signext_wf.
+   + eapply signext_wc.
      * apply Henkin_signext. cbn. now rewrite eqb_refl.
-     * split. apply CKT. apply HT.
+     * eapply WC_new_sign. apply CKT. apply HT.
    + cbn. apply HT.
 Qed.
 
@@ -631,7 +591,7 @@ Definition WitnessSaturated th :=
     "super-saturated" of Henkin witnesses : *)
 
 Definition WitnessSuperSaturated th :=
- forall A, Wf th (∃ A) ->
+ forall A, WC th (∃ A) ->
            exists c,
              th.(funsymbs) c = Some 0 /\
              IsTheorem th ((∃ A) -> bsubst 0 (Cst c) A).
@@ -643,20 +603,7 @@ Lemma supersaturated_saturated th :
 Proof.
  intros WSS A Thm.
  destruct (WSS A (proj1 Thm)) as (c & Hc & Thm').
- exists c; split; auto.
- split.
- - destruct Thm' as (WF', _). now apply Op_wf in WF'.
- - destruct Thm as (_ & axs & F & V).
-   destruct Thm' as (_ & axs' & F' & V').
-   exists (axs ++ axs'); split.
-   + rewrite Forall_forall in *.
-     intros f. rewrite in_app_iff; intuition.
-   + apply R_Imp_e with (∃ A)%form.
-     * eapply Pr_weakening; eauto. constructor.
-       intros a. rewrite in_app_iff; now right.
-     * clear V'.
-       eapply Pr_weakening; eauto. constructor.
-       intros a. rewrite in_app_iff; now left.
+ exists c; eauto using Thm_Imp_e.
 Qed.
 
 (** We'll need an infinite pool of fresh constant names
@@ -713,11 +660,11 @@ Qed.
 
 Lemma exex_thm th A :
  logic = Classic ->
- Wf th (∃A) -> IsTheorem th (∃ ((∃ A) -> A)).
+ WC th (∃A) -> IsTheorem th (∃ ((∃ A) -> A)).
 Proof.
  intros LG CL.
  split.
- - destruct CL as (CK & BC & FC). repeat split.
+ - destruct CL as ((CK & BC) & FC). repeat split.
    + cbn in *. now rewrite CK.
    + red. cbn. rewrite BC. cbn. apply BC.
    + red; red in FC. cbn in *. namedec.
@@ -772,16 +719,15 @@ Proof.
    now rewrite IHf1, IHf2 by namedec.
 Qed.
 
-Lemma form_funs_wf sign f c :
+Lemma form_funs_wc sign f c :
  ~Names.In c (form_funs f) ->
- Wf (delcst sign c) f <-> Wf sign f.
+ WC (delcst sign c) f <-> WC sign f.
 Proof.
  intros NI.
- split; intros (CK,H); split; try apply H.
- rewrite <- CK. symmetry. now apply form_funs_ok.
- rewrite <- CK. now apply form_funs_ok.
+ split; intros W; eapply WC_new_sign; try apply W.
+ - rewrite <- (form_funs_ok sign f c); auto. apply W.
+ - rewrite form_funs_ok; auto. apply W.
 Qed.
-
 
 Fixpoint fresh_cst_loop n used candidates :=
  match n with
@@ -857,7 +803,7 @@ Fixpoint HenkinAxList th (nc : NewCsts th) n :=
  | S n =>
    let axs := HenkinAxList th nc n in
    let A := decode_form n in
-   if isWf (HenkinAll_sign th nc) (∃A)
+   if wc (HenkinAll_sign th nc) (∃A)
    then
      let used := Names.union (form_funs A)
                              (Names.unionmap form_funs axs) in
@@ -901,25 +847,25 @@ Proof.
    apply csts_ok.
 Qed.
 
-Lemma HenkinAxList_wf th (nc : NewCsts th) n :
+Lemma HenkinAxList_wc th (nc : NewCsts th) n :
  forall A, IsAxiom th A \/ In A (HenkinAxList th nc n) ->
-           Wf (HenkinAll_sign th nc) A.
+           WC (HenkinAll_sign th nc) A.
 Proof.
  induction n as [|n IH].
  - simpl.
    intros A [HA|Fa]; [|easy].
-   eauto using signext_wf, HenkinAll_signext, WfAxiom.
+   eauto using signext_wc, HenkinAll_signext, WCAxiom.
  - intros A [HA|IN]; auto.
    simpl in IN.
    set (f := decode_form n) in *.
-   destruct (Wf_spec (HenkinAll_sign th nc) (∃ f)); auto.
+   destruct (wc_spec (HenkinAll_sign th nc) (∃ f)); auto.
    set (used := Names.union _ _) in *.
    destruct (fresh_cst_in_cands used nc) as (m,Hm).
    assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
    set (c := fresh_cst used nc) in *.
    destruct IN as [<-|IN]; auto.
-   apply Op_wf; auto. split; auto.
-   apply bsubst_cst_wf; auto.
+   apply Op_WC; auto. split; auto.
+   apply bsubst_cst_WC; auto.
    simpl.
    replace (test _ nc c) with true; auto.
    symmetry. rewrite Hm, test_ok. now exists m.
@@ -928,7 +874,7 @@ Qed.
 Definition HenkinSeq th (nc : NewCsts th) n :=
  {| sign := HenkinAll_sign th nc;
     IsAxiom := fun A => IsAxiom th A \/ In A (HenkinAxList th nc n);
-    WfAxiom := HenkinAxList_wf th nc n
+    WCAxiom := HenkinAxList_wc th nc n
  |}.
 
 Lemma HenkinSeq_extend th nc n :
@@ -953,8 +899,8 @@ Proof.
  - rewrite IHn.
    unfold Consistent, IsTheorem. simpl.
    set (f := decode_form n) in *.
-   destruct isWf eqn:Ew; [|reflexivity].
-   assert (WF : Wf (HenkinAll_sign th nc) (∃ f)) by now apply Wf_iff.
+   destruct wc eqn:Ew; [|reflexivity].
+   assert (W : WC (HenkinAll_sign th nc) (∃ f)) by now apply wc_iff.
    set (used := Names.union _ _) in *.
    destruct (fresh_cst_in_cands used nc) as (m,Hm).
    assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
@@ -981,20 +927,19 @@ Proof.
        right; left. rewrite H.
        cbn. f_equal. f_equal. symmetry.
        apply form_level_bsubst_id.
-       assert (pred (level f) = 0) by apply WF. omega.
+       assert (pred (level f) = 0) by apply W. omega.
      * intros [H|[H|H]]; auto.
        right. rewrite <- H.
        cbn. f_equal. f_equal. symmetry.
        apply form_level_bsubst_id.
-       assert (pred (level f) = 0) by apply WF. omega.
+       assert (pred (level f) = 0) by apply W. omega.
    + intros A [HA|HA].
-     * cbn. apply signext_wf with th; auto using WfAxiom.
-       rewrite Hm.
-       apply delcst_HenkinAll_signext.
-     * rewrite form_funs_wf. apply WfAxiom. simpl. now right.
+     * cbn. apply signext_wc with th; auto using WCAxiom.
+       rewrite Hm. apply delcst_HenkinAll_signext.
+     * rewrite form_funs_wc. apply WCAxiom. simpl. now right.
        eapply unionmap_notin; eauto; namedec.
    + clearbody f. clear Ew. rewrite form_funs_ok. cbn.
-     destruct WF as (CK,?). cbn in CK. now rewrite CK.
+     destruct W as ((CK,?),?). cbn in CK. now rewrite CK.
      cbn. namedec.
 Qed.
 
@@ -1006,7 +951,7 @@ Proof.
  induction 1; auto.
  intros Hn. specialize (IHle Hn). clear Hn.
  simpl.
- destruct isWf; [|auto].
+ destruct wc; [|auto].
  simpl.
  cbn in IHle. intuition.
 Qed.
@@ -1014,18 +959,18 @@ Qed.
 Definition HenkinAll_axioms th (nc : NewCsts th) :=
  fun f => exists n, IsAxiom (HenkinSeq th nc n) f.
 
-Lemma HenkinAll_ax_wf th (nc : NewCsts th) :
+Lemma HenkinAll_ax_wc th (nc : NewCsts th) :
  forall B, HenkinAll_axioms th nc B ->
-           Wf (HenkinAll_sign th nc) B.
+           WC (HenkinAll_sign th nc) B.
 Proof.
  intros B (n & Hn).
- now apply WfAxiom in Hn.
+ now apply WCAxiom in Hn.
 Qed.
 
 Definition HenkinAll_ext th (nc : NewCsts th) :=
  {| sign := HenkinAll_sign th nc;
     IsAxiom := HenkinAll_axioms th nc;
-    WfAxiom := HenkinAll_ax_wf th nc
+    WCAxiom := HenkinAll_ax_wc th nc
  |}.
 
 Lemma HenkinAll_extend th (nc : NewCsts th) :
@@ -1064,7 +1009,7 @@ Proof.
  destruct F as (n & F).
  rewrite (HenkinSeq_consistent th nc n) in C; auto. apply C.
  split.
- - apply False_wf.
+ - apply False_WC.
  - exists axs; auto.
 Qed.
 
@@ -1080,7 +1025,7 @@ Proof.
  cbn - [decode_form code_form] in Ax.
  assert (HA : decode_form n = A) by apply decode_code_form.
  rewrite HA in Ax.
- cbn in CL. apply Wf_iff in CL. rewrite CL in Ax.
+ cbn in CL. apply wc_iff in CL. rewrite CL in Ax.
  set (used := Names.union _ _) in *.
  destruct (fresh_cst_in_cands used nc) as (m,Hm).
  assert (NI := fresh_cst_ok used nc (csts_inj _ nc)).
@@ -1096,8 +1041,8 @@ Qed.
 (** Completeness of a theory *)
 
 Definition Complete th :=
- forall A, Wf th A ->
-           IsTheorem th A \/ IsTheorem th (~A)%form.
+ forall A, WC th A ->
+           IsTheorem th A \/ IsTheorem th (~A).
 
 Definition DecidedBy (Ax:formula->Prop) f :=
  exists c, Forall Ax c /\ (Pr logic (c ⊢ f) \/ Pr logic (c ⊢ ~f)).
@@ -1109,36 +1054,36 @@ Fixpoint ax_completion th n : formula -> Prop :=
     let prev := ax_completion th n in
     fun f =>
       prev f \/
-      (f = decode_form n /\ Wf th f /\ ~DecidedBy prev f)
+      (f = decode_form n /\ WC th f /\ ~DecidedBy prev f)
   end.
 
 Definition ax_infinite_completion th :=
  fun f => exists n, ax_completion th n f.
 
-Lemma completion_wf th n :
-  forall A, ax_completion th n A -> Wf th A.
+Lemma completion_wc th n :
+  forall A, ax_completion th n A -> WC th A.
 Proof.
  induction n; simpl.
- - apply WfAxiom.
+ - apply WCAxiom.
  - intuition.
 Qed.
 
-Lemma infcompletion_wf th :
-  forall A, ax_infinite_completion th A -> Wf th A.
+Lemma infcompletion_wc th :
+  forall A, ax_infinite_completion th A -> WC th A.
 Proof.
- intros A (n,HA). eapply completion_wf; eauto.
+ intros A (n,HA). eapply completion_wc; eauto.
 Qed.
 
 Definition th_completion th n :=
  {| sign := th;
     IsAxiom := ax_completion th n;
-    WfAxiom := completion_wf th n
+    WCAxiom := completion_wc th n
  |}.
 
 Definition th_infcompletion th :=
  {| sign := th;
     IsAxiom := ax_infinite_completion th;
-    WfAxiom := infcompletion_wf th
+    WCAxiom := infcompletion_wc th
  |}.
 
 Lemma ax_completion_carac th n A :
@@ -1146,7 +1091,7 @@ Lemma ax_completion_carac th n A :
  IsAxiom th A \/
   (exists m, m < n /\
              A = decode_form m /\
-             Wf th A /\
+             WC th A /\
              ~DecidedBy (ax_completion th m) A).
 Proof.
  induction n; simpl.
@@ -1247,7 +1192,7 @@ Definition MyExcludedMiddle :=
 
 Lemma th_completion_decides_fn th n :
  MyExcludedMiddle ->
- Wf th (decode_form n) ->
+ WC th (decode_form n) ->
  DecidedBy (ax_completion th (S n)) (decode_form n).
 Proof.
  intros EM.

@@ -958,17 +958,22 @@ Qed.
 (** A direct boolean version of [FClosed], easier to use than
     [Names.is_empty (fvars ...)] *)
 
-Fixpoint term_fclosed t :=
+Class IsFClosed (A : Type) := fclosed : A -> bool.
+Arguments fclosed {_} {_} !_.
+
+Instance term_fclosed : IsFClosed term :=
+ fix term_fclosed t :=
   match t with
   | BVar _ => true
   | FVar _ => false
   | Fun _ l => forallb term_fclosed l
   end.
 
-Fixpoint form_fclosed f :=
+Instance form_fclosed : IsFClosed formula :=
+ fix form_fclosed f :=
   match f with
   | True | False => true
-  | Pred _ l => forallb term_fclosed l
+  | Pred _ l => forallb fclosed l
   | Not f => form_fclosed f
   | Op _ f1 f2 => form_fclosed f1 &&& form_fclosed f2
   | Quant _ f => form_fclosed f

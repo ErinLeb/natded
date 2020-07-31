@@ -1035,6 +1035,22 @@ Proof.
  intro. cbn. intuition.
 Qed.
 
+Lemma Pr_app_l logic Γ Δ A :
+ Pr logic (Γ ⊢ A) ->
+ Pr logic (Γ++Δ ⊢ A).
+Proof.
+ intros. eapply Pr_weakening; eauto. constructor. intro.
+ rewrite in_app_iff. now left.
+Qed.
+
+Lemma Pr_app_r logic Γ Δ A :
+ Pr logic (Δ ⊢ A) ->
+ Pr logic (Γ++Δ ⊢ A).
+Proof.
+ intros. eapply Pr_weakening; eauto. constructor. intro.
+ rewrite in_app_iff. now right.
+Qed.
+
 Lemma Valid_pop logic A B Γ d :
  Valid logic d -> Claim d (Γ ⊢ A) ->
  let d' := subset_deriv (B::Γ) d in
@@ -1333,9 +1349,9 @@ Proof.
   + apply R_And_e1 with (B := f1). apply R_Ax. apply in_eq.
 Qed.
 
-(** Properties of [term_fclosed] and [form_fclosed] *)
+(** Properties of [fclosed] *)
 
-Lemma term_fclosed_spec t : term_fclosed t = true <-> FClosed t.
+Lemma term_fclosed_spec t : fclosed t = true <-> FClosed t.
 Proof.
  unfold FClosed.
  induction t using term_ind'; cbn.
@@ -1349,7 +1365,7 @@ Proof.
      now exists x.
 Qed.
 
-Lemma form_fclosed_spec f : form_fclosed f = true <-> FClosed f.
+Lemma form_fclosed_spec f : fclosed f = true <-> FClosed f.
 Proof.
  unfold FClosed.
  induction f; cbn; auto.
@@ -1361,7 +1377,7 @@ Proof.
 Qed.
 
 Lemma fclosed_bsubst n t f :
- term_fclosed t = true -> form_fclosed (bsubst n t f) = form_fclosed f.
+ fclosed t = true -> fclosed (bsubst n t f) = fclosed f.
 Proof.
  intros E. apply eq_true_iff_eq. rewrite !form_fclosed_spec.
  rewrite term_fclosed_spec in E. unfold FClosed in *.
@@ -1371,8 +1387,7 @@ Proof.
  now rewrite H.
 Qed.
 
-Lemma fclosed_lift_above n f :
-  form_fclosed (lift n f) = form_fclosed f.
+Lemma fclosed_lift n f : fclosed (lift n f) = fclosed f.
 Proof.
  apply eq_true_iff_eq. rewrite !form_fclosed_spec.
  unfold FClosed. now rewrite fvars_lift_form.

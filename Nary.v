@@ -47,17 +47,12 @@ Definition optnapply {A B}(f:optnfun A B)(l:list A)(dft:B) :=
  | Nop => dft
  end.
 
-(** See also nfun_to_nfun *)
-Fixpoint map_arity {A B B' n}(f:B->B') : A^^n-->B -> A^^n-->B' :=
- match n with
- | 0 => f
- | S n => fun ab a => map_arity f (ab a)
- end.
+Arguments nfun_to_nfun {A B C} f {n}.
 
-Lemma build_map_arity {A B B' n} (l : list A)(f:B->B')(any:B)(any':B') :
+Lemma build_args_ntn {A B B' n} (l : list A)(f:B->B')(any:B)(any':B') :
  length l = n ->
  forall (a : A^^n-->B),
- build_args l any' (map_arity f a) = f (build_args l any a).
+ build_args l any' (nfun_to_nfun f a) = f (build_args l any a).
 Proof.
  intros <-. induction l; simpl; auto.
 Qed.

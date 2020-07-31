@@ -4,7 +4,8 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Mix Meta Theories Nary PreModels Models.
+Require Import Defs NameProofs Mix Meta.
+Require Import Wellformed Theories Nary PreModels Models.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope string_scope.
@@ -67,12 +68,10 @@ Definition IsAx A :=
             check PeanoSign B = true /\
             FClosed B.
 
-Lemma WfAx A : IsAx A -> Wf PeanoSign A.
+Lemma WCAx A : IsAx A -> WC PeanoSign A.
 Proof.
  intros [ IN | (B & -> & HB & HB')].
- - apply Wf_iff.
-   unfold axioms_list in IN.
-   simpl in IN. intuition; subst; reflexivity.
+ - apply wc_iff. revert A IN. now apply forallb_forall.
  - repeat split; unfold induction_schema; cbn.
    + rewrite nForall_check. cbn.
      rewrite !check_bsubst, HB; auto.
@@ -93,7 +92,7 @@ Local Open Scope formula_scope.
 Definition PeanoTheory :=
  {| sign := PeanoSign;
     IsAxiom := PeanoAx.IsAx;
-    WfAxiom := PeanoAx.WfAx |}.
+    WCAxiom := PeanoAx.WCAx |}.
 
 (** Useful lemmas so as to be able to write proofs that take less than 1000 lines. *)
 
@@ -265,7 +264,7 @@ Ltac hered := apply AntiHereditarity; calc.
 
 Ltac trans b := apply Transitivity with (B := b); calc.
 
-Ltac thm := unfold IsTheorem; split; [ unfold Wf; split; [ auto | split; auto ] | ].
+Ltac thm := unfold IsTheorem; split; [ now apply wc_iff | ].
 
 Ltac parse term :=
   match term with

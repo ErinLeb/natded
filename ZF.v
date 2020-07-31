@@ -3,7 +3,8 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Mix Meta Theories PreModels Models Peano.
+Require Import Defs NameProofs Mix Meta.
+Require Import Wellformed Theories PreModels Models Peano.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
@@ -131,12 +132,10 @@ Proof.
 symmetry. apply Nat.max_monotone. red. red. auto with *.
 Qed.
 
-Lemma WfAx A : IsAx A -> Wf ZFSign A.
+Lemma WCAx A : IsAx A -> WC ZFSign A.
 Proof.
  intros [ IN | [ (B & -> & HB & HB') | (C & -> & HC & HC') ] ].
- - apply Wf_iff.
-   unfold axioms_list in IN.
-   simpl in IN. intuition; subst; reflexivity.
+ - apply wc_iff. revert A IN. now apply forallb_forall.
  - repeat split; unfold separation_schema; cbn.
    + rewrite nForall_check. cbn.
      rewrite !check_lift_form, HB.
@@ -148,7 +147,7 @@ Proof.
      apply Nat.sub_0_le.
      repeat apply Nat.max_lub; omega with *.
    + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.
-     cbn. now rewrite fclosed_lift_above, HB'.
+     cbn. now rewrite fclosed_lift, HB'.
  - repeat split; unfold replacement_schema; cbn.
    + rewrite nForall_check. cbn.
      rewrite !check_lift_form, HC.
@@ -161,7 +160,7 @@ Proof.
      apply Nat.sub_0_le.
      repeat apply Nat.max_lub; omega with *.
    + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.
-     cbn. now rewrite !fclosed_lift_above, HC'.
+     cbn. now rewrite !fclosed_lift, HC'.
 Qed.
 
 End ZFAx.
@@ -172,7 +171,7 @@ Local Open Scope formula_scope.
 Definition ZF :=
  {| sign := ZFSign;
     IsAxiom := ZFAx.IsAx;
-    WfAxiom := ZFAx.WfAx |}.
+    WCAxiom := ZFAx.WCAx |}.
 
 Import ZFAx.
 

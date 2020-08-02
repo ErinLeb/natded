@@ -1,5 +1,5 @@
 
-Require Import Defs NameProofs Mix.
+Require Import Defs NameProofs Mix Wellformed.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
@@ -234,37 +234,6 @@ Proof.
       cbn. f_equal. f_equal. apply restrict_bsubst.
 Qed.
 
-Lemma check_restrict_term_id sign x (t:term) :
- check sign t = true -> restrict_term sign x t = t.
-Proof.
- induction t as [ | | f l IH] using term_ind'; cbn; auto.
- destruct funsymbs; try easy.
- rewrite lazy_andb_iff. intros (->,H). f_equal.
- rewrite forallb_forall in H.
- apply map_id_iff; auto.
-Qed.
-
-Lemma check_restrict_id sign x (f:formula) :
- check sign f = true -> restrict sign x f = f.
-Proof.
- induction f; cbn; intros; f_equal; auto.
- - destruct predsymbs; try easy.
-   rewrite lazy_andb_iff in H. destruct H as (->,H). f_equal.
-   rewrite forallb_forall in H.
-   apply map_id_iff; auto using check_restrict_term_id.
- - rewrite ?lazy_andb_iff in H; intuition.
- - rewrite ?lazy_andb_iff in H; intuition.
-Qed.
-
-Lemma check_restrict_ctx_id sign x (c:context) :
- check sign c = true -> restrict_ctx sign x c = c.
-Proof.
- induction c as [|f c IH]; cbn; rewrite ?andb_true_iff; intros;
-  f_equal; auto.
- - now apply check_restrict_id.
- - now apply IH.
-Qed.
-
 Lemma restrict_term_check sign x (t:term) :
  check sign (restrict_term sign x t) = true.
 Proof.
@@ -313,6 +282,44 @@ Proof.
  induction d as [r s ds IH] using derivation_ind'; cbn.
  rewrite restrict_rule_check, restrict_seq_check.
  rewrite forallb_map, forallb_forall, Forall_forall in *; auto.
+Qed.
+
+Lemma restrict_term_id sign x (t:term) :
+ check sign t = true -> restrict_term sign x t = t.
+Proof.
+ induction t as [ | | f l IH] using term_ind'; cbn; auto.
+ destruct funsymbs; try easy.
+ rewrite lazy_andb_iff. intros (->,H). f_equal.
+ rewrite forallb_forall in H.
+ apply map_id_iff; auto.
+Qed.
+
+Lemma restrict_id sign x (f:formula) :
+ check sign f = true -> restrict sign x f = f.
+Proof.
+ induction f; cbn; intros; f_equal; auto.
+ - destruct predsymbs; try easy.
+   rewrite lazy_andb_iff in H. destruct H as (->,H). f_equal.
+   rewrite forallb_forall in H.
+   apply map_id_iff; auto using restrict_term_id.
+ - rewrite ?lazy_andb_iff in H; intuition.
+ - rewrite ?lazy_andb_iff in H; intuition.
+Qed.
+
+Lemma restrict_ctx_id sign x (c:context) :
+ check sign c = true -> restrict_ctx sign x c = c.
+Proof.
+ induction c as [|f c IH]; cbn; rewrite ?andb_true_iff; intros;
+  f_equal; auto.
+ - now apply restrict_id.
+ - now apply IH.
+Qed.
+
+Lemma restrict_seq_id sign x (s:sequent) :
+ check sign s = true -> restrict_seq sign x s = s.
+Proof.
+ destruct s as (c,f). cbn. rewrite lazy_andb_iff. intros (Hc,Hf).
+ f_equal. now apply restrict_ctx_id. now apply restrict_id.
 Qed.
 
 (** When a derivation has some bounded variables, we could
@@ -592,6 +599,8 @@ Proof.
      f_equal. apply forcelevel_bsubst; auto.
 Qed.
 
+(** [restrict] and [forcelevel] commute *)
+
 Lemma restrict_forcelevel_term sign x n y t :
  restrict_term sign x (forcelevel_term n y t) =
  forcelevel_term n y (restrict_term sign x t).
@@ -653,4 +662,46 @@ Proof.
  - apply restrict_forcelevel_seq.
  - rewrite !map_map. apply map_ext_iff.
    rewrite Forall_forall in IH; auto.
+Qed.
+
+(** Combining [restrict] and [forcelevel] on a derivation *)
+
+Definition forceWF sign (d:derivation) :=
+ let vars := fvars d in
+ let x := fresh vars in
+ let y := fresh (Names.add x vars) in
+ forcelevel_deriv y (restrict_deriv sign x d).
+
+Lemma forceWF_WF sign d : WF sign (forceWF sign d).
+Proof.
+ unfold forceWF. split.
+ - rewrite <- restrict_forcelevel_deriv.
+   apply restrict_deriv_check.
+ - apply forcelevel_deriv_bclosed.
+Qed.
+
+Lemma forceWF_Valid lg sign d :
+ Valid lg d -> Valid lg (forceWF sign d).
+Proof.
+ intros V.
+ unfold forceWF.
+ set (vars := fvars d) in *.
+ set (x := fresh vars).
+ set (y := fresh _).
+ apply forcelevel_deriv_valid.
+ - rewrite restrict_deriv_fvars. apply fresh_ok.
+ - apply restrict_valid; auto. apply fresh_ok.
+Qed.
+
+Lemma forceWF_claim sign d :
+ WF sign (claim d) -> claim (forceWF sign d) = claim d.
+Proof.
+ intros W.
+ unfold forceWF.
+ set (vars := fvars d) in *.
+ set (x := fresh vars).
+ set (y := fresh _).
+ rewrite claim_forcelevel, claim_restrict.
+ destruct d. cbn. cbn in W. rewrite restrict_seq_id by apply W.
+ apply forcelevel_seq_id. apply W.
 Qed.

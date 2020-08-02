@@ -103,38 +103,16 @@ Lemma thm_alt th T :
   IsTheorem th T <-> IsTheoremStrict th T.
 Proof.
  split.
- - intros (WF & axs & F & PR).
-   split; auto. rewrite Provable_alt in PR.
-   destruct PR as (d & V & C).
-   destruct (exist_fresh (fvars d)) as (x,Hx).
-   destruct (exist_fresh (Names.add x (fvars d))) as (y,Hy).
-   exists (forcelevel_deriv y (restrict_deriv th x d)).
-   exists axs; repeat split; auto.
-   + rewrite <- restrict_forcelevel_deriv.
-     apply restrict_deriv_check.
-   + apply forcelevel_deriv_bclosed.
-   + apply forcelevel_deriv_valid.
-     * rewrite restrict_deriv_fvars.
-       namedec.
-     * apply restrict_valid; auto.
-   + rewrite Forall_forall in F.
-     unfold Claim.
-     rewrite claim_forcelevel, claim_restrict, C.
-     cbn. f_equal.
-     * assert (check th axs = true).
-       { unfold check, check_list.
-         apply forallb_forall.
-         intros A HA. apply WCAxiom; auto. }
-       rewrite check_restrict_ctx_id by auto.
-       apply forcelevel_ctx_id.
-       unfold BClosed, level, level_list.
-       apply list_max_map_0.
-       intros A HA. apply (WCAxiom th A); auto.
-     * rewrite check_restrict_id by apply WF.
-       apply forcelevel_id.
-       assert (level T = 0) by apply WF.
-       auto with *.
- - intros (CL & d & axs & V & F & C).
+ - intros (W & axs & F & P).
+   split; auto. rewrite Provable_alt in P.
+   destruct P as (d & V & C).
+   exists (forceWF th d).
+   exists axs; split; split; auto using forceWF_WF, forceWF_Valid.
+   unfold Claim in *. rewrite <- C. apply forceWF_claim.
+   rewrite C, seq_WF. split; try apply W.
+   rewrite ctx_WF. rewrite Forall_forall in *. intros x Hx.
+   apply WCAxiom; auto.
+ - intros (W & d & axs & V & F & C).
    split; auto.
    exists axs; split; auto.
    rewrite Provable_alt.
@@ -441,17 +419,17 @@ Proof.
        apply (restrict_valid logic th x) in V; auto with set.
        assert (C' := claim_restrict th x d).
        rewrite C in C'. cbn in C'.
-       rewrite (check_restrict_id th x T) in C'; auto.
+       rewrite (restrict_id th x T) in C'; auto.
        assert (map (restrict th x) axs' = axs').
        { apply map_id_iff. intros a Ha.
-         apply check_restrict_id.
+         apply restrict_id.
          apply WCAxiom. rewrite Forall_forall in F'; auto. }
        rewrite H0 in C'; clear H0.
        assert (restrict th x newAx = bsubst 0 (FVar x) A).
        { unfold newAx.
          rewrite restrict_bsubst. f_equal.
          - cbn. now rewrite E.
-         - apply check_restrict_id. apply CLA. }
+         - apply restrict_id. apply CLA. }
        rewrite H0 in C'; clear H0.
        apply Valid_Pr in V. rewrite C' in V.
        apply (R_Ex_e logic x _ A).

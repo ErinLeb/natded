@@ -206,20 +206,20 @@ Proof.
  now destruct (funs mo f).
 Qed.
 
-Definition interp_phi {n th M} (mo:Model M th)(phi : Vector.t M n -> M) A :=
- forall genv v, interp_form mo genv (phi v :: rev (Vector.to_list v)) A.
+Definition interp_phi {n th M} (mo:Model M th)(phi : M^n -> M) A :=
+ forall genv v, interp_form mo genv (phi v :: rev (nprod_to_list v)) A.
 
 Definition Skolem_model_AxOk A f n
  (E:th.(funsymbs) f = None)
  (Thm:IsTheorem K th (nForall n (∃A)))
- M (mo:Model M th)(phi : Vector.t M n -> M)(Hphi : interp_phi mo phi A) :
+ M (mo:Model M th)(phi : M^n -> M)(Hphi : interp_phi mo phi A) :
   forall A0 : formula,
   IsAxiom (Skolem_ext th A f n E Thm) A0 ->
   forall genv : variable -> M,
-  interp_form (Skolem_premodel_ext th M mo f n (curry phi)) genv [] A0.
+  interp_form (Skolem_premodel_ext th M mo f n (ncurry phi)) genv [] A0.
 Proof.
 set (th' := Skolem_ext _ _ _ _ _ _) in *.
-set (Phi := curry phi).
+set (Phi := ncurry phi).
 set (mo' := Skolem_premodel_ext _ _ _ _ _ _).
 intros A0 [ | -> ] genv.
 - unfold th'. simpl.
@@ -231,7 +231,7 @@ intros A0 [ | -> ] genv.
   destruct stk as [|m l]; try easy.
   injection H as H.
   rewrite <- rev_length in H.
-  destruct (to_vect _ _ H) as (v & Hv).
+  destruct (to_nprod _ _ H) as (v & Hv).
   rewrite interp_form_bsubst_gen with (lenv' := phi v :: l); auto.
   + unfold th'. simpl.
     rewrite <- (interp_form_skolem_premodel_ext th M f n Phi mo); auto.
@@ -242,18 +242,18 @@ intros A0 [ | -> ] genv.
     cbn. rewrite eqb_refl.
     rewrite interp_downvars, <- Hv by (now rewrite rev_length in H).
     symmetry. clear -v. unfold Phi.
-    rewrite <- (uncurry_curry _ phi v). cbn. induction v; cbn; auto.
+    rewrite <- (nuncurry_ncurry phi v). cbn. apply build_args_nprod.
   + destruct k; try easy.
 Qed.
 
 Definition Skolem_model_ext A f n
  (E:th.(funsymbs) f = None)
  (Thm:IsTheorem K th (nForall n (∃A)))
- M (mo:Model M th)(phi : Vector.t M n -> M)(Hphi : interp_phi mo phi A) :
+ M (mo:Model M th)(phi : M^n -> M)(Hphi : interp_phi mo phi A) :
  Model M (Skolem_ext th A f n E Thm).
 Proof.
 set (th' := Skolem_ext _ _ _ _ _ _).
-apply (Build_Model _ th' (Skolem_premodel_ext th M mo f n (curry phi))).
+apply (Build_Model _ th' (Skolem_premodel_ext th M mo f n (ncurry phi))).
 apply Skolem_model_AxOk; auto.
 Defined.
 
@@ -280,15 +280,15 @@ Proof.
      assert (interp_form mo genv [] (nForall n (∃ A))).
      { eapply validity_theorem; eauto. red; auto. }
      rewrite interp_nforall in H.
-     assert (C : forall (v : Vector.t M n), exists m,
-                  interp_form mo genv (m::rev (Vector.to_list v)) A).
+     assert (C : forall (v : M^n), exists m,
+                  interp_form mo genv (m::rev (nprod_to_list v)) A).
      { intros v.
-       specialize (H (rev (Vector.to_list v))).
+       specialize (H (rev (nprod_to_list v))).
        rewrite app_nil_r in H. apply H. rewrite rev_length.
-       clear. revert v; induction v; simpl; auto. }
+       apply nprod_to_list_length. }
      apply Choice in C. destruct C as (phi, Hphi). clear H.
      assert (Hphi' : forall genv v,
-                interp_form mo genv (phi v :: rev (Vector.to_list v)) A).
+                interp_form mo genv (phi v :: rev (nprod_to_list v)) A).
      { intros genv' v. rewrite interp_form_ext; eauto.
        intros. clear - H Thm. destruct Thm as ((_,FA),_).
        apply nForall_fclosed in FA. red in FA. cbn in FA.

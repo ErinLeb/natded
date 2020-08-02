@@ -4,7 +4,6 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Vector.
 Require Export List NaryFunctions.
 Import ListNotations.
 
@@ -48,6 +47,9 @@ Definition optnapply {A B}(f:optnfun A B)(l:list A)(dft:B) :=
  end.
 
 Arguments nfun_to_nfun {A B C} f {n}.
+Arguments ncurry {A B n}.
+Arguments nuncurry {A B n}.
+Arguments nprod_to_list {A n}.
 
 Lemma build_args_ntn {A B B' n} (l : list A)(f:B->B')(any:B)(any':B') :
  length l = n ->
@@ -57,42 +59,30 @@ Proof.
  intros <-. induction l; simpl; auto.
 Qed.
 
-(** See also nprod *)
-
-(** N-ary curry / uncurry conversions :
-    isomorphism between [arity_fun] and functions expecting a [Vector.t]
-    as first argument. *)
-
-Section Curry.
-Context {A B : Type}.
-Import Vector.VectorNotations.
-Local Open Scope vector_scope.
-
-Fixpoint uncurry {n} : (A^^n-->B) -> Vector.t A n -> B :=
-  match n with
-  | 0 => fun b _ => b
-  | S n => fun f v => uncurry (f (Vector.hd v)) (Vector.tl v)
-  end.
-
-Fixpoint curry {n} : (Vector.t A n -> B) -> (A^^n-->B) :=
- match n with
- | 0 => fun f => f (Vector.nil _)
- | S n => fun f a => curry (fun v => f (a::v))
- end.
-
-Lemma uncurry_curry n (phi : Vector.t A n -> B) v :
-  uncurry (curry phi) v = phi v.
+Lemma to_nprod {A} n (l:list A) :
+  length l = n -> exists v : A^n, nprod_to_list v = l.
 Proof.
- induction v; cbn; auto. now rewrite IHv.
+ intros <-.
+ exists (nprod_of_list _ l). induction l; cbn; f_equal; auto.
 Qed.
 
-Lemma to_vect n (l:list A) :
-  length l = n -> exists v : Vector.t A n, Vector.to_list v = l.
+Lemma nprod_to_list_length {A} n (v:A^n) :
+ length (nprod_to_list v) = n.
 Proof.
- revert n; induction l as [|a l IH]; simpl.
- - intros n <-. now exists [].
- - destruct n as [|n]; intros [= E].
-   destruct (IH n E) as (v & Hv). exists (a::v). cbn; f_equal; auto.
+ induction n; cbn; auto. destruct v; cbn; auto.
 Qed.
 
-End Curry.
+Lemma build_args_nprod {A B} n (v:A^n) (f:A^^n-->B) (dft:B) :
+  build_args (nprod_to_list v) dft f = nuncurry f v.
+Proof.
+ induction n; cbn in *; auto.
+ destruct v as (a,v). apply IHn.
+Qed.
+
+Lemma nuncurry_ncurry {A B n} (f : A^n->B) (v:A^n) :
+  nuncurry (ncurry f) v = f v.
+Proof.
+ induction n; cbn in *; auto.
+ - now destruct v.
+ - destruct v as (a,v). now rewrite IHn.
+Qed.

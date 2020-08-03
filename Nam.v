@@ -442,7 +442,7 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
      (s =? (Γ ⊢ B)) &&& (s1 =? (Γ ⊢ ∃x, A)) &&&
      negb (Names.mem x (Seq.freevars s))
   | Absu, s, [Not A::Γ ⊢ False] =>
-    (logic =? Classic) &&& (s =? (Γ ⊢ A))
+    (logic =? K) &&& (s =? (Γ ⊢ A))
   | _,_,_ => false
   end.
 
@@ -455,7 +455,7 @@ Definition example :=
   let A := Pred "A" [] in
   Rule Imp_i ([]⊢A->A) [Rule Ax ([A]⊢A) []].
 
-Compute valid_deriv Intuiti example.
+Compute valid_deriv J example.
 
 Definition example2 :=
   let A := fun x => Pred "A" [Var x] in
@@ -473,7 +473,7 @@ Definition example2 :=
            [Rule (All_e (Var "x")) ([C]⊢A("x")/\B("x"))
              [Rule Ax ([C]⊢C) []]]]]]).
 
-Compute valid_deriv Intuiti example2.
+Compute valid_deriv J example2.
 
 Definition em :=
   let A := Pred "A" [] in
@@ -489,8 +489,8 @@ Definition em :=
         ;
         Rule Ax ([~(A\/~A)]⊢~(A\/~A)) []]]%form.
 
-Compute valid_deriv Classic em.
-Compute valid_deriv Intuiti em.
+Compute valid_deriv K em.
+Compute valid_deriv J em.
 
 (** Example of free alpha-renaming during a proof,
     (not provable without alpha-renaming) *)
@@ -501,7 +501,7 @@ Definition captcha :=
    [Rule Imp_i ([A("x")]⊢A("z")->A("z"))
      [Rule Ax ([A("z");A("x")]⊢A("z")) []]].
 
-Compute valid_deriv Intuiti captcha.
+Compute valid_deriv J captcha.
 
 Definition captcha_bug :=
   let A := fun x => Pred "A" [Var x] in
@@ -509,7 +509,7 @@ Definition captcha_bug :=
    [Rule Imp_i ([A("x")]⊢A("x")->A("x"))
     [Rule Ax ([A("x");A("x")]⊢A("x")) []]].
 
-Compute valid_deriv Intuiti captcha_bug.
+Compute valid_deriv J captcha_bug.
 
 (** Two early proofs : correctness of boolean equality on terms ... *)
 

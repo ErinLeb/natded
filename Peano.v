@@ -287,7 +287,7 @@ Ltac rec :=
 (** Some basic proofs in Peano arithmetics. *)
 
 Lemma ZeroRight :
-  IsTheorem Intuiti PeanoTheory
+  IsTheorem J PeanoTheory
             (∀ (#0 = #0 + Zero)).
 Proof.
  thm.
@@ -305,7 +305,7 @@ Proof.
      apply in_eq.
 Qed.
 
-Lemma SuccRight : IsTheorem Intuiti PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Succ(#0))).
+Lemma SuccRight : IsTheorem J PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Succ(#0))).
 Proof.
   thm.
   rec.
@@ -331,7 +331,7 @@ Proof.
 Qed.
 
 Lemma Comm :
-  IsTheorem Intuiti PeanoTheory
+  IsTheorem J PeanoTheory
             ((∀ #0 = #0 + Zero) -> (∀∀ Succ(#1 + #0) = #1 + Succ(#0)) ->
                (∀∀ #0 + #1 = #1 + #0)).
 Proof.
@@ -340,7 +340,7 @@ Proof.
   + app_R_All_i "x" x.
     trans x.
     - sym.
-      assert (Pr Intuiti (Γ' ⊢ ∀ # 0 = # 0 + Zero)). { apply R_Ax. calc. }
+      assert (Pr J (Γ' ⊢ ∀ # 0 = # 0 + Zero)). { apply R_Ax. calc. }
       apply R_All_e with (t := x) in H; auto.
     - sym.
       inst_axiom ax9 [x].
@@ -349,18 +349,18 @@ Proof.
     app_R_All_i "x" x.
     trans (Succ (x + y)).
     - sym.
-      assert (Pr Intuiti ((∀ #0 + y = y + #0) :: Γ' ⊢ ∀ ∀ Succ (#1 + #0) = #1 + Succ (#0))). { apply R_Ax. calc. }
+      assert (Pr J ((∀ #0 + y = y + #0) :: Γ' ⊢ ∀ ∀ Succ (#1 + #0) = #1 + Succ (#0))). { apply R_Ax. calc. }
       apply R_All_e with (t := x) in H; auto.
       apply R_All_e with (t := y) in H; auto.
     - trans (Succ (y + x)).
       * ahered.
-        assert (Pr Intuiti ((∀ #0 + y = y + #0) :: Γ' ⊢ ∀ #0 + y = y + #0)). { apply R_Ax. apply in_eq. }
+        assert (Pr J ((∀ #0 + y = y + #0) :: Γ' ⊢ ∀ #0 + y = y + #0)). { apply R_Ax. apply in_eq. }
         apply R_All_e with (t := x) in H; auto.
       * sym.
         inst_axiom ax10 [y; x].
 Qed.
 
-Lemma Commutativity : IsTheorem Intuiti PeanoTheory (∀∀ #0 + #1 = #1 + #0).
+Lemma Commutativity : IsTheorem J PeanoTheory (∀∀ #0 + #1 = #1 + #0).
 Proof.
   apply ModusPonens with (A := (∀∀ Succ(#1 + #0) = #1 + Succ(#0))).
   + apply ModusPonens with (A := ∀ #0 = #0 + Zero).

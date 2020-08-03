@@ -617,7 +617,7 @@ Qed.
 
 Lemma exex_tauto A :
  level A <= 1 ->
- Pr Classic ([] ⊢ ∃ ((∃ A) -> A)).
+ Pr K ([] ⊢ ∃ ((∃ A) -> A)).
 Proof.
  intros HA.
  destruct (exist_fresh (fvars A)) as (x,Hx).
@@ -637,7 +637,7 @@ Proof.
 Qed.
 
 Lemma exex_thm th A :
- logic = Classic ->
+ logic = K ->
  WC th (∃A) -> IsTheorem th (∃ ((∃ A) -> A)).
 Proof.
  intros LG CL.
@@ -865,7 +865,7 @@ Proof.
 Qed.
 
 Lemma HenkinSeq_consistent th nc n :
- logic = Classic ->
+ logic = K ->
  Consistent th <-> Consistent (HenkinSeq th nc n).
 Proof.
  intros LG.
@@ -979,7 +979,7 @@ Qed.
 (** TODO: conservative extention over th. Not that useful... *)
 
 Lemma HenkinAll_consistent th (nc : NewCsts th) :
- logic = Classic ->
+ logic = K ->
  Consistent th -> Consistent (HenkinAll_ext th nc).
 Proof.
  intros LG C (_ & axs & F & V).
@@ -992,7 +992,7 @@ Proof.
 Qed.
 
 Lemma HenkinAll_ext_supersaturated th (nc : NewCsts th) :
- logic = Classic ->
+ logic = K ->
  WitnessSuperSaturated (HenkinAll_ext th nc).
 Proof.
  red. intros LG A CL.
@@ -1235,7 +1235,7 @@ Proof.
 Qed.
 
 Lemma supercomplete_consistent th nc :
- logic = Classic ->
+ logic = K ->
  Consistent th -> Consistent (supercomplete th nc).
 Proof.
  intros LG C.
@@ -1244,7 +1244,7 @@ Proof.
 Qed.
 
 Lemma supercomplete_supersaturated th nc :
- logic = Classic ->
+ logic = K ->
  WitnessSuperSaturated (supercomplete th nc).
 Proof.
  intros LG.
@@ -1256,7 +1256,7 @@ Proof.
 Qed.
 
 Lemma supercomplete_saturated th nc :
- logic = Classic ->
+ logic = K ->
  WitnessSaturated (supercomplete th nc).
 Proof.
  intros LG.
@@ -1271,7 +1271,7 @@ Proof.
 Qed.
 
 Lemma supercompletion :
- logic = Classic ->
+ logic = K ->
  MyExcludedMiddle ->
  forall th (nc : NewCsts th),
   Consistent th ->

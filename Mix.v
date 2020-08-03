@@ -586,7 +586,7 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
      &&& (A' =? bsubst 0 (FVar x) A)
      &&& negb (Names.mem x (fvars (A::Γ⊢B)))
   | Absu, s, [Not A::Γ ⊢ False] =>
-    (logic =? Classic) &&& (s =? (Γ ⊢ A))
+    (logic =? K) &&& (s =? (Γ ⊢ A))
   | _,_,_ => false
   end.
 
@@ -601,12 +601,12 @@ Definition deriv_example :=
   let A := Pred "A" [] in
   Rule Imp_i ([]⊢A->A) [Rule Ax ([A]⊢A) []].
 
-Compute valid_deriv Intuiti deriv_example.
+Compute valid_deriv J deriv_example.
 
 Definition example_gen (A:formula) :=
   Rule Imp_i ([]⊢A->A) [Rule Ax ([A]⊢A) []].
 
-Compute valid_deriv Intuiti (example_gen (Pred "A" [])).
+Compute valid_deriv J (example_gen (Pred "A" [])).
 
 Definition example2 (A B : term->formula):=
   (Rule Imp_i ([]⊢(∀A(#0)/\B(#0))->(∀A(#0))/\(∀B(#0)))
@@ -639,8 +639,8 @@ Definition em (A:formula) :=
         ;
         Rule Ax ([~(A\/~A)]⊢~(A\/~A)) []]]%form.
 
-Compute valid_deriv Classic (em (Pred "A" [])).
-Compute valid_deriv Intuiti (em (Pred "A" [])).
+Compute valid_deriv K (em (Pred "A" [])).
+Compute valid_deriv J (em (Pred "A" [])).
 
 (** Example of free alpha-renaming during a proof,
     (not provable without alpha-renaming) *)
@@ -651,7 +651,7 @@ Definition captcha :=
    [Rule Imp_i ([A(FVar "x")]⊢A(FVar "z")->A(FVar "z"))
      [Rule Ax ([A(FVar "z");A(FVar "x")]⊢A(FVar "z")) []]].
 
-Compute valid_deriv Intuiti captcha.
+Compute valid_deriv J captcha.
 
 Definition captcha_bug :=
   let A := fun x => Pred "A" [x] in
@@ -659,7 +659,7 @@ Definition captcha_bug :=
    [Rule Imp_i ([A(FVar "x")]⊢A(FVar "x")->A(FVar "x"))
     [Rule Ax ([A(FVar "x");A(FVar "x")]⊢A(FVar "x")) []]].
 
-Compute valid_deriv Intuiti captcha_bug.
+Compute valid_deriv J captcha_bug.
 
 (** Correctness of earlier boolean equality tests *)
 
@@ -799,7 +799,7 @@ Inductive Valid (l:logic) : derivation -> Prop :=
      Claim d1 (Γ ⊢ ∃A) -> Claim d2 ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
      Valid l (Rule (Ex_e x) (Γ ⊢ B) [d1;d2])
  | V_Absu d Γ A :
-     l=Classic ->
+     l=K ->
      Valid l d -> Claim d (Not A :: Γ ⊢ False) ->
      Valid l (Rule Absu (Γ ⊢ A) [d]).
 
@@ -862,7 +862,7 @@ Definition Provable logic (s : sequent) :=
 
 Lemma thm_example :
   let A := Pred "A" [] in
-  Provable Intuiti ([]⊢A->A).
+  Provable J ([]⊢A->A).
 Proof.
  exists deriv_example. now rewrite <- Valid_equiv.
 Qed.
@@ -907,7 +907,7 @@ Inductive Pr (l:logic) : sequent -> Prop :=
  | R_Ex_e x Γ A B : ~Names.In x (fvars (A::Γ⊢B)) ->
       Pr l (Γ ⊢ ∃A) -> Pr l ((bsubst 0 (FVar x) A)::Γ ⊢ B) ->
       Pr l (Γ ⊢ B)
- | R_Absu Γ A : l=Classic -> Pr l (Not A :: Γ ⊢ False) ->
+ | R_Absu Γ A : l=K -> Pr l (Not A :: Γ ⊢ False) ->
                   Pr l (Γ ⊢ A).
 Hint Constructors Pr.
 
@@ -930,27 +930,27 @@ Qed.
 
 (* Some useful statements. *)
 
-Lemma Pr_intuit_classic s : Pr Intuiti s -> Pr Classic s.
+Lemma Pr_intuit_classic s : Pr J s -> Pr K s.
 Proof.
  induction 1; eauto 2.
 Qed.
 
-Lemma Pr_intuit_any lg s : Pr Intuiti s -> Pr lg s.
+Lemma Pr_intuit_any lg s : Pr J s -> Pr lg s.
 Proof.
  destruct lg. apply Pr_intuit_classic. trivial.
 Qed.
 
-Lemma Pr_any_classic lg s : Pr lg s -> Pr Classic s.
+Lemma Pr_any_classic lg s : Pr lg s -> Pr K s.
 Proof.
  destruct lg. trivial. apply Pr_intuit_classic.
 Qed.
 
-Lemma intuit_classic d : Valid Intuiti d -> Valid Classic d.
+Lemma intuit_classic d : Valid J d -> Valid K d.
 Proof.
  induction 1; eauto.
 Qed.
 
-Lemma any_classic d lg : Valid lg d -> Valid Classic d.
+Lemma any_classic d lg : Valid lg d -> Valid K d.
 Proof.
  destruct lg. trivial. apply intuit_classic.
 Qed.

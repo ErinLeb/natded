@@ -1160,7 +1160,7 @@ Qed.
 (** A few classical proofs *)
 
 Lemma DoubleNeg A :
- Pr Classic ([] ⊢ ~~A -> A)%form.
+ Pr K ([] ⊢ ~~A -> A).
 Proof.
  apply R_Imp_i.
  apply R_Absu; trivial.
@@ -1180,7 +1180,7 @@ Proof.
 Qed.
 
 Lemma Excluded_Middle A :
- Pr Classic ([] ⊢ A\/~A).
+ Pr K ([] ⊢ A\/~A).
 Proof.
  apply R_Imp_e with (~~(A\/~A))%form.
  - apply DoubleNeg.
@@ -1188,7 +1188,7 @@ Proof.
 Qed.
 
 Lemma Peirce A B :
- Pr Classic ([] ⊢ ((A->B)->A)->A).
+ Pr K ([] ⊢ ((A->B)->A)->A).
 Proof.
  apply R_Imp_i.
  apply R_Absu; trivial.
@@ -1266,7 +1266,7 @@ Definition Excluded_Middle_deriv A :=
   (let '(Rule _ _ ds) := Excluded_Middle_core_deriv A in ds).
 
 Lemma Excluded_Middle_valid A :
- Valid Classic (Excluded_Middle_deriv A).
+ Valid K (Excluded_Middle_deriv A).
 Proof.
  unfold Excluded_Middle_deriv.
  unfold Excluded_Middle_core_deriv.
@@ -1275,7 +1275,7 @@ Qed.
 
 (* A few examples of proofs in NJ1 and NK1 (Samuel). *)
 
-Lemma ex1 f1 f2 : Provable Intuiti ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
+Lemma ex1 f1 f2 : Provable J ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
 Proof.
   apply Provable_alt.
   apply R_Imp_i.
@@ -1285,7 +1285,7 @@ Proof.
   apply in_eq.
 Qed.
 
-Lemma ex2 f1 f2 f3 : Provable Intuiti ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
+Lemma ex2 f1 f2 f3 : Provable J ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
 Proof.
   apply Provable_alt.
   apply R_And_i.
@@ -1306,7 +1306,7 @@ Proof.
       * apply in_eq.
 Qed.
 
-Lemma RAA f1 Γ : Pr Classic (Γ ⊢ ~~f1) -> Pr Classic (Γ ⊢ f1).
+Lemma RAA f1 Γ : Pr K (Γ ⊢ ~~f1) -> Pr K (Γ ⊢ f1).
 Proof.
   intro.
   apply R_Absu.
@@ -1316,7 +1316,7 @@ Proof.
     - apply Pr_pop. exact H.
 Qed.
 
-Lemma DeMorgan f1 f2 Γ : Pr Classic (Γ ⊢ ~(~f1 /\ f2)) -> Pr Classic (Γ ⊢ ~~(f1 \/ ~f2)).
+Lemma DeMorgan f1 f2 Γ : Pr K (Γ ⊢ ~(~f1 /\ f2)) -> Pr K (Γ ⊢ ~~(f1 \/ ~f2)).
 Proof.
   intro.
   apply R_Not_i.
@@ -1338,7 +1338,7 @@ Proof.
   + apply Pr_pop. exact H.
 Qed.
 
-Lemma ExcludedMiddle f1 : Provable Classic ([] ⊢ f1 \/ ~f1).
+Lemma ExcludedMiddle f1 : Provable K ([] ⊢ f1 \/ ~f1).
 Proof.
   apply Provable_alt.
   apply RAA.

@@ -31,14 +31,14 @@ Open Scope formula_scope.
 
 (* It is easy to notice that ∃ a ∀ x (x ∈ a <-> ~(x ∈ x)) is (almost) an instance of the
    comprehension axiom schema : it suffices to let A = ~ (a ∈ a). *)
-Lemma Russell : Pr Intuiti ([ ∃∀ (#0 ∈ #1 <-> ~(#0 ∈ #0)) ] ⊢ False).
+Lemma Russell : Pr J ([ ∃∀ (#0 ∈ #1 <-> ~(#0 ∈ #0)) ] ⊢ False).
 Proof.
   apply R'_Ex_e with (x := "a"); auto.
   + cbn - [Names.union]. intro. inversion H.
   + cbn. set  (A := FVar "a"). fold (#0 ∈ A <-> ~ #0 ∈ #0)%form.
     set (comp := ∀ _ <-> _).
     set (Γ := [comp]).
-    assert (Pr Intuiti (Γ ⊢ ~ A ∈ A)).
+    assert (Pr J (Γ ⊢ ~ A ∈ A)).
     {
       apply R_Not_i.
       set (Γ' := (_ :: Γ)).
@@ -46,14 +46,14 @@ Proof.
       * apply R_Ax. compute; intuition.
       * apply R_Imp_e with (A := A ∈ A).
         ++ apply R_And_e1 with (B := (~ A ∈ A -> A ∈ A)).
-           assert (Pr Intuiti (Γ' ⊢ comp)). { apply R_Ax. compute; intuition. }
+           assert (Pr J (Γ' ⊢ comp)). { apply R_Ax. compute; intuition. }
            apply R_All_e with (t := A) in H; auto.
         ++ apply R_Ax. compute; intuition.
     }     
     apply R_Not_e with (A := A ∈ A); auto.
     apply R_Imp_e with (A := ~ A ∈ A); auto.
     - apply R_And_e2 with (A := (A ∈ A -> ~ A ∈ A)).
-      assert (Pr Intuiti (Γ ⊢ comp)). { apply R_Ax. compute; intuition. }
+      assert (Pr J (Γ ⊢ comp)). { apply R_Ax. compute; intuition. }
       apply R_All_e with (t := A) in H0; auto.
 Qed.
 
@@ -175,7 +175,7 @@ Definition ZF :=
 
 Import ZFAx.
 
-Lemma emptyset : IsTheorem Intuiti ZF (∃∀ ~(#0 ∈ #1)). 
+Lemma emptyset : IsTheorem J ZF (∃∀ ~(#0 ∈ #1)).
 Proof.
   thm.
   exists [infinity].
@@ -196,7 +196,7 @@ Proof.
         apply R'_Ax.
 Qed.
 
-Lemma singleton : IsTheorem Intuiti ZF (∀∃∀ (#0 ∈ #1 <-> #0 = #2)).
+Lemma singleton : IsTheorem J ZF (∀∃∀ (#0 ∈ #1 <-> #0 = #2)).
 Proof.
   thm.
   exists [pairing].
@@ -223,7 +223,7 @@ Proof.
         apply R_Or_i1; apply R_Ax; calc.
 Qed.
 
-Lemma unionset : IsTheorem Intuiti ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)).
+Lemma unionset : IsTheorem J ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)).
 Proof.
   thm.
   exists [ pairing; union; compat_right; eq_refl ].
@@ -298,7 +298,7 @@ Proof.
         -- apply R'_Ax.
 Qed.
 
-Lemma Succ : IsTheorem Intuiti ZF
+Lemma Succ : IsTheorem J ZF
                        ((∀∃∀ (#0 ∈ #1 <-> #0 = #2))
                         -> (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2))
                         -> ∀∃ succ (#1) (#0)).
@@ -345,7 +345,7 @@ Proof.
       * apply R_Or_i2. apply R'_Ax.
 Qed.
   
-Lemma Successor : IsTheorem Intuiti ZF (∀∃ succ (#1) (#0)).
+Lemma Successor : IsTheorem J ZF (∀∃ succ (#1) (#0)).
 Proof.
   apply ModusPonens with (A := ∀∀∃∀ #0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2); [ | apply unionset ].
   apply ModusPonens with (A := ∀∃∀ #0 ∈ #1 <-> #0 = #2); [ apply Succ | apply singleton ].

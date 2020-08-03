@@ -12,8 +12,6 @@ Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
 
-Notation K := Classic.
-
 Implicit Types th : theory.
 
 (** [downvars n = [#n ; ... ; #1] ]. *)

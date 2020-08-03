@@ -14,11 +14,25 @@ Set Implicit Arguments.
 
 (** A pre-model (also called a Σ-structure) is a non-empty domain M
     alongside some interpretations for function symbols and predicate
-    symbols. For a full model of a theorie, we'll need the axioms
-    of the theories, and the facts that their interpretations are
-    valid. *)
+    symbols. For a full model of a theory, we'll need later to ensure
+    that all axioms of this theory have valid interpretations, see
+    [Models.v].
 
-(** TODO: a word why nfun (to use pristine functions like Nat.add in models *)
+    For encoding the interpretations of symbols, we use [Nary.optnfun],
+    which is based on [NaryFunctions.nfun], the dependent type of
+    functions of arity [n]. More precisely, an [optnfun] is either
+    [Nop] for symbols not in the signature, or [NFun n f], where
+    [f] is a function expecting [n] arguments. Note that [n] is
+    internal (existential), and may be retrieved via [get_arity].
+
+    This choice of representation allows the direct use of Coq
+    usual functions in concrete models, e.g. [NFun 2 Nat.add] for
+    Peano's "+". But [nfun] may be tricky to use in proofs,
+    so we often switch to an equivalent forms based
+    on dependent n-uplets [NaryFunctions.nprod], thanks to
+    [NaryFunctions.nuncurry] and [NaryFunctions.ncurry]. These
+    n-uplets are iterated pairs, but Coq Vectors could also have
+    been considered. *)
 
 Record PreModel (M:Type)(sign:signature) :=
   { someone : M; (* M is non-empty *)
@@ -29,7 +43,7 @@ Record PreModel (M:Type)(sign:signature) :=
   }.
 
 (** Note: actually, we're not using [sign], [funsOk], [predsOK]
-    anywhere in this file !! See [BogusPoint] below :
+    anywhere in this part !! See [BogusPoint] below :
     if an interpretation hasn't the right arity, we'll proceed
     nonetheless, ending up with dummy formulas that won't allow
     later to prove that the axioms of our theory are valid in
@@ -51,7 +65,7 @@ Definition interp_term G L :=
     match t with
     | FVar x => G x
     | BVar n => nth n L BogusPoint
-    | Fun f args => optnapply (funs Mo f) (List.map interp args) BogusPoint
+    | Fun f args => napply_dft (funs Mo f) (List.map interp args) BogusPoint
     end.
 
 Definition interp_op o :=
@@ -73,7 +87,7 @@ Definition interp_form G :=
     | Not f => ~(interp L f)
     | Op o f1 f2 => interp_op o (interp L f1) (interp L f2)
     | Pred p args =>
-      optnapply (preds Mo p) (List.map (interp_term G L) args) BogusProp
+      napply_dft (preds Mo p) (List.map (interp_term G L) args) BogusProp
     | Quant All f => forall (m:M), interp (m::L) f
     | Quant Ex f => exists (m:M), interp (m::L) f
     end.
@@ -294,8 +308,8 @@ Hint Resolve interp_ctx_cons.
 
 Definition CoqRequirements lg :=
  match lg with
- | Classic => forall A:Prop, A\/~A
- | Intuiti => Logic.True
+ | K => forall A:Prop, A\/~A
+ | J => Logic.True
  end.
 
 (** Note: we do not ask here for the derivation [d] to be

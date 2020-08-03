@@ -30,6 +30,11 @@ Proof.
  reflexivity.
 Qed.
 
+Lemma option_nat_dec (o o' : option nat) : { o = o' }+{ o <> o' }.
+Proof.
+ decide equality. apply Nat.eq_dec.
+Defined.
+
 (** Generic boolean equalities (via Coq Classes) *)
 
 Delimit Scope eqb_scope with eqb.
@@ -414,6 +419,14 @@ Proof.
  apply max_mono; auto.
 Qed.
 
+Lemma list_max_map_ext {A} (f g : A->nat) l :
+ (forall a, In a l -> f a = g a) ->
+ list_max (map f l) = list_max (map g l).
+Proof.
+ intros H.
+ induction l; cbn in *; auto.
+Qed.
+
 Lemma list_max_in l a : In a l -> a <= list_max l.
 Proof.
  induction l; simpl.
@@ -455,6 +468,13 @@ Lemma forallb_map {A B} (f: B -> bool) (g: A -> B) l :
  forallb f (map g l) = forallb (fun x => f (g x)) l.
 Proof.
  induction l; simpl; f_equal; auto.
+Qed.
+
+Lemma forallb_ext {A} (f f':A->bool) l :
+  (forall a, In a l -> f a = f' a) -> forallb f l = forallb f' l.
+Proof.
+ induction l; intros E; cbn in *; auto. rewrite <- E by now left.
+ f_equal. apply IHl. intros a' Ha'. apply E. now right.
 Qed.
 
 (** Nth *)

@@ -230,19 +230,20 @@ intros A0 [ | -> ] genv.
   rewrite interp_nforall. intros. rewrite app_nil_r.
   destruct stk as [|m l]; try easy.
   injection H as H.
-  rewrite <- rev_length in H.
-  destruct (to_nprod _ _ H) as (v & Hv).
+  destruct (optnprod n (rev l)) as [v|] eqn:Ev.
+  2:{ exfalso. revert Ev. apply optnprod_some. now rewrite rev_length. }
   rewrite interp_form_bsubst_gen with (lenv' := phi v :: l); auto.
   + unfold th'. simpl.
     rewrite <- (interp_form_skolem_premodel_ext th M f n Phi mo); auto.
-    * rewrite <- (rev_involutive l), <- Hv. apply Hphi.
+    * apply optnprod_to_list in Ev.
+      rewrite <- (rev_involutive l), <- Ev. apply Hphi.
     * clear -Thm. destruct Thm as (((CA,_),_),_).
       rewrite nForall_check in CA. apply CA.
   + simpl nth_error. f_equal.
     cbn. rewrite eqb_refl.
-    rewrite interp_downvars, <- Hv by (now rewrite rev_length in H).
-    symmetry. clear -v. unfold Phi.
-    rewrite <- (nuncurry_ncurry phi v). cbn. apply build_args_nprod.
+    rewrite interp_downvars; auto.
+    unfold Phi. unfold napply_dft. cbn.
+    rewrite Ev. cbn. now rewrite nuncurry_ncurry.
   + destruct k; try easy.
 Qed.
 

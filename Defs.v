@@ -171,12 +171,15 @@ Qed.
 
 (** Which logic are we using : classical or intuitionistic ? *)
 
-Inductive logic := Classic | Intuiti.
+Inductive logic := K | J.
+
+Definition Classic := K.
+Definition Intuiti := J.
 
 Instance logic_eqb : Eqb logic :=
   fun l1 l2 =>
     match l1, l2 with
-    | Classic, Classic | Intuiti, Intuiti => true
+    | K, K | J, J => true
     | _, _ => false
     end.
 

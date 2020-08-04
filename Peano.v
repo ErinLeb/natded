@@ -467,3 +467,52 @@ Qed.
 Definition PeanoModel : Model nat PeanoTheory :=
  {| pre := PeanoPreModel;
     AxOk := PeanoAxOk |}.
+
+(** Essais de tactiques faisant de l'unification *)
+
+Definition first_success (f:term->term->option term) :=
+ fix first_success l l' :=
+ match l, l' with
+ | t::l, t'::l' =>
+   match f t t' with
+   | None => first_success l l'
+   | r => r
+   end
+ | _, _ => None
+ end.
+
+Fixpoint get_inst_term n t t' :=
+  match t, t' with
+  | BVar k, _ => if k =? n then Some t' else None
+  | Fun _ l, Fun _ l' => first_success (get_inst_term n) l l'
+  | _, _ => None
+  end.
+
+Fixpoint get_inst n f f' :=
+  match f, f' with
+  | Pred _ l, Pred _ l' => first_success (get_inst_term n) l l'
+  | Not f, Not f' => get_inst n f f'
+  | Op _ f1 f2, Op _ f1' f2' =>
+    match get_inst n f1 f1' with
+    | None => get_inst n f2 f2'
+    | r => r
+    end
+  | Quant _ f, f' => get_inst (S n) f f'
+  | _, _ => None
+  end.
+
+Ltac autoinst H :=
+  match type of H with
+  | Pr _ (_ ⊢ ∀ ?f) =>
+    match goal with
+    | |- Pr _ (_ ⊢ ?f') =>
+      let r := eval compute in (get_inst 0 f f') in
+      match r with
+      | Some ?u => apply R_All_e with (t := u) in H;
+                   [cbn in H; autoinst H | calc]
+      end
+    end
+  | _ => idtac
+  end.
+
+Ltac autoinstax ax := let H := fresh in axiom ax H; autoinst H; exact H.

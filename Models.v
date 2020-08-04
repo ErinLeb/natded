@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Eqdep_dec Defs Mix NameProofs Meta.
+Require Import Eqdep_dec Defs Mix NameProofs Meta ProofExamples.
 Require Import Wellformed Theories NaryFunctions Nary PreModels.
 Import ListNotations.
 Local Open Scope bool_scope.
@@ -306,6 +306,9 @@ Proof.
  apply proof_irr. cbn. now apply tinterp_carac.
 Qed.
 
+(** For a consistent and complete theory, [IsTheorem] has some nice
+    extra properties : *)
+
 Lemma Thm_Not A : WC th A ->
  IsTheorem K th (~A) <-> ~IsTheorem K th A.
 Proof.
@@ -353,49 +356,6 @@ Proof.
    apply R_Imp_i.
    apply R_Fa_e.
    eapply R_Not_e; [apply R'_Ax|]. now apply Pr_pop.
-Qed.
-
-Lemma pr_notex_allnot logic c A :
- Pr logic (c ⊢ ~∃A) <-> Pr logic (c ⊢ ∀~A).
-Proof.
- destruct (exist_fresh (fvars (c ⊢ A))) as (x,Hx).
- split.
- - intros NE.
-   apply R_All_i with x; cbn - [Names.union] in *. namedec.
-   apply R_Not_i.
-   apply R_Not_e with (∃A)%form; [|now apply Pr_pop].
-   apply R_Ex_i with (FVar x); auto using R'_Ax.
- - intros AN.
-   apply R_Not_i.
-   apply R'_Ex_e with x. cbn in *. namedec.
-   eapply R_Not_e; [apply R'_Ax|].
-   apply Pr_pop. now apply R_All_e with (t:=FVar x) in AN.
-Qed.
-
-Lemma pr_notexnot c A :
- Pr K (c ⊢ ~∃~A) <-> Pr K (c ⊢ ∀A).
-Proof.
- destruct (exist_fresh (fvars (c ⊢ A))) as (x,Hx).
- split.
- - intros NEN.
-   apply R_All_i with x; cbn - [Names.union] in *. namedec.
-   apply R_Absu; auto.
-   apply R_Not_e with (∃~A)%form; [|now apply Pr_pop].
-   apply R_Ex_i with (FVar x); auto using R'_Ax.
- - intros ALL.
-   apply R_Not_i.
-   apply R'_Ex_e with x; cbn in *. namedec.
-   eapply R_Not_e; [|eapply R'_Ax].
-   apply Pr_pop. eapply R_All_e with (t:=FVar x); eauto.
-Qed.
-
-Lemma thm_notexnot A : WC th (∀A) ->
-  IsTheorem K th (~∃~A) <-> IsTheorem K th (∀A).
-Proof.
- intros WF.
- split; intros (_ & axs & F & P); split; auto; exists axs; split; auto.
- - now apply pr_notexnot.
- - now apply pr_notexnot.
 Qed.
 
 
@@ -473,7 +433,7 @@ Proof.
        rewrite Thm_Not in Thm by (apply fclosure_wc; auto).
        rewrite <- IH in Thm; auto.
        rewrite <- finterp_bsubst0 in Thm; auto. destruct Thm. apply H.
-     * cbn. apply thm_notexnot; auto. apply (fclosure_wc _ (∀A)); auto.
+     * cbn. apply Thm_NotExNot; auto. apply (fclosure_wc _ (∀A)); auto.
    + intros Thm (t,Ht).
      rewrite finterp_bsubst0 with (u:=t); auto.
      2:{ apply term_wc_iff in Ht. apply Ht. }

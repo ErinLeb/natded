@@ -4,7 +4,8 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Mix Meta Wellformed Restrict Countable.
+Require Import Defs NameProofs Mix Meta ProofExamples Wellformed.
+Require Import Restrict Countable.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
@@ -93,6 +94,14 @@ Lemma Thm_Ex_i th A t : WC th (∃A) ->
 Proof.
  intros W (_ & l & F & P).
  split; auto. exists l. split; auto. apply R_Ex_i with t; auto.
+Qed.
+
+Lemma Thm_NotExNot th A : logic=K -> WC th (∀A) ->
+  IsTheorem th (~∃~A)%form <-> IsTheorem th (∀A)%form.
+Proof.
+ intros WF.
+ split; intros (_ & axs & F & P); split; auto; exists axs; split; auto;
+  subst; now apply NotExNot.
 Qed.
 
 
@@ -615,27 +624,6 @@ Proof.
  left. apply test_ok in E. destruct E as (n & <-). apply csts_ok.
 Qed.
 
-Lemma exex_tauto A :
- level A <= 1 ->
- Pr K ([] ⊢ ∃ ((∃ A) -> A)).
-Proof.
- intros HA.
- destruct (exist_fresh (fvars A)) as (x,Hx).
- apply R_Or_e with (∃ A)%form (~(∃ A))%form.
- - apply Excluded_Middle.
- - apply R'_Ex_e with x.
-   cbn. namedec.
-   apply R_Ex_i with (FVar x); auto.
-   cbn.
-   apply R_Imp_i. apply R_Ax. simpl; auto.
- - apply R_Ex_i with (FVar x); auto.
-   cbn.
-   rewrite form_level_bsubst_id; auto.
-   apply R_Imp_i.
-   apply R_Fa_e.
-   apply R_Not_e with (∃ A)%form; apply R_Ax; simpl; auto.
-Qed.
-
 Lemma exex_thm th A :
  logic = K ->
  WC th (∃A) -> IsTheorem th (∃ ((∃ A) -> A)).
@@ -647,7 +635,7 @@ Proof.
    + red. cbn. rewrite BC. cbn. apply BC.
    + red; red in FC. cbn in *. namedec.
  - exists []; split; auto.
-   subst logic. apply exex_tauto.
+   subst logic. apply ExEx.
    assert (Nat.pred (level A) = 0) by apply CL. omega.
 Qed.
 

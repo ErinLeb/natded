@@ -306,6 +306,50 @@ Proof.
  - intros [= <- E]. f_equal. eapply IHf; eauto.
 Qed.
 
+(** Properties of [fclosed] *)
+
+Lemma term_fclosed_spec t : fclosed t = true <-> FClosed t.
+Proof.
+ unfold FClosed.
+ induction t using term_ind'; cbn.
+ - rewrite <- Names.is_empty_spec. namedec.
+ - rewrite <- Names.is_empty_spec. reflexivity.
+ - rewrite forallb_forall. unfold Names.Empty.
+   setoid_rewrite unionmap_in. split.
+   + intros F a (t & IN & IN').
+     specialize (F t IN'). rewrite H in F; auto. now apply (F a).
+   + intros G x Hx. rewrite H; auto. intros a Ha. apply (G a).
+     now exists x.
+Qed.
+
+Lemma form_fclosed_spec f : fclosed f = true <-> FClosed f.
+Proof.
+ unfold FClosed.
+ induction f; cbn; auto.
+ - rewrite <- Names.is_empty_spec. namedec.
+ - rewrite <- Names.is_empty_spec. namedec.
+ - apply (term_fclosed_spec (Fun "" l)).
+ - rewrite lazy_andb_iff, IHf1, IHf2.
+   intuition.
+Qed.
+
+Lemma fclosed_bsubst n t f :
+ fclosed t = true -> fclosed (bsubst n t f) = fclosed f.
+Proof.
+ intros E. apply eq_true_iff_eq. rewrite !form_fclosed_spec.
+ rewrite term_fclosed_spec in E. unfold FClosed in *.
+ assert (Names.Equal (fvars (bsubst n t f)) (fvars f)).
+ { intros a. split. rewrite bsubst_fvars. namedec.
+   apply bsubst_fvars'. }
+ now rewrite H.
+Qed.
+
+Lemma fclosed_lift n f : fclosed (lift n f) = fclosed f.
+Proof.
+ apply eq_true_iff_eq. rewrite !form_fclosed_spec.
+ unfold FClosed. now rewrite fvars_lift_form.
+Qed.
+
 (** [vmap] basic results : extensionality, identity, composition *)
 
 Lemma term_vmap_ext h h' (t:term) :
@@ -1155,240 +1199,4 @@ Proof.
  - cbn in *. namedec.
  - apply R'_Ax.
  - now apply Pr_swap, Pr_pop.
-Qed.
-
-(** A few classical proofs *)
-
-Lemma DoubleNeg A :
- Pr K ([] ⊢ ~~A -> A).
-Proof.
- apply R_Imp_i.
- apply R_Absu; trivial.
- apply R_Not_e with (~A)%form; apply R_Ax; cbn; auto.
-Qed.
-
-Lemma Excluded_Middle_core logic A :
- Pr logic ([] ⊢ ~~(A\/~A)).
-Proof.
- apply R_Not_i.
- apply R_Not_e with (A\/~A)%form; [|apply R'_Ax].
- apply R_Or_i2.
- apply R_Not_i.
- apply R_Not_e with (A\/~A)%form; [|apply Pr_pop, R'_Ax ].
- apply R_Or_i1.
- apply R'_Ax.
-Qed.
-
-Lemma Excluded_Middle A :
- Pr K ([] ⊢ A\/~A).
-Proof.
- apply R_Imp_e with (~~(A\/~A))%form.
- - apply DoubleNeg.
- - apply Excluded_Middle_core.
-Qed.
-
-Lemma Peirce A B :
- Pr K ([] ⊢ ((A->B)->A)->A).
-Proof.
- apply R_Imp_i.
- apply R_Absu; trivial.
- apply R_Not_e with A; [|apply R'_Ax].
- apply Pr_swap.
- apply R'_Imp_e.
- apply R_Imp_i.
- apply R_Fa_e.
- apply R_Not_e with A; apply R_Ax; cbn; auto.
-Qed.
-
-(** Conversely, with these classical laws, we could
-    simulate the "Reductio ad absurdum" rule.
-    We do this in any logic (which amounts to say intuititionistic) *)
-
-Lemma DoubleNeg_to_Absurdum l Γ A :
- Pr l (Γ ⊢ ~~A->A) ->
- Pr l ((~A) :: Γ ⊢ False)%form -> Pr l (Γ ⊢ A).
-Proof.
- intros DNEG HYP.
- apply R_Imp_e with (~ ~ A)%form.
- - apply DNEG.
- - apply R_Not_i, HYP.
-Qed.
-
-Lemma ExcludedMiddle_to_Absurdum l Γ A :
- Pr l (Γ ⊢ A \/ ~A)%form ->
- Pr l ((~A) :: Γ ⊢ False)%form -> Pr l (Γ ⊢ A).
-Proof.
- intros EM HYP.
- apply R_Or_e with A (~ A)%form.
- - apply EM.
- - apply R'_Ax.
- - apply R_Fa_e. apply HYP.
-Qed.
-
-Lemma Pierce_to_Absurdum l Γ A :
- (forall B, Pr l (Γ ⊢ ((A->B)->A)->A)) ->
- Pr l ((~A) :: Γ ⊢ False)%form -> Pr l (Γ ⊢ A).
-Proof.
- intros PEI HYP.
- apply R_Imp_e with ((A->False)->A)%form.
- - apply PEI.
- - apply R_Imp_i.
-   apply R_Fa_e.
-   apply R_Imp_e with (~A)%form.
-   apply Pr_pop.
-   apply R_Imp_i; assumption.
-   apply R_Not_i.
-   apply R_Imp_e with A; apply R_Ax; simpl; auto.
-Qed.
-
-(** One example of classic law through its derivation *)
-
-Definition Excluded_Middle_core_deriv A :=
- Rule Not_i ([] ⊢ ~~(A\/~A))
-  [Rule Not_e ([~(A\/~A)] ⊢ False)
-    [Rule Or_i2 ([~(A\/~A)] ⊢ A\/~A)
-      [Rule Not_i ([~(A\/~A)] ⊢ ~A)
-        [Rule Not_e ([A;~(A\/~A)] ⊢ False)
-          [Rule Or_i1 ([A;~(A\/~A)] ⊢ A\/~A)
-            [Rule Ax ([A;~(A\/~A)] ⊢ A) []];
-           Rule Ax ([A;~(A\/~A)] ⊢ ~(A\/~A)) []]]];
-     Rule Ax ([~(A\/~A)] ⊢ ~(A\/~A)) []]]%form.
-
-Lemma Excluded_Middle_core_valid logic A :
- Valid logic (Excluded_Middle_core_deriv A).
-Proof.
- unfold Excluded_Middle_core_deriv.
- repeat (econstructor; eauto; unfold In; intuition).
-Qed.
-
-Definition Excluded_Middle_deriv A :=
- Rule Absu ([] ⊢ A\/~A)
-  (let '(Rule _ _ ds) := Excluded_Middle_core_deriv A in ds).
-
-Lemma Excluded_Middle_valid A :
- Valid K (Excluded_Middle_deriv A).
-Proof.
- unfold Excluded_Middle_deriv.
- unfold Excluded_Middle_core_deriv.
- repeat (econstructor; eauto; unfold In; intuition).
-Qed.
-
-(* A few examples of proofs in NJ1 and NK1 (Samuel). *)
-
-Lemma ex1 f1 f2 : Provable J ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
-Proof.
-  apply Provable_alt.
-  apply R_Imp_i.
-  apply R_Or_i1.
-  apply R_And_e1 with (B := f2).
-  apply R_Ax.
-  apply in_eq.
-Qed.
-
-Lemma ex2 f1 f2 f3 : Provable J ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
-Proof.
-  apply Provable_alt.
-  apply R_And_i.
-  + apply R_Imp_i.
-    apply R_Imp_i.
-    apply R_Imp_e with (A := f2).
-    - apply R_Imp_e with (A := f1).
-      * apply R_Ax. apply in_cons. apply in_eq.
-      * apply R_And_e1 with (B := f2). apply R_Ax. apply in_eq.
-    - apply R_And_e2 with (A := f1). apply R_Ax. apply in_eq.
-  + apply R_Imp_i.
-    apply R_Imp_i.
-    apply R_Imp_i.
-    apply R_Imp_e with (A := (f1 /\ f2)%form).
-    - apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
-    - apply R_And_i; apply R_Ax.
-      * apply in_cons. apply in_eq.
-      * apply in_eq.
-Qed.
-
-Lemma RAA f1 Γ : Pr K (Γ ⊢ ~~f1) -> Pr K (Γ ⊢ f1).
-Proof.
-  intro.
-  apply R_Absu.
-  + reflexivity.
-  + apply R_Not_e with (A := (~ f1)%form).
-    - apply R_Ax. apply in_eq.
-    - apply Pr_pop. exact H.
-Qed.
-
-Lemma DeMorgan f1 f2 Γ : Pr K (Γ ⊢ ~(~f1 /\ f2)) -> Pr K (Γ ⊢ ~~(f1 \/ ~f2)).
-Proof.
-  intro.
-  apply R_Not_i.
-  apply R_Not_e with (A := (~f1 /\ f2)%form).
-  + apply RAA with (f1 := (~f1 /\ f2)%form).
-    apply R_Not_i.
-    apply R_Not_e with (A := (f1\/~f2)%form).
-    - apply R_Or_i1.
-      apply RAA.
-      apply R_Not_i.
-      apply R_Not_e with (A := (f1\/~f2)%form).
-      * apply R_Or_i2. apply R_Not_i. apply R_Not_e with (A := (~f1 /\ f2)%form).
-        ++ apply R_And_i.
-           -- apply R_Ax. apply in_cons. apply in_eq.
-           -- apply R_Ax. apply in_eq.
-        ++ apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
-      * apply R_Ax. apply in_cons. apply in_cons. apply in_eq.
-    - apply R_Ax. apply in_cons. apply in_eq.
-  + apply Pr_pop. exact H.
-Qed.
-
-Lemma ExcludedMiddle f1 : Provable K ([] ⊢ f1 \/ ~f1).
-Proof.
-  apply Provable_alt.
-  apply RAA.
-  apply DeMorgan with (f2 := f1) (Γ := []).
-  apply R_Not_i.
-  apply R_Not_e with (A := f1).
-  + apply R_And_e2 with (A := (~f1)%form). apply R_Ax. apply in_eq.
-  + apply R_And_e1 with (B := f1). apply R_Ax. apply in_eq.
-Qed.
-
-(** Properties of [fclosed] *)
-
-Lemma term_fclosed_spec t : fclosed t = true <-> FClosed t.
-Proof.
- unfold FClosed.
- induction t using term_ind'; cbn.
- - rewrite <- Names.is_empty_spec. namedec.
- - rewrite <- Names.is_empty_spec. reflexivity.
- - rewrite forallb_forall. unfold Names.Empty.
-   setoid_rewrite unionmap_in. split.
-   + intros F a (t & IN & IN').
-     specialize (F t IN'). rewrite H in F; auto. now apply (F a).
-   + intros G x Hx. rewrite H; auto. intros a Ha. apply (G a).
-     now exists x.
-Qed.
-
-Lemma form_fclosed_spec f : fclosed f = true <-> FClosed f.
-Proof.
- unfold FClosed.
- induction f; cbn; auto.
- - rewrite <- Names.is_empty_spec. namedec.
- - rewrite <- Names.is_empty_spec. namedec.
- - apply (term_fclosed_spec (Fun "" l)).
- - rewrite lazy_andb_iff, IHf1, IHf2.
-   intuition.
-Qed.
-
-Lemma fclosed_bsubst n t f :
- fclosed t = true -> fclosed (bsubst n t f) = fclosed f.
-Proof.
- intros E. apply eq_true_iff_eq. rewrite !form_fclosed_spec.
- rewrite term_fclosed_spec in E. unfold FClosed in *.
- assert (Names.Equal (fvars (bsubst n t f)) (fvars f)).
- { intros a. split. rewrite bsubst_fvars. namedec.
-   apply bsubst_fvars'. }
- now rewrite H.
-Qed.
-
-Lemma fclosed_lift n f : fclosed (lift n f) = fclosed f.
-Proof.
- apply eq_true_iff_eq. rewrite !form_fclosed_spec.
- unfold FClosed. now rewrite fvars_lift_form.
 Qed.

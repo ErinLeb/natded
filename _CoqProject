@@ -12,6 +12,7 @@ NameProofs.v
 Subst.v
 Restrict.v
 Meta.v
+ProofExamples.v
 Wellformed.v
 Equiv.v
 Equiv2.v

@@ -460,7 +460,7 @@ Qed.
 Lemma tinterp_premodelext sg sg' M (mo:PreModel M sg) (mo':PreModel M sg') :
  PreModelExtend mo mo' ->
  forall t, check sg t = true ->
-  forall g l, tinterp mo g l t = tinterp mo' g l t.
+  forall G L, tinterp mo G L t = tinterp mo' G L t.
 Proof.
  intros (SO,SF,SP).
  induction t as [ | | f l IH] using term_ind'; cbn.
@@ -476,7 +476,7 @@ Qed.
 Lemma finterp_premodelext sg sg' M (mo:PreModel M sg) (mo':PreModel M sg') :
  PreModelExtend mo mo' ->
  forall A, check sg A = true ->
- forall g l, finterp mo g l A <-> finterp mo' g l A.
+ forall G L, finterp mo G L A <-> finterp mo' G L A.
 Proof.
  intros ME.
  induction A; cbn.

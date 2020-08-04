@@ -4,7 +4,6 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-
 Require Import ChoiceFacts.
 Require Import Defs NameProofs Mix Meta.
 Require Import Wellformed Theories NaryFunctions Nary PreModels Models.
@@ -167,7 +166,7 @@ Definition Skolem_model_AxOk A f n
  M (mo:Model M th)(phi : M^n -> M)(Hphi : interp_phi mo phi A) :
   forall A0 : formula,
   IsAxiom (Skolem_ext th A f n E Thm) A0 ->
-  forall G, finterp (Skolem_premodel mo f n (ncurry phi)) G [] A0.
+  interp (Skolem_premodel mo f n (ncurry phi)) A0.
 Proof.
 set (th' := Skolem_ext _ _ _ _ _ _) in *.
 set (Phi := ncurry phi).

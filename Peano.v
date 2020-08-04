@@ -406,15 +406,13 @@ Definition PeanoPreModel : PreModel nat PeanoTheory :=
     predsOk := PeanoPreds_ok |}.
 
 Lemma PeanoAxOk A :
-  IsAxiom PeanoTheory A ->
-  forall G, finterp PeanoPreModel G [] A.
+  IsAxiom PeanoTheory A -> interp PeanoPreModel A.
 Proof.
  unfold PeanoTheory. simpl.
  unfold PeanoAx.IsAx.
- intros [IN|(B & -> & CK & CL)].
+ intros [IN|(B & -> & CK & CL)] G.
  - compute in IN. intuition; subst; cbn; intros; subst; omega.
- - intros G.
-   unfold PeanoAx.induction_schema.
+ - unfold PeanoAx.induction_schema.
    apply interp_nforall.
    intros stk Len. rewrite app_nil_r. cbn.
    intros (Base,Step).

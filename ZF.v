@@ -598,11 +598,11 @@ Proof.
    intros [|k]; cbn -[EQ]; auto with zfc.
 Qed.
 
-Lemma ZFAxOk A : IsAxiom ZF A -> forall G, finterp preZF G [] A.
+Lemma ZFAxOk A : IsAxiom ZF A -> interp preZF A.
 Proof.
  unfold ZF. simpl.
  unfold ZFAx.IsAx.
- intros [HA|[(B & -> & CK & CL)|(B & -> & CK & CL)]].
+ intros [HA|[(B & -> & CK & CL)|(B & -> & CK & CL)]] G.
  - unfold axioms_list in HA.
    simpl in HA; intuition; subst; cbn -[EQ IN].
    + exact EQ_refl.
@@ -616,7 +616,6 @@ Proof.
    + intros a. exists (Power a). apply Power_spec.
    + exists Omega. apply Omega_spec.
  - (* separation *)
-   intros G.
    unfold separation_schema.
    apply interp_nforall. intros stk Len. rewrite app_nil_r. cbn.
    setoid_rewrite finterp_lift. cbn.
@@ -626,7 +625,7 @@ Proof.
    { intros u v E. apply finterp_zf_congr; auto.
      destruct k; cbn -[EQ]; auto with zfc. }
  - (* replacement *)
-   intros G. unfold replacement_schema.
+   unfold replacement_schema.
    apply interp_nforall. intros stk Len. rewrite app_nil_r.
    cbn -[exists_uniq].
    setoid_rewrite finterp_lift. cbn -[exists_uniq].

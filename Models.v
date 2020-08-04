@@ -11,15 +11,22 @@ Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
+(** We'll frequently consider interpretations of formulas over all
+    possible global environments, so here's a convenient shortcut *)
+
+Definition interp {sign M} (mo : PreModel M sign) A :=
+  forall G, finterp mo G [] A.
+
+(** A Model is a PreModel that satisfies all the axioms of the theory. *)
+
 Record Model (M:Type)(th : theory) :=
  { pre :> PreModel M th;
-   AxOk : forall A, IsAxiom th A ->
-                    forall G, finterp pre G [] A }.
+   AxOk : forall A, IsAxiom th A -> interp pre A }.
 
 Lemma validity_theorem logic th :
  CoqRequirements logic ->
  forall T, IsTheorem logic th T ->
- forall M (mo : Model M th) G, finterp mo G [] T.
+ forall M (mo : Model M th), interp mo T.
 Proof.
  intros CR T Thm M mo G.
  rewrite thm_alt in Thm.
@@ -513,9 +520,7 @@ Proof.
  red in F. intuition.
 Qed.
 
-Lemma axioms_ok A :
-  IsAxiom th A ->
-  forall G, finterp mo G [] A.
+Lemma axioms_ok A : IsAxiom th A -> interp mo A.
 Proof.
  intros HA G. apply interp_carac_closed.
  apply WCAxiom; auto.

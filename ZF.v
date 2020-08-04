@@ -122,12 +122,6 @@ Definition IsAx A :=
              check ZFSign B = true /\
              FClosed B).
 
-Lemma pred_max a b :
-Nat.pred (Nat.max a b) = Nat.max (Nat.pred a) (Nat.pred b).
-Proof.
-symmetry. apply Nat.max_monotone. red. red. auto with *.
-Qed.
-
 Lemma WCAx A : IsAx A -> WC ZFSign A.
 Proof.
  intros [ IN | [ (B & -> & HB & HB') | (C & -> & HC & HC') ] ].

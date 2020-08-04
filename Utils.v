@@ -374,6 +374,12 @@ Proof.
  omega with *.
 Qed.
 
+Lemma pred_max a b :
+ Nat.pred (Nat.max a b) = Nat.max (Nat.pred a) (Nat.pred b).
+Proof.
+symmetry. apply Nat.max_monotone. red. red. auto with *.
+Qed.
+
 Lemma list_max_le l p :
  list_max l <= p <-> (forall n, In n l -> n <= p).
 Proof.

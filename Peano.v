@@ -369,6 +369,45 @@ Proof.
   + apply SuccRight.
 Qed.
 
+Lemma Predecessor : IsTheorem J PeanoTheory (∀ (~#0=Zero -> ∃ Succ(#0) = #1)).
+Proof.
+ thm.
+ rec.
+ - apply R_Imp_i.
+   apply R_Fa_e.
+   eapply R_Not_e; [ | apply R'_Ax].
+   now inst_axiom ax1 [Zero].
+ - app_R_All_i "x" x.
+   apply R_Imp_i.
+   apply R_Imp_i.
+   apply R_Ex_i with x. now inst_axiom ax1 [Succ(x)].
+Qed.
+
+Lemma Middle : IsTheorem J PeanoTheory (∀∃ (#0+#0 = #1 \/ Succ(#0+#0) = #1)).
+Proof.
+ eapply ModusPonens; [ | exact SuccRight].
+ thm.
+ set (SR := ∀ _).
+ rec.
+ - apply R_Ex_i with Zero. cbn.
+   apply R_Or_i1. now inst_axiom ax9 [Zero].
+ - app_R_All_i "x" x.
+   apply R_Imp_i.
+   eapply R'_Ex_e with "y". calc. cbn. set (y := FVar "y") in *.
+   fold x.
+   apply R'_Or_e.
+   + apply R_Ex_i with y. cbn. fold x; fold y.
+     apply R_Or_i2. ahered. apply R'_Ax.
+   + apply R_Ex_i with (Succ y). cbn. fold x; fold y.
+     apply R_Or_i1.
+     trans (Succ (y+Succ(y))).
+     * now inst_axiom ax10 [y;Succ(y)].
+     * ahered.
+       trans (Succ (y+y)).
+       { sym. inst_axiom SR [y;y]. }
+       { apply R'_Ax. }
+Qed.
+
 (** A Coq model of this Peano theory, based on the [nat] type *)
 
 Definition PeanoFuns : string -> optnfun nat nat :=

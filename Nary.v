@@ -29,18 +29,6 @@ Proof.
  induction n; cbn; auto. destruct v; cbn; auto.
 Qed.
 
-Fixpoint nprod_map {A B} (f:A->B) {n} : A^n -> B^n :=
-  match n with
-  | 0 => fun _ => tt
-  | S n => fun '(a,v) => (f a, nprod_map f v)
-  end.
-
-Lemma nprod_map_to_list {A B} (f:A->B) {n} (v:A^n) :
- nprod_to_list (nprod_map f v) = map f (nprod_to_list v).
-Proof.
- induction n; cbn; destruct v; cbn; f_equal; auto.
-Qed.
-
 (** A variant of [nprod_of_list] with a precise size as target *)
 
 Fixpoint optnprod {A} n (l:list A) : option (A^n) :=

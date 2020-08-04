@@ -139,10 +139,10 @@ Variable th : theory.
 Variable NC : NewCsts th.
 
 Definition Skolem_premodel {sign M} (mo:PreModel M sign)
- f n (phi : M^^n-->M) : PreModel M (Skolem_sign sign f n).
+ f n (phi : M^n->M) : PreModel M (Skolem_sign sign f n).
 Proof.
 set (sign' := Skolem_sign _ _ _).
-set (funs' := fun s => if s =? f then NFun n phi else funs mo s).
+set (funs' := fun s => if s =? f then NFun n (ncurry phi) else funs mo s).
 eapply (Build_PreModel sign' (someone mo) funs' (preds mo)); intros s.
 - unfold funs'. cbn. case eqbspec; intros; auto using funsOk.
 - cbn. apply predsOk.
@@ -166,12 +166,11 @@ Definition Skolem_model_AxOk A f n
  M (mo:Model M th)(phi : M^n -> M)(Hphi : interp_phi mo phi A) :
   forall A0 : formula,
   IsAxiom (Skolem_ext th A f n E Thm) A0 ->
-  interp (Skolem_premodel mo f n (ncurry phi)) A0.
+  interp (Skolem_premodel mo f n phi) A0.
 Proof.
 set (th' := Skolem_ext _ _ _ _ _ _) in *.
-set (Phi := ncurry phi).
 set (mo' := Skolem_premodel _ _ _ _).
-assert (Hmo' := Skolem_premodelext _ _ mo f n Phi E).
+assert (Hmo' := Skolem_premodelext _ _ mo f n phi E).
 intros Ax [ | -> ] G.
 - rewrite <- finterp_premodelext; try exact Hmo'.
   now apply AxOk. now apply WCAxiom.
@@ -191,8 +190,7 @@ intros Ax [ | -> ] G.
   + simpl nth_error. f_equal.
     cbn. rewrite eqb_refl.
     rewrite interp_downvars; auto.
-    unfold Phi. unfold napply_dft. cbn.
-    rewrite Ev. cbn. now rewrite nuncurry_ncurry.
+    unfold napply_dft. cbn. rewrite Ev. cbn. now rewrite nuncurry_ncurry.
   + destruct k; try easy.
 Qed.
 

@@ -4,13 +4,16 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs Mix NameProofs Meta Restrict NaryFunctions Nary.
+Require Import Defs Mix NameProofs Meta Restrict Theories NaryFunctions Nary.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope eqb_scope.
 
 Set Implicit Arguments.
+
+Implicit Types t u : term.
+Implicit Types A B : formula.
 
 (** A pre-model (also called a Σ-structure) is a non-empty domain M
     alongside some interpretations for function symbols and predicate
@@ -51,25 +54,28 @@ Record PreModel (M:Type)(sign:signature) :=
     as a remainder againts obvious goofs. *)
 
 Section PREMODEL.
- Variable sign : signature.
- Variable M:Type.
- Variable Mo : PreModel M sign.
+Variable sign : signature.
+Variable M:Type.
+Variable Mo : PreModel M sign.
+
+Implicit Types G : variable -> M. (* Global environment, for Free Var *)
+Implicit Types L : list M. (* Local environment, for Bounded Var *)
 
 (** In case of ill-formed term (w.r.t. signature [sign]), we'll
     use the arbitrary point [Mo.(someone)]. Same if we encounter
     a local variable larger than the local environment *)
 Definition BogusPoint := Mo.(someone).
 
-Definition interp_term G L :=
-  fix interp t :=
+Definition tinterp G L :=
+  fix tinterp t :=
     match t with
     | FVar x => G x
     | BVar n => nth n L BogusPoint
-    | Fun f args => napply_dft (funs Mo f) (List.map interp args) BogusPoint
+    | Fun f args => napply_dft (funs Mo f) (map tinterp args) BogusPoint
     end.
 
-Definition interp_op o :=
- match o with
+Definition ointerp op :=
+ match op with
  | And => and
  | Or => or
  | Imp => (fun p q : Prop => p -> q)
@@ -79,125 +85,126 @@ Definition interp_op o :=
     evaluate to the arbitrary proposition [False]. *)
 Definition BogusProp := Logic.False.
 
-Definition interp_form G :=
-  fix interp L f :=
+Definition finterp G :=
+  fix finterp L f :=
     match f with
     | True => Logic.True
     | False => Logic.False
-    | Not f => ~(interp L f)
-    | Op o f1 f2 => interp_op o (interp L f1) (interp L f2)
+    | Not f => ~(finterp L f)
+    | Op o f1 f2 => ointerp o (finterp L f1) (finterp L f2)
     | Pred p args =>
-      napply_dft (preds Mo p) (List.map (interp_term G L) args) BogusProp
-    | Quant All f => forall (m:M), interp (m::L) f
-    | Quant Ex f => exists (m:M), interp (m::L) f
+      napply_dft (preds Mo p) (map (tinterp G L) args) BogusProp
+    | Quant All f => forall (m:M), finterp (m::L) f
+    | Quant Ex f => exists (m:M), finterp (m::L) f
     end.
 
-Definition interp_ctx G L l :=
-  forall f, In f l -> interp_form G L f.
+Definition cinterp G L (c:context) := forall A, In A c -> finterp G L A.
 
-Definition interp_seq G L '(Γ⊢C) :=
-  interp_ctx G L Γ -> interp_form G L C.
+Definition sinterp G L '(Γ⊢C) := cinterp G L Γ -> finterp G L C.
 
-Lemma interp_term_ext genv genv' lenv t :
- (forall v, Names.In v (fvars t) -> genv v = genv' v) ->
- interp_term genv lenv t = interp_term genv' lenv t.
+Global Instance ointerp_m :
+ Proper (eq ==> iff ==> iff ==> iff) ointerp.
+Proof.
+ intros o o' <- p p' Hp q q' Hq. destruct o; cbn; now rewrite Hp, Hq.
+Qed.
+
+Lemma interp_quant q G G' L L' A A' :
+ (forall m, finterp G (m::L) A <-> finterp G' (m::L') A') ->
+ finterp G L (Quant q A) <-> finterp G' L' (Quant q A').
+Proof.
+ intros E. cbn. destruct q; now setoid_rewrite E.
+Qed.
+
+Lemma tinterp_ext G L G' L' t :
+ (forall v, Names.In v (fvars t) -> G v = G' v) ->
+ (forall k, k < level t -> nth_error L k = nth_error L' k) ->
+ tinterp G L t = tinterp G' L' t.
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn;
-  intros H; auto with set.
- f_equal. apply map_ext_in. eauto with set.
-Qed.
-
-Lemma interp_form_ext genv genv' lenv f :
- (forall v, Names.In v (fvars f) -> genv v = genv' v) ->
- interp_form genv lenv f <-> interp_form genv' lenv f.
-Proof.
- revert lenv.
- induction f; cbn; auto; intros; f_equal; auto with set.
- - f_equiv. apply map_ext_in. eauto using interp_term_ext with set.
- - rewrite IHf; intuition.
- - destruct o; cbn; rewrite IHf1, IHf2; intuition.
- - destruct q.
-   + split; intros Hm m;
-     [rewrite <-IHf|rewrite IHf]; auto with set.
-   + split; intros (m,Hm); exists m;
-     [rewrite <-IHf|rewrite IHf]; auto with set.
-Qed.
-
-Lemma interp_ctx_ext genv genv' lenv c :
- (forall v, Names.In v (fvars c) -> genv v = genv' v) ->
- interp_ctx genv lenv c <-> interp_ctx genv' lenv c.
-Proof.
- intros E.
- unfold interp_ctx.
- split; intros H f Hf.
- - rewrite <- (interp_form_ext genv); auto with set.
-   intros v Hv. apply E. unfold fvars, fvars_list.
-   eauto with set.
- - rewrite (interp_form_ext genv); auto with set.
-   intros v Hv. apply E. unfold fvars, fvars_list.
-   eauto with set.
-Qed.
-
-Lemma interp_term_more_lenv genv lenv lenv' t :
- level t <= List.length lenv ->
- interp_term genv (lenv++lenv') t = interp_term genv lenv t.
-Proof.
- induction t as [ | |f l IH] using term_ind'; cbn; intros H.
- - reflexivity.
- - rewrite app_nth1; trivial.
- - f_equiv. apply map_ext_in. rewrite list_max_map_le in H. auto.
-Qed.
-
-Lemma interp_term_closed genv lenv t :
- BClosed t ->
- interp_term genv lenv t = interp_term genv [] t.
-Proof.
- unfold BClosed. intros E.
- apply (interp_term_more_lenv genv [] lenv). simpl. auto with *.
-Qed.
-
-Lemma interp_form_more_lenv genv lenv lenv' f :
- level f <= List.length lenv ->
- interp_form genv (lenv++lenv') f <-> interp_form genv lenv f.
-Proof.
- revert lenv.
- induction f; cbn; intros lenv LE; try tauto.
- - f_equiv. apply map_ext_in. intros a Ha.
-   apply interp_term_more_lenv.
-   transitivity (list_max (map level l)); auto.
+  intros EG EL; auto with set.
+ - apply nth_error_ext; auto.
+ - f_equal. apply map_ext_in.
+   intros a Ha. apply IH; eauto with set.
+   intros k LT. apply EL. apply Nat.lt_le_trans with (level a); auto.
    now apply list_max_map_in.
- - now rewrite (IHf lenv).
- - apply Nat.max_lub_iff in LE.
-   destruct o; cbn; rewrite (IHf1 lenv), (IHf2 lenv); intuition.
- - destruct q.
-   + split; intros Hm' m'.
-     * rewrite <-(IHf (m'::lenv)); simpl; auto. omega.
-     * rewrite (IHf (m'::lenv)); simpl; auto. omega.
-   + split; intros (m',Hm'); exists m'.
-     * rewrite (IHf (m'::lenv)) in Hm'; simpl; auto. omega.
-     * rewrite (IHf (m'::lenv)); simpl; auto. omega.
 Qed.
 
-Lemma interp_form_closed genv lenv f :
- BClosed f ->
- interp_form genv lenv f <-> interp_form genv [] f.
+Lemma finterp_ext G L G' L' A :
+ (forall v, Names.In v (fvars A) -> G v = G' v) ->
+ (forall k, k < level A -> nth_error L k = nth_error L' k) ->
+ finterp G L A <-> finterp G' L' A.
 Proof.
- unfold BClosed. intros E.
- apply (interp_form_more_lenv genv [] lenv). simpl. omega.
+ revert L L'.
+ induction A; cbn; intros L L' EG EL;
+  apply interp_quant || f_equiv; auto with set.
+ - apply map_ext_in.
+   intros a Ha. apply tinterp_ext; eauto with set.
+   intros k LT. apply EL. apply Nat.lt_le_trans with (level a); auto.
+   now apply list_max_map_in.
+ - setoid_rewrite Nat.max_lt_iff in EL. apply IHA1; eauto with set.
+ - setoid_rewrite Nat.max_lt_iff in EL. apply IHA2; eauto with set.
+ - intros m. apply IHA; eauto with set.
+   destruct k; cbn; auto. intros H. apply EL. omega.
 Qed.
 
-Lemma interp_lift genv lenv m t :
- interp_term genv (m :: lenv) (lift 0 t) = interp_term genv lenv t.
+Lemma cinterp_ext G L G' L' (c:context) :
+ (forall v, Names.In v (fvars c) -> G v = G' v) ->
+ (forall k, k < level c -> nth_error L k = nth_error L' k) ->
+ cinterp G L c <-> cinterp G' L' c.
 Proof.
- induction t as [ | |f l IH] using term_ind'; cbn; auto.
- f_equiv. rewrite map_map. apply map_ext_iff; auto.
+ intros EG EL.
+ split; intros H f Hf.
+ - rewrite <- (finterp_ext G L); auto.
+   + intros v Hv. apply EG. unfold fvars, fvars_list. eauto with set.
+   + intros k Hk. apply EL. unfold level, level_list.
+     apply Nat.lt_le_trans with (level f); auto.
+     now apply list_max_map_in.
+ - rewrite (finterp_ext G L); auto.
+   + intros v Hv. apply EG. unfold fvars, fvars_list. eauto with set.
+   + intros k Hk. apply EL. unfold level, level_list.
+     apply Nat.lt_le_trans with (level f); auto.
+     now apply list_max_map_in.
 Qed.
 
-Lemma interp_term_bsubst_gen genv lenv lenv' u m n t :
- interp_term genv lenv u = m ->
- nth_error lenv' n = Some m ->
- (forall k, k<>n -> nth_error lenv' k = nth_error lenv k) ->
- interp_term genv lenv (bsubst n u t) = interp_term genv lenv' t.
+Lemma tinterp_bclosed G L t :
+ BClosed t ->
+ tinterp G L t = tinterp G [] t.
+Proof.
+ intros BC. apply tinterp_ext; auto. intro k. rewrite BC. inversion 1.
+Qed.
+
+Lemma finterp_bclosed G L A :
+ BClosed A ->
+ finterp G L A <-> finterp G [] A.
+Proof.
+ intros BC. apply finterp_ext; auto. intro k. rewrite BC. inversion 1.
+Qed.
+
+Lemma tinterp_lift G L t n :
+ tinterp G L (lift n t) = tinterp G (list_drop n L) t.
+Proof.
+ induction t using term_ind'; cbn; auto.
+ - case Nat.leb_spec; cbn; intros.
+   + now rewrite list_drop_nth_high.
+   + now rewrite list_drop_nth_low.
+ - f_equal. rewrite map_map. apply map_ext_in; auto.
+Qed.
+
+Lemma finterp_lift G L A n :
+ finterp G L (lift n A) <-> finterp G (list_drop n L) A.
+Proof.
+ revert n L; induction A; cbn; intros; auto; try easy.
+ - f_equiv. rewrite map_map. apply map_ext; auto using tinterp_lift.
+ - f_equiv; auto.
+ - f_equiv; auto.
+ - apply interp_quant. intros m. apply IHA.
+Qed.
+
+Lemma tinterp_bsubst_gen G L L' u m n t :
+ tinterp G L u = m ->
+ nth_error L' n = Some m ->
+ (forall k, k<>n -> nth_error L' k = nth_error L k) ->
+ tinterp G L (bsubst n u t) = tinterp G L' t.
 Proof.
  revert u.
  induction t as [ | |f l IH] using term_ind'; cbn; intros u Hm Hn Hk.
@@ -208,103 +215,88 @@ Proof.
  - f_equiv. rewrite map_map. apply map_ext_in; auto.
 Qed.
 
-Lemma interp_term_bsubst genv lenv u m n t :
+Lemma tinterp_bsubst G L u m n t :
  level t <= S n ->
- List.length lenv = n ->
+ length L = n ->
  BClosed u ->
- interp_term genv [] u = m ->
- interp_term genv (lenv++[m]) t =
-  interp_term genv lenv (bsubst n u t).
+ tinterp G [] u = m ->
+ tinterp G (L++[m]) t = tinterp G L (bsubst n u t).
 Proof.
  intros LE Len BC Hu.
- symmetry. eapply interp_term_bsubst_gen; eauto.
+ symmetry. eapply tinterp_bsubst_gen; eauto.
  - rewrite nth_error_app2; rewrite Len; auto.
    rewrite Nat.sub_diag; simpl. f_equal. rewrite <- Hu. symmetry.
-   apply interp_term_closed; auto.
+   apply tinterp_bclosed; auto.
  - intro k. rewrite Nat.lt_gt_cases. intros [LT|GT].
    + rewrite nth_error_app1; auto. omega.
    + rewrite !(proj2 (nth_error_None _ _)); simpl; auto. omega.
      rewrite app_length; simpl. omega.
 Qed.
 
-Lemma interp_form_bsubst_gen genv lenv lenv' u m n f :
- interp_term genv lenv u = m ->
- nth_error lenv' n = Some m ->
- (forall k, k<>n -> nth_error lenv' k = nth_error lenv k) ->
- interp_form genv lenv (bsubst n u f) <-> interp_form genv lenv' f.
+Lemma finterp_bsubst_gen G L L' u m n A :
+ tinterp G L u = m ->
+ nth_error L' n = Some m ->
+ (forall k, k<>n -> nth_error L' k = nth_error L k) ->
+ finterp G L (bsubst n u A) <-> finterp G L' A.
 Proof.
- revert n u lenv lenv'.
- induction f; cbn; auto; intros; f_equal; auto; try reflexivity.
- - f_equiv. rewrite map_map. apply map_ext_in. intros a _.
-   eapply interp_term_bsubst_gen; eauto.
- - rewrite (IHf n u lenv lenv'); intuition.
- - destruct o; cbn;
-    rewrite (IHf1 n u lenv lenv'), (IHf2 n u lenv lenv'); intuition.
- - destruct q.
-   + split; intros Hm' m'; specialize (Hm' m').
-     * rewrite IHf in Hm'; eauto.
-       now rewrite interp_lift.
-       intros [|k]; simpl; auto.
-     * rewrite (IHf _ _ _ (m'::lenv')); auto. now rewrite interp_lift.
-       intros [|k]; simpl; auto.
-   + split; intros (m',Hm'); exists m'.
-     * rewrite (IHf _ _ _ (m'::lenv')) in Hm'; auto.
-       now rewrite interp_lift.
-       intros [|k]; simpl; auto.
-     * rewrite (IHf _ _ _ (m'::lenv')); auto. now rewrite interp_lift.
-       intros [|k]; simpl; auto.
+ revert n u L L'.
+ induction A; cbn; auto; intros; f_equal; auto; try reflexivity.
+ - f_equiv. rewrite map_map. apply map_ext. intros a.
+   eapply tinterp_bsubst_gen; eauto.
+ - f_equiv; auto.
+ - f_equiv; auto.
+ - apply interp_quant. intros m'. apply IHA; auto.
+   now rewrite tinterp_lift.
+   intros [|k]; simpl; auto.
 Qed.
 
-Lemma interp_form_bsubst genv lenv u m n f :
- level f <= S n ->
- List.length lenv = n ->
+Lemma finterp_bsubst G L u m n A :
+ level A <= S n ->
+ length L = n ->
  BClosed u ->
- interp_term genv [] u = m ->
- interp_form genv (lenv++[m]) f <-> interp_form genv lenv (bsubst n u f).
+ tinterp G [] u = m ->
+ finterp G (L++[m]) A <-> finterp G L (bsubst n u A).
 Proof.
  intros LE Len BC Hu.
- symmetry. eapply interp_form_bsubst_gen; eauto.
+ symmetry. eapply finterp_bsubst_gen; eauto.
  - rewrite nth_error_app2; rewrite Len; auto.
    rewrite Nat.sub_diag; simpl. f_equal. rewrite <- Hu. symmetry.
-   apply interp_term_closed; auto.
+   apply tinterp_bclosed; auto.
  - intro k. rewrite Nat.lt_gt_cases. intros [LT|GT].
    + rewrite nth_error_app1; auto. omega.
    + rewrite !(proj2 (nth_error_None _ _)); simpl; auto. omega.
      rewrite app_length; simpl. omega.
 Qed.
 
-Lemma interp_form_bsubst0 genv u m f :
- level f <= 1 ->
+Lemma finterp_bsubst0 G u m A :
+ level A <= 1 ->
  BClosed u ->
- interp_term genv [] u = m ->
- interp_form genv [m] f <-> interp_form genv [] (bsubst 0 u f).
+ tinterp G [] u = m ->
+ finterp G [m] A <-> finterp G [] (bsubst 0 u A).
 Proof.
- intros. apply (@interp_form_bsubst genv [] u m 0 f); auto.
+ intros. apply (@finterp_bsubst G [] u m 0 A); auto.
 Qed.
 
 Ltac prove_ext := intros ? ?; cbn; case eqbspec; auto; namedec.
 
-Lemma interp_form_bsubst_adhoc genv m x f :
- level f <= 1 ->
- ~Names.In x (fvars f) ->
- interp_form genv [m] f <->
- interp_form (fun v => if v =? x then m else genv v) []
-  (bsubst 0 (FVar x) f).
+Lemma finterp_bsubst_adhoc G m x A :
+ level A <= 1 ->
+ ~Names.In x (fvars A) ->
+ finterp G [m] A <->
+ finterp (fun v => if v =? x then m else G v) [] (bsubst 0 (FVar x) A).
 Proof.
  intros.
- rewrite <- interp_form_bsubst0 with (m:=m); auto.
- - apply interp_form_ext. prove_ext.
+ rewrite <- finterp_bsubst0 with (m:=m); auto.
+ - apply finterp_ext. prove_ext. auto.
  - cbn. now rewrite eqb_refl.
 Qed.
 
-Lemma interp_ctx_cons genv f c :
- interp_form genv [] f ->
- interp_ctx genv [] c ->
- interp_ctx genv [] (f::c).
+Lemma cinterp_cons G L A (c:context) :
+ finterp G L A -> cinterp G L c -> cinterp G L (A::c).
 Proof.
  intros Hf Hc f' [<-|Hf']; auto.
 Qed.
-Hint Resolve interp_ctx_cons.
+Hint Resolve cinterp_cons.
 
 Definition CoqRequirements lg :=
  match lg with
@@ -328,10 +320,10 @@ Ltac instlevel :=
    specialize (H LV)
  end.
 
-Ltac tryinstgenv :=
+Ltac tryinstG :=
  repeat match goal with
- | H : (forall (genv:variable->M), _), genv: variable->M |- _ =>
-   specialize (H genv)
+ | H : (forall (G:variable->M), _), G: variable->M |- _ =>
+   specialize (H G)
  end.
 
 Ltac substClaim :=
@@ -342,32 +334,31 @@ Lemma correctness (logic:Defs.logic)(d:derivation) :
  CoqRequirements logic ->
  Valid logic d ->
  BClosed d ->
- forall genv, interp_seq genv [] (claim d).
+ forall G, sinterp G [] (claim d).
 Proof.
  unfold BClosed.
  intros CR.
- induction 1; intros CL genv Hc; substClaim;
+ induction 1; intros CL G Hc; substClaim;
   cbn in CL; rewrite ?eqb_eq, ?max_0 in CL;
-  instlevel; cbn in *; try (tryinstgenv; intuition eauto 3; fail).
+  instlevel; cbn in *; try (tryinstG; intuition eauto 3; fail).
  - intros m.
-   rewrite interp_form_bsubst_adhoc with (x:=x) by auto with *.
+   rewrite finterp_bsubst_adhoc with (x:=x) by auto with *.
    apply IHValid.
-   rewrite <- (interp_ctx_ext genv); auto with *.
- - rewrite <- interp_form_bsubst0 with (u:=t); auto with *.
+   rewrite <- (cinterp_ext G); eauto with *.
+ - rewrite <- finterp_bsubst0 with (u:=t); auto with *.
    destruct d as (?,s,?); cbn in *; subst s; cbn in *; omega with *.
- - exists (interp_term genv [] t).
-   rewrite interp_form_bsubst0 with (u:=t); auto with *.
- - destruct (IHValid1 genv) as (m & Hm); auto.
-   rewrite interp_form_bsubst_adhoc with (x:=x) in Hm; [ | | namedec].
-   erewrite interp_form_ext.
+ - exists (tinterp G [] t).
+   rewrite finterp_bsubst0 with (u:=t); auto with *.
+ - destruct (IHValid1 G) as (m & Hm); auto.
+   rewrite finterp_bsubst_adhoc with (x:=x) in Hm; [ | | namedec].
+   erewrite finterp_ext.
    eapply IHValid2; eauto.
-   apply interp_ctx_cons. apply Hm.
-   now rewrite <- (interp_ctx_ext genv) by prove_ext.
-   prove_ext.
+   apply cinterp_cons. apply Hm.
+   rewrite <- (cinterp_ext G); eauto. prove_ext. prove_ext. auto.
    destruct d1 as (?,s,?); cbn in *; subst s; cbn in *; omega with *.
  - subst logic.
-   destruct (CR (interp_form genv [] A)); auto.
-   destruct (IHValid genv); auto.
+   destruct (CR (finterp G [] A)); auto.
+   destruct (IHValid G); auto.
 Qed.
 
 (** We hence cannot have a valid proof of False in an empty context. *)
@@ -386,8 +377,8 @@ Proof.
  { unfold d', Claim. now rewrite claim_forcelevel, E. }
  clearbody d'.
  red in E'.
- set (genv := fun (_:variable) => Mo.(someone)).
- assert (interp_seq genv [] (claim d')).
+ set (G := fun (_:variable) => Mo.(someone)).
+ assert (sinterp G [] (claim d')).
  { apply correctness with logic; auto. }
  rewrite E' in H. cbn in *. apply H. intros A. destruct 1.
 Qed.
@@ -423,11 +414,11 @@ Proof.
  rewrite IHn. omega.
 Qed.
 
-Lemma interp_nforall {sign}{M}(Mo : PreModel M sign) genv lenv n f :
-  interp_form Mo genv lenv (nForall n f) <->
-  (forall stk, length stk = n -> interp_form Mo genv (stk++lenv) f).
+Lemma interp_nforall {sign}{M}(Mo : PreModel M sign) G L n A :
+  finterp Mo G L (nForall n A) <->
+  (forall stk, length stk = n -> finterp Mo G (stk++L) A).
 Proof.
- revert lenv.
+ revert L.
  induction n; simpl.
  - split.
    + now intros H [| ].
@@ -439,6 +430,65 @@ Proof.
      rewrite app_length. simpl. rewrite Nat.add_1_r. intros [= E].
      rewrite <- app_assoc. simpl. apply IHn; auto.
    + intros H m. apply IHn. intros stk Len.
-     change (m::lenv) with ([m]++lenv)%list. rewrite app_assoc.
+     change (m::L) with ([m]++L)%list. rewrite app_assoc.
      apply H. rewrite app_length. simpl. omega.
+Qed.
+
+(** Premodel extension *)
+
+Definition optnfun_finer {X Y} (f f' : optnfun X Y) :=
+ f=Nop \/ f = f'.
+
+Record PreModelExtend {sg sg' M} (mo:PreModel M sg) (mo':PreModel M sg') :=
+  { extOne : someone mo = someone mo';
+    extFun : forall f, optnfun_finer (funs mo f) (funs mo' f);
+    extPred : forall p, optnfun_finer (preds mo p) (preds mo' p) }.
+
+Lemma PreModelExtend_sign sg sg' M (mo:PreModel M sg)(mo':PreModel M sg'):
+ PreModelExtend mo mo' -> SignExtend sg sg'.
+Proof.
+ intros (_,F,P). split.
+ - intros f. red. rewrite (funsOk mo f), (funsOk mo' f).
+   destruct (F f) as [-> | ->]; auto.
+ - intros p. red. rewrite (predsOk mo p), (predsOk mo' p).
+   destruct (P p) as [-> | ->]; auto.
+Qed.
+
+(** A premodel extension keeps interpreting identically terms and
+    formulas written on the former signature *)
+
+Lemma tinterp_premodelext sg sg' M (mo:PreModel M sg) (mo':PreModel M sg') :
+ PreModelExtend mo mo' ->
+ forall t, check sg t = true ->
+  forall g l, tinterp mo g l t = tinterp mo' g l t.
+Proof.
+ intros (SO,SF,SP).
+ induction t as [ | | f l IH] using term_ind'; cbn.
+ - trivial.
+ - intros. f_equal. apply SO.
+ - generalize (funsOk mo f).
+   destruct (funsymbs sg f) as [ar|] eqn:E; try easy.
+   rewrite lazy_andb_iff, forallb_forall.
+   destruct (SF f) as [-> | ->]; try easy. intros _ (_,Ht) G L.
+   f_equal; auto using map_ext_in.
+Qed.
+
+Lemma finterp_premodelext sg sg' M (mo:PreModel M sg) (mo':PreModel M sg') :
+ PreModelExtend mo mo' ->
+ forall A, check sg A = true ->
+ forall g l, finterp mo g l A <-> finterp mo' g l A.
+Proof.
+ intros ME.
+ induction A; cbn.
+ - intuition.
+ - intuition.
+ - generalize (predsOk mo p).
+   destruct (predsymbs sg p) as [ar|] eqn:E; try easy.
+   rewrite lazy_andb_iff, forallb_forall.
+   destruct (extPred ME p) as [-> | ->]; try easy. intros _ (_,Ht) G L.
+   f_equiv. apply map_ext_in. intros. apply tinterp_premodelext; auto.
+ - intros CA G L. f_equiv; auto.
+ - rewrite lazy_andb_iff. intros (CA1,CA2) G L. f_equiv; auto.
+ - intros CA G L.
+   destruct q; setoid_rewrite IHA; firstorder.
 Qed.

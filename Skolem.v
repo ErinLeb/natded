@@ -53,9 +53,9 @@ Proof.
  destruct n. auto. rewrite level_downvars; auto.
 Qed.
 
-Lemma interp_downvars sign M (mo:PreModel M sign) genv n l m :
+Lemma interp_downvars sign M (mo:PreModel M sign) G n l m :
  length l = n ->
- map (interp_term mo genv (m :: l)) (downvars n) = rev l.
+ map (tinterp mo G (m :: l)) (downvars n) = rev l.
 Proof.
  intros E.
  rewrite downvars_alt, map_rev. f_equal.
@@ -75,12 +75,11 @@ Definition Skolem_sign sign f n :=
    (fun funs s => if s =? f then Some n else funs s).
 
 Lemma Skolem_signext sign f n :
- sign.(funsymbs) f = None ->
+ funsymbs sign f = None ->
  SignExtend sign (Skolem_sign sign f n).
 Proof.
  intros Hc.
- split; unfold optfun_finer, opt_finer; cbn; auto.
- intros a. case eqbspec; intros; subst; auto.
+ split; intro s; red; cbn; auto. case eqbspec; intros; subst; auto.
 Qed.
 
 (** The Skolem axiom for formula A, new symbol f of arity n.
@@ -115,7 +114,7 @@ Definition SkolemAx Ax (A:formula) f n :=
   fun B => Ax B \/ B = Skolem_axiom A f n.
 
 Lemma SkolemAxWf th A f n :
- th.(funsymbs) f = None ->
+ funsymbs th f = None ->
  IsTheorem K th (nForall n (∃A)) ->
  forall B, SkolemAx th.(IsAxiom) A f n B -> WC (Skolem_sign th f n) B.
 Proof.
@@ -127,7 +126,7 @@ Proof.
 Qed.
 
 Definition Skolem_ext th A f n
- (E:th.(funsymbs) f = None)
+ (E:funsymbs th f = None)
  (Thm:IsTheorem K th (nForall n (∃A))) :=
  {| sign := Skolem_sign th f n;
     IsAxiom := SkolemAx th.(IsAxiom) A f n;
@@ -140,7 +139,7 @@ Variable Choice : forall A B, FunctionalChoice_on A B.
 Variable th : theory.
 Variable NC : NewCsts th.
 
-Definition Skolem_premodel_ext sign M (mo:PreModel M sign)
+Definition Skolem_premodel {sign M} (mo:PreModel M sign)
  f n (phi : M^^n-->M) : PreModel M (Skolem_sign sign f n).
 Proof.
 set (sign' := Skolem_sign _ _ _).
@@ -150,89 +149,42 @@ eapply (Build_PreModel sign' (someone mo) funs' (preds mo)); intros s.
 - cbn. apply predsOk.
 Defined.
 
-Lemma interp_form_premodel_ext sign sign' M
- (mo:PreModel M sign) (mo':PreModel M sign') :
-  (someone mo = someone mo') ->
-  (forall f, funs mo f = Nop \/ funs mo f = funs mo' f) ->
-  (forall p, preds mo p = preds mo' p) ->
-  (forall A, check sign A = true ->
-    forall genv lenv,
-      interp_form mo genv lenv A <-> interp_form mo' genv lenv A).
+Lemma Skolem_premodelext sign M (mo:PreModel M sign) f n phi :
+ funsymbs sign f = None ->
+ PreModelExtend mo (Skolem_premodel mo f n phi).
 Proof.
- intros SO FU PR.
- assert (Ht : forall (t:term), check sign t = true ->
-               forall genv lenv, interp_term mo genv lenv t =
-                                 interp_term mo' genv lenv t).
- { induction t as [ | | f l IH] using term_ind'; cbn; trivial.
-   - unfold BogusPoint. now rewrite <- SO.
-   - destruct (funsymbs sign f) as [ar|] eqn:E; try easy.
-     rewrite lazy_andb_iff. intros (_ & F) genv lenv.
-     destruct (FU f) as [Hf|Hf].
-     + exfalso. now rewrite (funsOk mo f), Hf in E.
-     + rewrite <- Hf. f_equiv; auto.
-       apply map_ext_in. intros a Ha.
-       apply IH; auto. rewrite forallb_forall in F; auto. }
- induction A; cbn.
- - intuition.
- - intuition.
- - destruct (predsymbs sign p) as [ar|] eqn:E; try easy.
-   rewrite lazy_andb_iff. intros (_ & F) genv lenv.
-   rewrite <- PR. f_equiv. apply map_ext_in. intros a Ha. apply Ht.
-   rewrite forallb_forall in F; auto.
- - intros WA genv lenv. now rewrite IHA.
- - rewrite lazy_andb_iff.
-   intros (WA1,WA2) genv lenv.
-   specialize (IHA1 WA1 genv lenv).
-   specialize (IHA2 WA2 genv lenv).
-   destruct o; cbn; now rewrite IHA1, IHA2.
- - intros WA genv lenv.
-   destruct q; setoid_rewrite IHA; firstorder.
-Qed.
-
-Lemma interp_form_skolem_premodel_ext sign M f n (F:M^^n-->M)
- (mo:PreModel M sign) (mo':PreModel M (Skolem_sign sign f n))
- (E':mo'=Skolem_premodel_ext sign M mo f n F)
- (E:sign.(funsymbs) f = None) :
- forall A, check sign A = true ->
- forall genv lenv,
-  interp_form mo genv lenv A <-> interp_form mo' genv lenv A.
-Proof.
- apply interp_form_premodel_ext; rewrite E'; try easy.
- intros f0. unfold Skolem_premodel_ext. cbn.
- case eqbspec; auto.
- intros ->. left. rewrite (funsOk mo f) in E.
- now destruct (funs mo f).
+ intro H. constructor; auto; intro s; red; cbn; auto.
+ case eqbspec; auto. intros ->. left.
+ generalize (funsOk mo f). rewrite H. now destruct funs.
 Qed.
 
 Definition interp_phi {n th M} (mo:Model M th)(phi : M^n -> M) A :=
- forall genv v, interp_form mo genv (phi v :: rev (nprod_to_list v)) A.
+ forall G v, finterp mo G (phi v :: rev (nprod_to_list v)) A.
 
 Definition Skolem_model_AxOk A f n
- (E:th.(funsymbs) f = None)
+ (E:funsymbs th f = None)
  (Thm:IsTheorem K th (nForall n (∃A)))
  M (mo:Model M th)(phi : M^n -> M)(Hphi : interp_phi mo phi A) :
   forall A0 : formula,
   IsAxiom (Skolem_ext th A f n E Thm) A0 ->
-  forall genv : variable -> M,
-  interp_form (Skolem_premodel_ext th M mo f n (ncurry phi)) genv [] A0.
+  forall G, finterp (Skolem_premodel mo f n (ncurry phi)) G [] A0.
 Proof.
 set (th' := Skolem_ext _ _ _ _ _ _) in *.
 set (Phi := ncurry phi).
-set (mo' := Skolem_premodel_ext _ _ _ _ _ _).
-intros A0 [ | -> ] genv.
-- unfold th'. simpl.
-  rewrite <- (interp_form_skolem_premodel_ext th M f n Phi mo); auto.
-  + now apply AxOk.
-  + now apply WCAxiom.
+set (mo' := Skolem_premodel _ _ _ _).
+assert (Hmo' := Skolem_premodelext _ _ mo f n Phi E).
+intros Ax [ | -> ] G.
+- rewrite <- finterp_premodelext; try exact Hmo'.
+  now apply AxOk. now apply WCAxiom.
 - unfold Skolem_axiom.
   rewrite interp_nforall. intros. rewrite app_nil_r.
   destruct stk as [|m l]; try easy.
   injection H as H.
   destruct (optnprod n (rev l)) as [v|] eqn:Ev.
   2:{ exfalso. revert Ev. apply optnprod_some. now rewrite rev_length. }
-  rewrite interp_form_bsubst_gen with (lenv' := phi v :: l); auto.
+  rewrite finterp_bsubst_gen with (L' := phi v :: l); auto.
   + unfold th'. simpl.
-    rewrite <- (interp_form_skolem_premodel_ext th M f n Phi mo); auto.
+    rewrite <- finterp_premodelext; try exact Hmo'.
     * apply optnprod_to_list in Ev.
       rewrite <- (rev_involutive l), <- Ev. apply Hphi.
     * clear -Thm. destruct Thm as (((CA,_),_),_).
@@ -245,19 +197,16 @@ intros A0 [ | -> ] genv.
   + destruct k; try easy.
 Qed.
 
-Definition Skolem_model_ext A f n
- (E:th.(funsymbs) f = None)
+Definition Skolem_model A f n
+ (E:funsymbs th f = None)
  (Thm:IsTheorem K th (nForall n (∃A)))
  M (mo:Model M th)(phi : M^n -> M)(Hphi : interp_phi mo phi A) :
- Model M (Skolem_ext th A f n E Thm).
-Proof.
-set (th' := Skolem_ext _ _ _ _ _ _).
-apply (Build_Model _ th' (Skolem_premodel_ext th M mo f n (ncurry phi))).
-apply Skolem_model_AxOk; auto.
-Defined.
+ Model M (Skolem_ext th A f n E Thm) :=
+ {| pre := _;
+    AxOk := Skolem_model_AxOk A f n E Thm M mo phi Hphi |}.
 
 Lemma Skolem_consext A f n
- (E:th.(funsymbs) f = None)
+ (E:funsymbs th f = None)
  (Thm:IsTheorem K th (nForall n (∃A))) :
  ConservativeExt K th (Skolem_ext th A f n E Thm).
 Proof.
@@ -274,30 +223,29 @@ Proof.
  - intros T HT CT.
    apply completeness_theorem; auto.
    + eapply WC_new_sign; auto. apply HT.
-   + intros M mo genv.
+   + intros M mo G.
      set (th' := Skolem_ext _ _ _ _ _ _) in *.
-     assert (interp_form mo genv [] (nForall n (∃ A))).
+     assert (finterp mo G [] (nForall n (∃ A))).
      { eapply validity_theorem; eauto. red; auto. }
      rewrite interp_nforall in H.
      assert (C : forall (v : M^n), exists m,
-                  interp_form mo genv (m::rev (nprod_to_list v)) A).
+                  finterp mo G (m::rev (nprod_to_list v)) A).
      { intros v.
        specialize (H (rev (nprod_to_list v))).
        rewrite app_nil_r in H. apply H. rewrite rev_length.
        apply nprod_to_list_length. }
      apply Choice in C. destruct C as (phi, Hphi). clear H.
-     assert (Hphi' : forall genv v,
-                interp_form mo genv (phi v :: rev (nprod_to_list v)) A).
-     { intros genv' v. rewrite interp_form_ext; eauto.
+     assert (Hphi' : forall G v,
+                finterp mo G (phi v :: rev (nprod_to_list v)) A).
+     { intros G' v. rewrite finterp_ext; eauto.
        intros. clear - H Thm. destruct Thm as ((_,FA),_).
        apply nForall_fclosed in FA. red in FA. cbn in FA.
        now destruct (FA v0). }
-     set (mo' := Skolem_model_ext A f n E Thm M mo phi Hphi').
-     assert (ok' : interp_form mo' genv [] T).
+     set (mo' := Skolem_model A f n E Thm M mo phi Hphi').
+     assert (ok' : finterp mo' G [] T).
      { eapply validity_theorem; eauto. red; auto. }
-     rewrite interp_form_skolem_premodel_ext; eauto.
-     unfold mo' in ok'. unfold Skolem_model_ext in ok'. cbn in ok'.
-     apply ok'.
+     revert ok'. apply finterp_premodelext with (mo := mo); auto.
+     now apply Skolem_premodelext.
 Qed.
 End SkolemTheorem.
 

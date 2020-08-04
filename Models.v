@@ -14,12 +14,12 @@ Local Open Scope eqb_scope.
 Record Model (M:Type)(th : theory) :=
  { pre :> PreModel M th;
    AxOk : forall A, IsAxiom th A ->
-                    forall G, interp_form pre G [] A }.
+                    forall G, finterp pre G [] A }.
 
 Lemma validity_theorem logic th :
  CoqRequirements logic ->
  forall T, IsTheorem logic th T ->
- forall M (mo : Model M th) G, interp_form mo G [] T.
+ forall M (mo : Model M th) G, finterp mo G [] T.
 Proof.
  intros CR T Thm M mo G.
  rewrite thm_alt in Thm.
@@ -256,9 +256,9 @@ Qed.
 Lemma interp_pred p l :
  WF th (Pred p l) ->
  forall G,
-   interp_form mo G [] (Pred p l) <->
+   finterp mo G [] (Pred p l) <->
    IsTheorem K th
-     (Pred p (map (fun t => this (interp_term mo G [] t)) l)).
+     (Pred p (map (fun t => this (tinterp mo G [] t)) l)).
 Proof.
  rewrite Pred_WF. intros (E,F) G.
  cbn. unfold mkpreds. rewrite E.
@@ -271,9 +271,9 @@ Proof.
  apply optnprod_to_list in E'. fold M. now rewrite E', map_map.
 Qed.
 
-Lemma interp_term_carac t :
+Lemma tinterp_carac t :
  WF th t ->
- forall G, this (interp_term mo G [] t) = term_closure G t.
+ forall G, this (tinterp mo G [] t) = term_closure G t.
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto.
  - now rewrite wf_iff.
@@ -292,11 +292,11 @@ Proof.
    revert x Hx. now apply Forall_forall.
 Qed.
 
-Lemma interp_term_carac' (t:term) G (W : WF th t) :
-  interp_term mo G [] t =
+Lemma tinterp_carac' (t:term) G (W : WF th t) :
+  tinterp mo G [] t =
   {| this := term_closure G t; closed := term_closure_wc' t G W |}.
 Proof.
- apply proof_irr. cbn. now apply interp_term_carac.
+ apply proof_irr. cbn. now apply tinterp_carac.
 Qed.
 
 Lemma Thm_Not A : WC th A ->
@@ -420,7 +420,7 @@ Proof.
 Qed.
 
 Lemma interp_carac f : WF th f ->
- forall G, interp_form mo G [] f <-> IsTheorem K th (closure G f).
+ forall G, finterp mo G [] f <-> IsTheorem K th (closure G f).
 Proof.
  induction f as [h IH f Hf] using height_ind. destruct f; intros W G.
  - clear IH Hf. cbn.
@@ -433,7 +433,7 @@ Proof.
    rewrite interp_pred; auto. simpl.
    unfold vmap, vmap_list.
    f_equiv. f_equiv. apply map_ext_iff. intros t Ht.
-   apply interp_term_carac. revert t Ht. apply Forall_forall.
+   apply tinterp_carac. revert t Ht. apply Forall_forall.
    now apply Pred_WF in W.
  - simpl. rewrite IH; auto with arith.
    symmetry. apply Thm_Not.
@@ -465,13 +465,13 @@ Proof.
          - apply Nat.le_0_r, level_bsubst; auto. }
        rewrite Thm_Not in Thm by (apply closure_wc; auto).
        rewrite <- IH in Thm; auto.
-       rewrite <- interp_form_bsubst0 in Thm; auto. destruct Thm. apply H.
+       rewrite <- finterp_bsubst0 in Thm; auto. destruct Thm. apply H.
      * apply thm_notexnot; auto. apply (closure_wc (∀f)); auto.
    + intros Thm (t,Ht).
-     rewrite interp_form_bsubst0 with (u:=t); auto.
+     rewrite finterp_bsubst0 with (u:=t); auto.
      2:{ apply term_wc_iff in Ht. apply Ht. }
      2:{ destruct (proj2 (term_wc_iff _ _) Ht) as (W',F').
-         rewrite (interp_term_carac' t G W').
+         rewrite (tinterp_carac' t G W').
          apply proof_irr. cbn. apply term_vmap_id. intros v.
          red in F'. intuition. }
      apply term_wc_iff in Ht.
@@ -479,11 +479,11 @@ Proof.
      * rewrite closure_bsubst by apply Ht. apply Thm_All_e; auto.
      * apply bsubst_WF; auto. apply Ht.
    + intros ((t,Ht),Int).
-     rewrite interp_form_bsubst0 with (u:=t) in Int; auto.
+     rewrite finterp_bsubst0 with (u:=t) in Int; auto.
      2:{ clear Int. apply term_wc_iff in Ht. apply Ht. }
      2:{ clear Int.
          destruct (proj2 (term_wc_iff _ _) Ht) as (W',F').
-         rewrite (interp_term_carac' t G W').
+         rewrite (tinterp_carac' t G W').
          apply proof_irr. cbn. apply term_vmap_id. intros v.
          red in F'. intuition. }
      apply term_wc_iff in Ht.
@@ -499,12 +499,12 @@ Proof.
      2:{ now rewrite height_bsubst. }
      2:{ apply bsubst_WF; auto. now apply Cst_WC. }
      exists {| this := Cst c; closed := Cst_wc th c Hc |}.
-     rewrite interp_form_bsubst0; eauto.
-     apply proof_irr. rewrite interp_term_carac; auto. now apply Cst_WC.
+     rewrite finterp_bsubst0; eauto.
+     apply proof_irr. rewrite tinterp_carac; auto. now apply Cst_WC.
 Qed.
 
 Lemma interp_carac_closed f genv : WC th f ->
- interp_form mo genv [] f <-> IsTheorem K th f.
+ finterp mo genv [] f <-> IsTheorem K th f.
 Proof.
  intros W.
  replace f with (closure genv f) at 2.
@@ -515,7 +515,7 @@ Qed.
 
 Lemma axioms_ok A :
   IsAxiom th A ->
-  forall genv, interp_form mo genv [] A.
+  forall genv, finterp mo genv [] A.
 Proof.
  intros HA genv. apply interp_carac_closed.
  apply WCAxiom; auto.
@@ -555,11 +555,11 @@ Proof.
    destruct (predsymbs sign' p); auto.
 Defined.
 
-Lemma interp_term_restrict sign sign' M
+Lemma tinterp_restrict sign sign' M
  (mo:PreModel M sign')(SE:SignExtend sign sign') :
  forall genv lenv t, check sign t = true ->
-  interp_term (premodel_restrict sign sign' M SE mo) genv lenv t =
-  interp_term mo genv lenv t.
+  tinterp (premodel_restrict sign sign' M SE mo) genv lenv t =
+  tinterp mo genv lenv t.
 Proof.
  induction t as [ | | f args IH ] using term_ind'; cbn; auto.
  destruct (funsymbs sign f); [|easy].
@@ -568,11 +568,11 @@ Proof.
  apply IH; auto. rewrite forallb_forall in F; auto.
 Qed.
 
-Lemma interp_form_restrict sign sign' M
+Lemma finterp_restrict sign sign' M
  (mo:PreModel M sign')(SE:SignExtend sign sign') :
  forall genv lenv f, check sign f = true ->
-  interp_form (premodel_restrict sign sign' M SE mo) genv lenv f <->
-  interp_form mo genv lenv f.
+  finterp (premodel_restrict sign sign' M SE mo) genv lenv f <->
+  finterp mo genv lenv f.
 Proof.
  intros genv lenv f; revert genv lenv.
  induction f; cbn; intros genv lenv Hf; f_equal;
@@ -580,7 +580,7 @@ Proof.
  - destruct (predsymbs sign p); [|easy].
    rewrite lazy_andb_iff in Hf. destruct Hf as (_,Hf).
    f_equiv. apply map_ext_iff. intros t Ht.
-   apply interp_term_restrict. rewrite forallb_forall in Hf; auto.
+   apply tinterp_restrict. rewrite forallb_forall in Hf; auto.
  - now rewrite IHf.
  - destruct o; simpl; rewrite IHf1, IHf2; intuition.
  - destruct q; simpl; split.
@@ -597,7 +597,7 @@ Proof.
  intros CR (SE,EX) mo.
  apply Build_Model with (premodel_restrict th th' M SE mo).
  intros A HA genv.
- rewrite interp_form_restrict by (apply WCAxiom; auto).
+ rewrite finterp_restrict by (apply WCAxiom; auto).
  assert (Thm : IsTheorem logic th' A).
  { apply EX, ax_thm; auto. }
  apply (validity_theorem logic th' CR A Thm M mo).
@@ -626,7 +626,7 @@ Lemma completeness_theorem (th:theory) (nc : NewCsts th) :
  (forall A, A\/~A) ->
  forall T,
    WC th T ->
-   (forall M (mo : Model M th) genv, interp_form mo genv [] T)
+   (forall M (mo : Model M th) genv, finterp mo genv [] T)
    -> IsTheorem K th T.
 Proof.
  intros EM T WF HT.
@@ -663,11 +663,11 @@ Proof.
    - intros B HB. apply ax_thm. cbn. now right. }
  set (mo' := model_restrict K th th' M EM EX mo).
  set (genv := fun (_:variable) => mo.(someone)).
- assert (interp_form mo genv [] (~T)).
+ assert (finterp mo genv [] (~T)).
  { apply AxOk. cbn. now left. }
  cbn in H. apply H. clear H.
  set (SE := let (p,_) := EX in p).
- assert (U := interp_form_restrict th th' M mo SE genv [] T).
+ assert (U := finterp_restrict th th' M mo SE genv [] T).
  change (sign th') with (sign th) in U at 2.
  rewrite <- U by (apply WF).
  assert (E : pre _ _ mo' = premodel_restrict th th' M SE mo).

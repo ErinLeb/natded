@@ -407,13 +407,13 @@ Definition PeanoPreModel : PreModel nat PeanoTheory :=
 
 Lemma PeanoAxOk A :
   IsAxiom PeanoTheory A ->
-  forall genv, interp_form PeanoPreModel genv [] A.
+  forall G, finterp PeanoPreModel G [] A.
 Proof.
  unfold PeanoTheory. simpl.
  unfold PeanoAx.IsAx.
  intros [IN|(B & -> & CK & CL)].
  - compute in IN. intuition; subst; cbn; intros; subst; omega.
- - intros genv.
+ - intros G.
    unfold PeanoAx.induction_schema.
    apply interp_nforall.
    intros stk Len. rewrite app_nil_r. cbn.
@@ -421,9 +421,9 @@ Proof.
    (* The Peano induction emulated by a Coq induction :-) *)
    induction m.
    + specialize (Base 0).
-     apply -> interp_form_bsubst_gen in Base; simpl; eauto.
+     apply -> finterp_bsubst_gen in Base; simpl; eauto.
    + apply Step in IHm.
-     apply -> interp_form_bsubst_gen in IHm; simpl; eauto.
+     apply -> finterp_bsubst_gen in IHm; simpl; eauto.
      now intros [|k].
 Qed.
 

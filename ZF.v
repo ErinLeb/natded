@@ -7,7 +7,13 @@ Require Import Defs NameProofs Mix Meta.
 Require Import Wellformed Theories PreModels Models Peano.
 Import ListNotations.
 Local Open Scope bool_scope.
+Local Open Scope string_scope.
 Local Open Scope eqb_scope.
+Local Open Scope formula_scope.
+
+Notation "x = y" := (Pred "=" [x;y]) : formula_scope.
+Notation "x ∈ y" := (Pred "∈" [x;y]) (at level 70) : formula_scope.
+Notation "x ∉ y" := (~ x ∈ y) (at level 70) : formula_scope.
 
 Ltac refold :=
  match goal with
@@ -23,11 +29,6 @@ Ltac simp := cbn in *; reIff; refold.
 (*  The naive set theory consists of the non restricted comprehension axiom schema :
     ∀ x1, ..., ∀ xn, ∃ a, ∀ y (y ∈ a <-> A),
       forall formula A whose free variables are amongst x1, ..., xn, y. *)
-
-Notation "x ∈ y" := (Pred "∈" [x;y]) (at level 70) : formula_scope.
-
-Open Scope string_scope.
-Open Scope formula_scope.
 
 (* It is easy to notice that ∃ a ∀ x (x ∈ a <-> ~(x ∈ x)) is (almost) an instance of the
    comprehension axiom schema : it suffices to let A = ~ (a ∈ a). *)
@@ -66,15 +67,9 @@ Qed.
 
 (** The ZF axioms *)
 
-Close Scope string_scope.
 Definition ZFSign := Finite.to_infinite zf_sign.
 
-Notation "x = y" := (Pred "=" [x;y]) : formula_scope.
-Notation "x ∈ y" := (Pred "∈" [x;y]) (at level 70) : formula_scope.
-Notation "x ∉ y" := (~ x ∈ y) (at level 70) : formula_scope.
-
 Module ZFAx.
-Local Open Scope formula_scope.
 
 Definition zero s := ∀ #0 ∉ lift 0 s.
 Definition succ x y := ∀ (#0 ∈ lift 0 y <-> #0 = lift 0 x \/ #0 ∈ lift 0 x).
@@ -82,14 +77,15 @@ Definition succ x y := ∀ (#0 ∈ lift 0 y <-> #0 = lift 0 x \/ #0 ∈ lift 0 x
 Definition eq_refl := ∀ (#0 = #0).
 Definition eq_sym := ∀∀ (#1 = #0 -> #0 = #1).
 Definition eq_trans := ∀∀∀ (#2 = #1 /\ #1 = #0 -> #2 = #0).
-Definition compat_left := ∀∀∀ (#0 = #1 /\ #0 ∈ #2 -> #1 ∈ #2).
-Definition compat_right := ∀∀∀ (#0 ∈ #1 /\ #1 = #2 -> #0 ∈ #2).
+Definition compat_left := ∀∀∀ (#2 = #1 /\ #2 ∈ #0 -> #1 ∈ #0).
+Definition compat_right := ∀∀∀ (#2 ∈ #1 /\ #1 = #0 -> #2 ∈ #0).
 
 Definition ext := ∀∀ ((∀ #0 ∈ #2 <-> #0 ∈ #1) -> #1 = #0).
 Definition pairing := ∀∀∃∀ (#0 ∈ #1 <-> #0 = #3 \/ #0 = #2).
 Definition union := ∀∃∀ (#0 ∈ #1 <-> ∃ (#0 ∈ #3 /\ #1 ∈ #0)).
 Definition powerset := ∀∃∀ (#0 ∈ #1 <-> ∀ (#0 ∈ #1 -> #0 ∈ #3)).
-Definition infinity := ∃ (∃ ((#0 ∈ #1 /\ zero (#0)) /\ ∀ (#0 ∈ #1 -> (∃ (#0 ∈ #2 /\ succ (#1) (#0)))))).
+Definition infinity := ∃ ((∃ (#0 ∈ #1 /\ zero (#0)))
+                         /\ ∀ (#0 ∈ #1 -> (∃ (#0 ∈ #2 /\ succ (#1) (#0))))).
 
 Definition axioms_list :=
  [ eq_refl; eq_sym; eq_trans; compat_left; compat_right; ext; pairing; union; powerset; infinity ].
@@ -185,11 +181,11 @@ Proof.
   - apply R'_Ex_e with (x := "a").
     + calc.
     + cbn.
+      apply R'_And_e.
+      apply Pr_swap, Pr_pop.
       apply R'_Ex_e with (x := "x").
       * calc.
       * cbn.
-        apply R'_And_e.
-        apply Pr_swap, Pr_pop.
         apply R'_And_e.
         apply Pr_pop.
         apply R_Ex_i with (t := FVar "x"). cbn.
@@ -262,11 +258,11 @@ Proof.
            exact H.
         -- apply R_Or_i1.
            apply R_Imp_e with (A := x ∈ y /\ y = A).
-           ++ inst_axiom compat_right [ A; y; x ].
+           ++ inst_axiom compat_right [ x; y; A ]. 
            ++ apply R_And_i; apply R_Ax; calc.
         -- apply R_Or_i2.
            apply R_Imp_e with (A := x ∈ y /\ y = B).
-           ++ inst_axiom compat_right [ B; y; x ].
+           ++ inst_axiom compat_right [ x; y; B ].
            ++ apply R_And_i; apply R_Ax; calc.
     + apply R_Imp_i.
       apply R'_Or_e.

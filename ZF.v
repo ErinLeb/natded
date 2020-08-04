@@ -4,7 +4,7 @@
     This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs NameProofs Mix Meta.
-Require Import Wellformed Theories PreModels Models Peano.
+Require Import Wellformed Theories Nary PreModels Models Peano.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope string_scope.
@@ -161,15 +161,14 @@ Qed.
 
 End ZFAx.
 
-Local Open Scope string.
-Local Open Scope formula_scope.
-
 Definition ZF :=
  {| sign := ZFSign;
     IsAxiom := ZFAx.IsAx;
     WCAxiom := ZFAx.WCAx |}.
 
 Import ZFAx.
+
+Local Open Scope formula_scope.
 
 Lemma emptyset : IsTheorem J ZF (∃∀ ~(#0 ∈ #1)).
 Proof.
@@ -346,3 +345,313 @@ Proof.
   apply ModusPonens with (A := ∀∀∃∀ #0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2); [ | apply unionset ].
   apply ModusPonens with (A := ∀∃∀ #0 ∈ #1 <-> #0 = #2); [ apply Succ | apply singleton ].
 Qed.
+
+
+Close Scope formula_scope.
+
+(** A "model" for ZF, using Benjamin Werner's ZFC contrib *)
+
+Require Import ChoiceFacts.
+Require Import zfc.
+
+(* Some complements about ZFC, in a more modern way *)
+
+Lemma EXType_exists {X:Type}(P : X -> Prop) :
+ EXType X P <-> exists x, P x.
+Proof.
+ split; intros (x,p); exists x; trivial.
+Qed.
+
+Instance EQ_equiv : Equivalence EQ.
+Proof.
+ split. exact EQ_refl. exact EQ_sym. exact EQ_tran.
+Qed.
+
+Instance IN_m : Proper (EQ ==> EQ ==> iff) IN.
+Proof.
+ assert (forall x x' y y', EQ x x' -> EQ y y' -> IN x y -> IN x' y').
+ { intros.
+   apply IN_sound_left with x. easy.
+   apply IN_sound_right with y; easy. }
+ intros x x' Hx y y' Hy. split; now apply H.
+Qed.
+
+Instance Paire_m : Proper (EQ ==> EQ ==> EQ) Paire.
+Proof.
+ intros x x' Hx y y' Hy.
+ transitivity (Paire x y').
+ now apply Paire_sound_right.
+ now apply Paire_sound_left.
+Qed.
+
+Instance Sing_m : Proper (EQ ==> EQ) Sing.
+Proof.
+ exact Sing_sound.
+Qed.
+
+Instance Union_m : Proper (EQ ==> EQ) Union.
+Proof.
+ exact Union_sound.
+Qed.
+
+Instance Succ_m : Proper (EQ ==> EQ) Succ.
+Proof.
+ unfold Succ. intros x x' H. now rewrite H.
+Qed.
+
+Lemma Vide_spec x : ~IN x Vide.
+Proof.
+ intro H. destruct (Vide_est_vide _ H).
+Qed.
+
+Lemma Paire_spec a b x :
+ IN x (Paire a b) <-> EQ x a \/ EQ x b.
+Proof.
+ split.
+ - apply Paire_IN.
+ - intros [<-|<-]. apply IN_Paire_left. apply IN_Paire_right.
+Qed.
+
+Lemma Sing_spec a x : IN x (Sing a) <-> EQ x a.
+Proof.
+ unfold Sing. rewrite Paire_spec. intuition.
+Qed.
+
+Lemma Union_spec a x : IN x (Union a) <-> exists y, IN y a /\ IN x y.
+Proof.
+ split.
+ - intros H. apply Union_IN in H. destruct H as (y & H & H').
+   now exists y.
+ - intros (y & H & H'). eapply IN_Union; eauto.
+Qed.
+
+Lemma Power_spec a x : IN x (Power a) <-> INC x a.
+Proof.
+ split. apply IN_Power_INC. apply INC_IN_Power.
+Qed.
+
+Lemma Succ_spec a x : IN x (Succ a) <-> EQ x a \/ IN x a.
+Proof.
+ split.
+ - intros H. destruct (IN_Succ_or _ _ H). now left. now right.
+ - intros [->|H]. apply IN_Succ. now apply INC_Succ.
+Qed.
+
+Lemma Omega_spec :
+  (exists x, IN x Omega /\ forall y, ~ IN y x) /\
+  (forall x, IN x Omega -> exists y, IN y Omega /\
+                                     forall z, IN z y <-> EQ z x \/ IN z x).
+Proof.
+ split.
+ - exists Vide; split; try apply Vide_spec.
+   apply (Nat_IN_Omega 0).
+ - intros x Hx. exists (Succ x); split; try apply Succ_spec.
+   destruct (IN_Omega_EXType _ Hx) as (n & <-).
+   apply (Nat_IN_Omega (S n)).
+Qed.
+
+Lemma Comp_spec (P:Ens->Prop) :
+ (Proper (EQ==>iff) P) ->
+ forall a x, IN x (Comp a P) <-> IN x a /\ P x.
+Proof.
+ intros HP a x.
+ assert (E : forall u v, P u -> EQ u v -> P v) by now intros ? ? ? <-.
+ split.
+ - intros H. split. revert H. apply Comp_INC. eapply IN_Comp_P; eauto.
+ - intros (H,H'). apply IN_P_Comp; auto.
+Qed.
+
+Definition zfc_exists_uniq (P:Ens->Prop) :=
+ exists x, P x /\ forall y, P y -> EQ y x.
+
+Definition miquel_replacement :=
+ forall (P:Ens->Ens->Prop), Proper (EQ==>EQ==>iff) P ->
+ forall a,
+  (forall x, IN x a -> zfc_exists_uniq (P x)) ->
+  exists b,
+    forall x, IN x a -> exists y, IN y b /\ P x y.
+
+Lemma replacement_alt : zfc.replacement -> miquel_replacement.
+Proof.
+intros R P HP a EXU.
+set (Q := fun x y => IN x a /\ P x y).
+assert (HQ1 : functional Q).
+{ intros x y y' (Hx,Hy) (_,Hy').
+  destruct (EXU x Hx) as (z & _ & Hz).
+  transitivity z. now apply Hz. symmetry. now apply Hz. }
+assert (HQ2 : forall x y y', EQ y y' -> Q x y -> Q x y').
+{ intros x y y' E (H,H'). split; auto. now rewrite <-E. }
+assert (HQ3 : forall x x' y, EQ x x' -> Q x y -> Q x' y).
+{ intros x x' y E (H,H'). split; now rewrite <-E. }
+destruct (R Q HQ1 HQ2 HQ3 a) as (b & Hb). clear HQ1 HQ2 HQ3.
+exists b.
+intros x Hx.
+destruct (EXU x Hx) as (y & Hy & _).
+exists y; split; auto. apply Hb. now exists x.
+Qed.
+
+(** Reverse statement. Not reused below, but good to know.
+    The proof is an adaptation of zfc.classical_Collection_Replacement *)
+Lemma replacement_recip :
+ (forall A, A\/~A) -> miquel_replacement -> zfc.replacement.
+Proof.
+ intros EM R P HP1 HP2 HP3.
+ assert (HP : Proper (EQ==>EQ==>iff) P).
+ { intros x x' Hx y y' Hy. split; intros.
+   apply HP2 with y; auto. apply HP3 with x; auto.
+   apply HP2 with y'; try easy. apply HP3 with x'; easy. }
+ cut (forall a, exists b, forall y, (exists x, IN x a /\ P x y) -> IN y b).
+ { intros H a.
+   destruct (H a) as (b & Hb).
+   set (A := fun y => exists x, IN x a /\ P x y).
+   exists (Comp b A).
+   intros y. rewrite Comp_spec. split.
+   - intros (U,(x & Hx & Hx')). now exists x.
+   - intros (x & Hx & Hx'). split. apply Hb. now exists x. now exists x.
+   - intros z z' Hz. unfold A. split.
+     intros (x & Hx & Hx'). exists x. split; auto. eapply HP2; eauto.
+     intros (x & Hx & Hx'). exists x. split; auto. eapply HP2; eauto.
+     easy. }
+ set (Q := fun x y => P x y \/ (forall y, ~P x y) /\ EQ y Vide).
+ assert (HQ : Proper (EQ ==> EQ ==> iff) Q).
+ { intros x x' Hx y y' Hy. unfold Q. rewrite Hx, Hy.
+   now setoid_rewrite Hx. }
+ intros a. destruct (R Q HQ a) as (b, Hb).
+ { intros x Hx.
+   destruct (EM (exists y, P x y)) as [(y,Hy)|N].
+   - exists y. split. now left.
+     intros z [H|(H,->)].
+     + eauto.
+     + destruct (H _ Hy).
+   - exists Vide. split. right. split; auto with zfc. firstorder.
+     intros y [H|(H,->)]; auto with zfc. firstorder. }
+ exists b.
+ intros y (x & Hx & Hx').
+ destruct (Hb x Hx) as (z & Hz & [Hz'|(Hz',E)]).
+ - assert (EQ y z) by eauto. now rewrite H.
+ - firstorder.
+Qed.
+
+
+Section Model.
+Variable EM : forall A:Prop, A \/ ~A.
+Variable Choice : FunctionalChoice. (* from ∀∃ to a ∃ function s.t. ... *)
+
+Lemma Choice' : zfc.choice.
+Proof.
+ unfold zfc.choice; intros.
+ rewrite EXType_exists. apply Choice. intros x.
+ rewrite <- EXType_exists. apply H.
+Qed.
+
+Definition Replacement : zfc.replacement :=
+ classical_Collection_Replacement EM (Choice_Collection Choice').
+
+Definition ZFFuns (f:string) : optnfun Ens Ens := Nop.
+
+Definition ZFPreds (p:string) : optnfun Ens Prop :=
+  if p =? "=" then NFun 2 EQ
+  else if p =? "∈" then NFun 2 IN
+  else Nop.
+
+Lemma ZFFuns_ok s :
+ funsymbs ZFSign s = get_arity (ZFFuns s).
+Proof.
+ reflexivity.
+Qed.
+
+Lemma ZFPreds_ok s :
+ predsymbs ZFSign s = get_arity (ZFPreds s).
+Proof.
+ unfold ZFSign, zf_sign, ZFPreds. simpl.
+ repeat (case eqbspec; cbn; try easy).
+Qed.
+
+Definition preZF : PreModel Ens ZF :=
+ {| someone := Vide;
+    funs := ZFFuns;
+    preds := ZFPreds;
+    funsOk := ZFFuns_ok;
+    predsOk := ZFPreds_ok |}.
+
+Lemma tinterp_zf_congr G L L' (t:term) :
+ (forall k, EQ (nth k L Vide) (nth k L' Vide)) ->
+ EQ (tinterp preZF G L t) (tinterp preZF G L' t).
+Proof.
+ destruct t; cbn -[EQ]; intros; auto with zfc.
+Qed.
+
+Lemma finterp_zf_congr G L L' A :
+ check ZFSign A = true ->
+ (forall k, EQ (nth k L Vide) (nth k L' Vide)) ->
+ finterp preZF G L A <-> finterp preZF G L' A.
+Proof.
+ revert L L'.
+ induction A; cbn -[EQ]; intros L L' C E; try easy.
+ - revert C. unfold ZFPreds. unfold predicate_symbol, name in *.
+   case eqbspec; intros.
+   + rewrite lazy_andb_iff in C. destruct C as (C,_).
+     destruct l as [|a [|b [|c l]]]; try easy. cbn.
+     f_equiv; apply tinterp_zf_congr; auto.
+   + revert C.
+     case eqbspec; intros; try easy.
+     rewrite lazy_andb_iff in C. destruct C as (C,_).
+     destruct l as [|a [|b [|c l]]]; try easy. cbn.
+     f_equiv; apply tinterp_zf_congr; auto.
+ - f_equiv. auto.
+ - rewrite lazy_andb_iff in C. destruct C as (C1,C2). f_equiv; auto.
+ - apply interp_quant. intros m. apply IHA; auto.
+   intros [|k]; cbn -[EQ]; auto with zfc.
+Qed.
+
+Lemma ZFAxOk A : IsAxiom ZF A -> forall G, finterp preZF G [] A.
+Proof.
+ unfold ZF. simpl.
+ unfold ZFAx.IsAx.
+ intros [HA|[(B & -> & CK & CL)|(B & -> & CK & CL)]].
+ - unfold axioms_list in HA.
+   simpl in HA; intuition; subst; cbn -[EQ IN].
+   + exact EQ_refl.
+   + exact EQ_sym.
+   + intros x y z (H,H'). now apply EQ_tran with y.
+   + intros y x' x (H,H'). now rewrite <- H.
+   + intros y' y x (H,H'). now rewrite <- H'.
+   + (* ext *) intros a b E. apply INC_EQ; intro x; apply E.
+   + intros a b. exists (Paire a b). apply Paire_spec.
+   + intros a. exists (Union a). apply Union_spec.
+   + intros a. exists (Power a). apply Power_spec.
+   + exists Omega. apply Omega_spec.
+ - (* separation *)
+   intros G.
+   unfold separation_schema.
+   apply interp_nforall. intros stk Len. rewrite app_nil_r. cbn.
+   setoid_rewrite finterp_lift. cbn.
+   intros a.
+   set (A := fun x => finterp preZF G (x :: a :: stk) B).
+   exists (Comp a A). apply Comp_spec.
+   { intros u v E. apply finterp_zf_congr; auto.
+     destruct k; cbn -[EQ]; auto with zfc. }
+ - (* replacement *)
+   intros G. unfold replacement_schema.
+   apply interp_nforall. intros stk Len. rewrite app_nil_r.
+   cbn -[exists_uniq].
+   setoid_rewrite finterp_lift. cbn -[exists_uniq].
+   intros a Ha.
+   apply replacement_alt.
+   + apply Replacement.
+   + intros x x' Hx y y' Hy. apply finterp_zf_congr; auto.
+     destruct k as [|[|?]]; cbn -[EQ]; auto with zfc.
+   + intros x Hx. destruct (Ha x Hx) as (y,Hy). exists y.
+     cbn -[EQ] in Hy. now setoid_rewrite finterp_lift in Hy.
+Qed.
+
+Definition ZFModel : Model Ens ZF :=
+ {| pre := preZF;
+    AxOk := ZFAxOk |}.
+
+End Model.
+
+(*
+Print Assumptions ZFModel.
+Print ZFModel.
+*)

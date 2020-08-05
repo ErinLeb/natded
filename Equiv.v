@@ -1,7 +1,7 @@
 
 (** * Conversion between Named formulas and Locally Nameless formulas *)
 
-(** The NatDed development, Pierre Letouzey, 2019.
+(** The NatDed development, Pierre Letouzey, 2019-2020.
     This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs NameProofs Nam Subst Toolbox.

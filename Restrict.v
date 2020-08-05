@@ -1,4 +1,9 @@
 
+(** * Restrict a proof or derivation to a signature and/or a level *)
+
+(** The NatDed development, Pierre Letouzey, 2019-2020.
+    This file is released under the CC0 License, see the LICENSE file *)
+
 Require Import Defs NameProofs Mix Wellformed.
 Import ListNotations.
 Local Open Scope bool_scope.

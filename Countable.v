@@ -1,7 +1,7 @@
 
 (** * Explicit enumeration of countable types *)
 
-(** The NatDed development, Pierre Letouzey, 2019.
+(** The NatDed development, Pierre Letouzey, 2019-2020.
     This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Ascii NArith Defs Mix NameProofs Meta.

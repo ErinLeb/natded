@@ -1,7 +1,7 @@
 
 (** * Pre-models of theories *)
 
-(** The NatDed development, Pierre Letouzey, 2019.
+(** The NatDed development, Pierre Letouzey, 2019-2020.
     This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import Defs Mix NameProofs Toolbox Meta Restrict Theories.

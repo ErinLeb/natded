@@ -443,6 +443,14 @@ Proof.
  - intros [= <- E]. f_equal. eapply IHf; eauto.
 Qed.
 
+(** [bsubst] preserves formula's height *)
+
+Lemma height_bsubst n t f :
+ height (bsubst n t f) = height f.
+Proof.
+ revert n t. induction f; cbn; f_equal; auto.
+Qed.
+
 (** ** Part 3 : properties of [fclosed] *)
 
 Lemma term_fclosed_spec t : fclosed t = true <-> FClosed t.

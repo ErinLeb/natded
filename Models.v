@@ -358,34 +358,6 @@ Proof.
    eapply R_Not_e; [apply R'_Ax|]. now apply Pr_pop.
 Qed.
 
-
-Fixpoint height f :=
-  match f with
-  | True | False | Pred _ _ => 0
-  | Not f => S (height f)
-  | Op _ f1 f2 => S (Nat.max (height f1) (height f2))
-  | Quant _ f => S (height f)
-  end.
-
-Lemma height_bsubst n t f :
- height (bsubst n t f) = height f.
-Proof.
- revert n t.
- induction f; cbn; f_equal; auto.
-Qed.
-
-Lemma height_ind (P : formula -> Prop) :
- (forall h, (forall f, height f < h -> P f) ->
-            (forall f, height f < S h -> P f)) ->
- forall f, P f.
-Proof.
- intros IH f.
- set (h := S (height f)).
- assert (LT : height f < h) by (cbn; auto with * ).
- clearbody h. revert f LT.
- induction h as [|h IHh]; [inversion 1|eauto].
-Qed.
-
 Lemma interp_carac A : WF th A ->
  forall G, finterp mo G [] A <-> IsTheorem K th (closure G A).
 Proof.

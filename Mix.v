@@ -978,3 +978,35 @@ Instance form_fclosed : IsFClosed formula :=
   | Op _ f1 f2 => form_fclosed f1 &&& form_fclosed f2
   | Quant _ f => form_fclosed f
   end.
+
+(** The height of a term (used in Countable.v) *)
+
+Fixpoint term_height t :=
+  match t with
+  | FVar _ => 0
+  | BVar _ => 0
+  | Fun _ l => S (list_max (map term_height l))
+  end.
+
+(** The height of a formula (for some non-structural inductions,
+    also used in Countable.v) *)
+
+Fixpoint height f :=
+  match f with
+  | True | False | Pred _ _ => 0
+  | Not f => S (height f)
+  | Op _ f1 f2 => S (Nat.max (height f1) (height f2))
+  | Quant _ f => S (height f)
+  end.
+
+Lemma height_ind (P : formula -> Prop) :
+ (forall h, (forall f, height f < h -> P f) ->
+            (forall f, height f < S h -> P f)) ->
+ forall f, P f.
+Proof.
+ intros IH f.
+ set (h := S (height f)).
+ assert (LT : height f < h) by (cbn; auto with * ).
+ clearbody h. revert f LT.
+ induction h as [|h IHh]; [inversion 1|eauto].
+Qed.

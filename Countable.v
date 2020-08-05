@@ -376,13 +376,6 @@ Proof.
  now rewrite decode_code_pair.
 Qed.
 
-Fixpoint term_height t :=
-  match t with
-  | FVar _ => 0
-  | BVar _ => 0
-  | Fun _ l => S (list_max (map term_height l))
-  end.
-
 Fixpoint code_hterm t :=
   match t with
   | FVar v => code_pair (0, string_index v)
@@ -449,14 +442,6 @@ Proof.
  apply (countable_by_inverse _ _ decode_code_term).
 Qed.
 
-Fixpoint form_height f :=
-  match f with
-  | True | False | Pred _ _ => 0
-  | Not f => S (form_height f)
-  | Op _ f1 f2 => S (Nat.max (form_height f1) (form_height f2))
-  | Quant _ f => S (form_height f)
-  end.
-
 Definition code_op o :=
   match o with
   | And => 4
@@ -522,14 +507,14 @@ Fixpoint decode_hform h n :=
   end.
 
 Definition code_form f :=
-  code_pair (S (form_height f), code_hform f).
+  code_pair (S (height f), code_hform f).
 
 Definition decode_form n :=
   let (h,m) := decode_pair n in
   decode_hform h m.
 
 Lemma decode_code_hform h f :
-  form_height f < h -> decode_hform h (code_hform f) = f.
+  height f < h -> decode_hform h (code_hform f) = f.
 Proof.
  revert f.
  induction h as [|h IH].

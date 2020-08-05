@@ -198,7 +198,7 @@ Proof.
    destruct predsymbs; [|easy].
    case eqb; [|easy].
    rewrite forallb_map. apply forallb_ext. intros x _.
-   apply tclosure_check.
+   apply (tclosure_check G).
  - now rewrite IHA1, IHA2.
 Qed.
 
@@ -207,7 +207,7 @@ Lemma fclosure_level G A :
 Proof.
  induction A; cbn; auto.
  revert l. induction l as [|t l IH]; cbn; auto.
- f_equal; auto. apply tclosure_level.
+ f_equal; auto. apply (tclosure_level G).
 Qed.
 
 Lemma fclosure_fclosed G A :
@@ -405,7 +405,7 @@ Proof.
        rewrite Thm_Not in Thm by (apply fclosure_wc; auto).
        rewrite <- IH in Thm; auto.
        rewrite <- finterp_bsubst0 in Thm; auto. destruct Thm. apply H.
-     * cbn. apply Thm_NotExNot; auto. apply (fclosure_wc _ (∀A)); auto.
+     * cbn. apply Thm_NotExNot; auto. apply (fclosure_wc G (∀A)); auto.
    + intros Thm (t,Ht).
      rewrite finterp_bsubst0 with (u:=t); auto.
      2:{ apply term_wc_iff in Ht. apply Ht. }
@@ -429,7 +429,7 @@ Proof.
      rewrite IH in Int; auto.
      * rewrite fclosure_bsubst in Int by apply Ht.
        apply Thm_Ex_i with t; auto.
-       apply (fclosure_wc _ (∃A)); auto.
+       apply (fclosure_wc G (∃A)); auto.
      * apply bsubst_WF; auto. apply Ht.
    + intros Thm.
      destruct (witsat (closure G A) Thm) as (c & Hc & Thm').

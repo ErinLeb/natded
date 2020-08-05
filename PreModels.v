@@ -136,8 +136,8 @@ Lemma finterp_ext G L G' L' A :
  finterp G L A <-> finterp G' L' A.
 Proof.
  revert L L'.
- induction A; cbn; intros L L' EG EL;
-  apply interp_quant || f_equiv; auto with set.
+ induction A; intros L L' EG EL; try apply (interp_quant q);
+  cbn in *; f_equiv; auto with set.
  - apply map_ext_in.
    intros a Ha. apply tinterp_ext; eauto with set.
    intros k LT. apply EL. apply Nat.lt_le_trans with (level a); auto.
@@ -194,11 +194,10 @@ Qed.
 Lemma finterp_lift G L A n :
  finterp G L (lift n A) <-> finterp G (list_drop n L) A.
 Proof.
- revert n L; induction A; cbn; intros; auto; try easy.
- - f_equiv. rewrite map_map. apply map_ext; auto using tinterp_lift.
- - f_equiv; auto.
- - f_equiv; auto.
- - apply interp_quant. intros m. apply IHA.
+ revert n L; induction A; intros; try apply interp_quant;
+  cbn; f_equiv; try easy.
+ - rewrite map_map. apply map_ext; auto using tinterp_lift.
+ - intros m; apply IHA.
 Qed.
 
 Lemma tinterp_bsubst_gen G L L' u m n t :
@@ -241,12 +240,10 @@ Lemma finterp_bsubst_gen G L L' u m n A :
  finterp G L (bsubst n u A) <-> finterp G L' A.
 Proof.
  revert n u L L'.
- induction A; cbn; auto; intros; f_equal; auto; try reflexivity.
- - f_equiv. rewrite map_map. apply map_ext. intros a.
+ induction A; intros; try apply interp_quant; cbn in *; f_equiv; auto; try easy.
+ - rewrite map_map. apply map_ext. intros a.
    eapply tinterp_bsubst_gen; eauto.
- - f_equiv; auto.
- - f_equiv; auto.
- - apply interp_quant. intros m'. apply IHA; auto.
+ - intros m'; apply IHA; auto.
    now rewrite tinterp_lift.
    intros [|k]; simpl; auto.
 Qed.

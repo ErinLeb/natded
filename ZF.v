@@ -581,7 +581,8 @@ Lemma finterp_zf_congr G L L' A :
  finterp preZF G L A <-> finterp preZF G L' A.
 Proof.
  revert L L'.
- induction A; cbn -[EQ]; intros L L' C E; try easy.
+ induction A; intros L L' C E; try apply interp_quant;
+  cbn -[EQ] in *; try easy.
  - revert C. unfold ZFPreds. unfold predicate_symbol, name in *.
    case eqbspec; intros.
    + rewrite lazy_andb_iff in C. destruct C as (C,_).
@@ -594,7 +595,7 @@ Proof.
      f_equiv; apply tinterp_zf_congr; auto.
  - f_equiv. auto.
  - rewrite lazy_andb_iff in C. destruct C as (C1,C2). f_equiv; auto.
- - apply interp_quant. intros m. apply IHA; auto.
+ - intros m. apply IHA; auto.
    intros [|k]; cbn -[EQ]; auto with zfc.
 Qed.
 

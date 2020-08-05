@@ -100,7 +100,7 @@ Proof.
    clear. induction n; simpl; auto.
  - unfold BClosed in *. rewrite nForall_level in *.
    cbn in LA.
-   apply Nat.sub_0_le. etransitivity; [apply level_bsubst_max|].
+   apply Nat.sub_0_le. rewrite level_bsubst_max.
    apply Nat.max_lub; try omega with *.
    apply level_downvars_le.
  - rewrite <- nForall_fclosed in *.

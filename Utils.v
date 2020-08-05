@@ -35,6 +35,11 @@ Proof.
  decide equality. apply Nat.eq_dec.
 Defined.
 
+Lemma pred_0 n : Nat.pred n = 0 <-> n <= 1.
+Proof.
+ omega.
+Qed.
+
 (** Generic boolean equalities (via Coq Classes) *)
 
 Delimit Scope eqb_scope with eqb.

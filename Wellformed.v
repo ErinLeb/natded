@@ -78,8 +78,8 @@ Lemma bsubst_WF sign A t :
 Proof.
  intros (CK,BC) (CK',BC'). split.
  - apply check_bsubst; auto.
- - apply Nat.le_0_r.
-   apply level_bsubst; red in BC; red in BC'; cbn in *; omega.
+ - apply Nat.le_0_r. rewrite level_bsubst, BC'; auto.
+   now rewrite <- pred_0.
 Qed.
 
 Lemma cons_WF sign f (c:context) :

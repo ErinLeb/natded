@@ -215,9 +215,7 @@ Proof.
       apply fresh_ok.
       rewrite form_level_bsubst_id.
       - assumption.
-      - apply level_bsubst.
-        ++ unfold BClosed in H. cbn in H; omega.
-        ++ cbn; omega.
+      - now apply level_bsubst, pred_0.
     * assumption.
 Qed.
 
@@ -235,7 +233,7 @@ Ltac calc :=
   | |- BClosed _ => reflexivity
   | |- In _ _ => rewrite <- list_mem_in; reflexivity
   | |- ~Names.In _ _ => rewrite<- Names.mem_spec; now compute
-  | _ => idtac
+  | _ => trivial
   end.
 
 Ltac inst H l :=
@@ -246,7 +244,9 @@ Ltac inst H l :=
 
 Ltac axiom ax name :=
   match goal with
-    | |- Pr ?l (?ctx ⊢ _) => assert (name : Pr l (ctx ⊢ ax)); [ apply R_Ax; calc | ]; unfold ax in name
+    | |- Pr ?l (?ctx ⊢ _) =>
+      assert (name : Pr l (ctx ⊢ ax)); [ apply R_Ax; calc | ];
+      try unfold ax in name
   end.
 
 Ltac inst_axiom ax l :=

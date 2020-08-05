@@ -1,5 +1,5 @@
 
-(** * Toolbox : basic properties of the Mix functions like lift, bsubst,... *)
+(** * Toolbox : basic properties of the Mix functions like bsubst *)
 
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
@@ -13,7 +13,14 @@ Local Open Scope eqb_scope.
 Implicit Type t u : term.
 Implicit Type f : formula.
 
-(** Properties of [lift] *)
+(** Summary of this file :
+    1) [lift]
+    2) [bsubst]
+    3) [fclosed]
+    4) [vmap] and [fsubst]
+*)
+
+(** ** Part 1 : Properties of [lift] *)
 
 Lemma level_lift k t : level (lift k t) <= S (level t).
 Proof.
@@ -34,6 +41,24 @@ Qed.
 Lemma lift_nop k t : BClosed t -> lift k t = t.
 Proof.
  unfold BClosed. intros H. apply lift_nop_le. rewrite H; omega.
+Qed.
+
+Lemma lift_incrlevel k t : k < level t -> level (lift k t) = S (level t).
+Proof.
+ revert t. fix IH 1; destruct t; cbn.
+ - inversion 1.
+ - case Nat.leb_spec; cbn; omega.
+ - revert l; fix IHl 1; destruct l as [|t l]; cbn.
+   + inversion 1.
+   + rewrite Nat.max_lt_iff. intros LT.
+     destruct (Nat.lt_ge_cases k (level t)),
+              (Nat.lt_ge_cases k (list_max (map level l))).
+     * rewrite (IH t), (IHl l); auto.
+     * rewrite (IH t); auto.
+       generalize (lift_nop_le k (Fun f l) H0). cbn - [Nat.max].
+       intros [= ->]. omega with *.
+     * rewrite (IHl l), (lift_nop_le k t); auto. omega with *.
+     * omega with *.
 Qed.
 
 Lemma check_lift sign k t :
@@ -96,6 +121,8 @@ Proof.
   - rewrite IHf1. rewrite IHf2. auto.
 Qed.
 
+(** ** Part 2 : [bsubst] *)
+
 (** [bsubst] and [check] *)
 
 Lemma check_bsubst_term sign n (u t:term) :
@@ -127,7 +154,7 @@ Qed.
 
 (** [bsubst] and [level] *)
 
-Lemma level_bsubst_term_max n (u t:term) :
+Lemma level_bsubst_term_max n u t :
   level (bsubst n u t) <= Nat.max (level u) (level t).
 Proof.
  revert t. fix IH 1; destruct t; cbn -[Nat.max].
@@ -138,7 +165,7 @@ Proof.
    + specialize (IH t). specialize (IHl l). omega with *.
 Qed.
 
-Lemma level_bsubst_max n u (f:formula) :
+Lemma level_bsubst_max n u f :
   level (bsubst n u f) <= Nat.max (level u) (level f).
 Proof.
  revert n u.
@@ -149,31 +176,37 @@ Proof.
    specialize (IHf (S n) (lift 0 u)). omega with *.
 Qed.
 
-Lemma level_bsubst_term n (u t:term) :
- level t <= S n -> level u <= n ->
- level (bsubst n u t) <= n.
+(** When substituting the highest var (or above), we can be
+    slightly more precise than the previous generic results. *)
+
+Lemma level_bsubst_term n u t :
+ level t <= S n ->
+ level (bsubst n u t) <= Nat.max n (level u).
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto with arith.
- - case eqbspec; cbn; auto. intros; omega.
- - intros Hl Hu. rewrite map_map. apply list_max_map_le.
+ - case eqbspec; cbn; auto; intros; omega with *.
+ - intros Hl. rewrite map_map. apply list_max_map_le.
    rewrite list_max_map_le in Hl; auto.
 Qed.
 
-Lemma level_bsubst n u (f:formula) :
- level f <= S n -> level u <= n ->
- level (bsubst n u f) <= n.
+Lemma level_bsubst n u f :
+ level f <= S n ->
+ level (bsubst n u f) <= Nat.max n (level u).
 Proof.
  revert n u.
- induction f; cbn; intros n u Hf Hu; auto with arith.
+ induction f; cbn; intros n u Hf; auto with arith.
  - apply (level_bsubst_term n u (Fun "" l)); auto.
  - rewrite max_le in *; intuition.
- - change n with (Nat.pred (S n)) at 2. apply Nat.pred_le_mono.
-   apply IHf. omega. transitivity (S (level u)). apply level_lift.
-   omega.
+ - rewrite Nat.le_pred_le_succ in Hf.
+   apply Nat.le_pred_le_succ. rewrite IHf; auto.
+   generalize (level_lift 0 u). omega with *.
 Qed.
 
+(** Other specialized results when [u] has no higher vars than [n] *)
+
 Lemma level_bsubst_term' n (u t : term) :
-  level u <= S n -> level (bsubst n u t) <= level t.
+  level u <= S n ->
+  level (bsubst n u t) <= level t.
 Proof.
  intro Hu. revert t. fix IH 1. destruct t; cbn; auto.
  - case eqbspec; intros; subst; auto.
@@ -182,13 +215,145 @@ Proof.
 Qed.
 
 Lemma level_bsubst' n u (f:formula) :
-  level u <= S n -> level (bsubst n u f) <= level f.
+  level u <= S n ->
+  level (bsubst n u f) <= level f.
 Proof.
  revert n u. induction f; cbn; intros n u Hu; auto with arith.
  - now apply (level_bsubst_term' n u (Fun "" l)).
  - apply Nat.max_le_compat; auto.
  - apply Nat.pred_le_mono; auto with arith.
    apply IHf. transitivity (S (level u)). apply level_lift. omega.
+Qed.
+
+(** A reverse result about the level of [bsubst] :
+    The substituted variable is gone if it was lacking before or
+    if it isn't there in the substituted term. *)
+
+Lemma level_term_subst_inv n u t :
+  level (bsubst n u t) <= n ->
+  level t <= n \/ level u <= level (bsubst n u t).
+Proof.
+ revert t. fix IH 1; destruct t; cbn.
+ - auto.
+ - case eqbspec; intros; subst; auto.
+ - revert l. fix IHl 1; destruct l; cbn.
+   + auto.
+   + intros H. apply Nat.max_lub_iff in H. destruct H as (H,Hl).
+     destruct (IH t H), (IHl l Hl);
+     try (right; omega with * ). left; omega with *.
+Qed.
+
+Lemma level_subst_inv n u f :
+  level (bsubst n u f) <= n ->
+  level f <= n \/ level u <= level (bsubst n u f).
+Proof.
+ revert n u.
+ induction f; cbn; intros; auto.
+ - apply (level_term_subst_inv n u (Fun "" l) H).
+ - apply Nat.max_lub_iff in H. destruct H as (H1,H2).
+   destruct (IHf1 _ _ H1), (IHf2 _ _ H2);
+     try (right; omega with * ). left; omega with *.
+ - destruct (IHf (S n) (lift 0 u)).
+   + omega with *.
+   + left; omega.
+   + right.
+     case (Nat.leb_spec (level u) 0). omega.
+     intros LT. rewrite (lift_incrlevel 0 u LT) in *. omega.
+Qed.
+
+(** [bsubst] above the level does nothing *)
+
+Lemma term_level_bsubst_id n u (t:term) :
+ level t <= n -> bsubst n u t = t.
+Proof.
+ induction t as [ | |f l IH] using term_ind'; cbn; try easy.
+ - case eqbspec; auto. intros ->. omega.
+ - intros LE.
+   rewrite list_max_map_le in LE. f_equal. apply map_id_iff. intuition.
+Qed.
+
+Lemma form_level_bsubst_id n u (f:formula) :
+ level f <= n -> bsubst n u f = f.
+Proof.
+ revert n u.
+ induction f; cbn; intros n u LE; f_equal; auto.
+ - injection (term_level_bsubst_id n u (Fun "" l)); cbn; auto.
+ - apply IHf1. omega with *.
+ - apply IHf2. omega with *.
+ - apply IHf. omega with *.
+Qed.
+
+Lemma bclosed_bsubst_id n u (t:term) :
+ BClosed t -> bsubst n u t = t.
+Proof.
+ unfold BClosed. intros. apply term_level_bsubst_id. auto with *.
+Qed.
+
+(** [bsubst] by the same [BVar] does nothing *)
+
+Lemma term_bsubst_id n t : bsubst n (BVar n) t = t.
+Proof.
+ induction t as [ v | m | f l IH] using term_ind'; cbn; auto.
+ - case eqbspec; auto.
+ - f_equal. rewrite <- (map_id l) at 2.
+   apply map_ext_in. intros a IN. apply IH; auto.
+Qed.
+
+Lemma bsubst_id n f : bsubst n (BVar n) f = f.
+Proof.
+ revert n. induction f; intros n; cbn; f_equal; auto.
+ now injection (term_bsubst_id n (Fun "" l)).
+Qed.
+
+(** Commuting two different [bsubst] *)
+
+Lemma swap_term_bsubst n m u v t :
+ n <> m -> BClosed u -> BClosed v ->
+ bsubst n u (bsubst m v t) = bsubst m v (bsubst n u t).
+Proof.
+ induction t using term_ind'; cbn; auto.
+ - repeat (case eqbspec; cbn; intros; subst); auto; try easy;
+   now rewrite bclosed_bsubst_id.
+ - intros. f_equal. rewrite !map_map. apply map_ext_in; auto.
+Qed.
+
+Lemma swap_bsubst n m u v f :
+ n <> m -> BClosed u -> BClosed v ->
+ bsubst n u (bsubst m v f) = bsubst m v (bsubst n u f).
+Proof.
+ revert n m.
+ induction f; cbn; intros; f_equal; auto.
+ - rewrite !map_map. apply map_ext_in.
+   intros. now apply swap_term_bsubst.
+ - rewrite !lift_nop; auto.
+Qed.
+
+(** [bsubst] "transitivity" : two [bsubst] in a row may give a single one *)
+
+Lemma term_bsubst_bsubst n m u t :
+ level t <= m ->
+ bsubst m u (bsubst n (BVar m) t) = bsubst n u t.
+Proof.
+ induction t as [ v | k | f l IH] using term_ind'; intros Ht.
+ - now cbn.
+ - cbn in Ht. cbn.
+   case eqbspec; intros; subst; cbn; case eqbspec; auto; try easy.
+   intros. exfalso. omega.
+ - cbn. f_equal. rewrite map_map.
+   apply map_ext_in. intros a IN. apply IH; auto.
+   cbn in Ht. rewrite list_max_map_le in Ht; auto.
+Qed.
+
+Lemma bsubst_bsubst n m u f :
+ level f <= m ->
+ bsubst m u (bsubst n (BVar m) f) = bsubst n u f.
+Proof.
+ revert n m u.
+ induction f; cbn; intros; f_equal; auto.
+ - injection (term_bsubst_bsubst n m u (Fun "" l) H) as E. exact E.
+ - apply Nat.max_lub_iff in H. destruct H as (H1,H2); auto.
+ - apply Nat.max_lub_iff in H. destruct H as (H1,H2); auto.
+ - apply (IHf (S n) (S m) (lift _ u)). omega.
 Qed.
 
 (** [bsubst] and [fvars] : over-approximations *)
@@ -240,34 +405,6 @@ Proof.
    right; now apply IHf2.
 Qed.
 
-(** [bsubst] above the level does nothing *)
-
-Lemma term_level_bsubst_id n u (t:term) :
- level t <= n -> bsubst n u t = t.
-Proof.
- induction t as [ | |f l IH] using term_ind'; cbn; try easy.
- - case eqbspec; auto. intros ->. omega.
- - intros LE.
-   rewrite list_max_map_le in LE. f_equal. apply map_id_iff. intuition.
-Qed.
-
-Lemma form_level_bsubst_id n u (f:formula) :
- level f <= n -> bsubst n u f = f.
-Proof.
- revert n u.
- induction f; cbn; intros n u LE; f_equal; auto.
- - injection (term_level_bsubst_id n u (Fun "" l)); cbn; auto.
- - apply IHf1. omega with *.
- - apply IHf2. omega with *.
- - apply IHf. omega with *.
-Qed.
-
-Lemma bclosed_bsubst_id n u (t:term) :
- BClosed t -> bsubst n u t = t.
-Proof.
- unfold BClosed. intros. apply term_level_bsubst_id. auto with *.
-Qed.
-
 (** [bsubst] to a fresh variable is injective *)
 
 Lemma term_bsubst_fresh_inj n z (t t':term):
@@ -306,7 +443,7 @@ Proof.
  - intros [= <- E]. f_equal. eapply IHf; eauto.
 Qed.
 
-(** Properties of [fclosed] *)
+(** ** Part 3 : properties of [fclosed] *)
 
 Lemma term_fclosed_spec t : fclosed t = true <-> FClosed t.
 Proof.
@@ -350,7 +487,9 @@ Proof.
  unfold FClosed. now rewrite fvars_lift_form.
 Qed.
 
-(** [vmap] basic results : extensionality, identity, composition *)
+(** ** Part 4 : [vmap] and [fsubst] *)
+
+(** basic results : extensionality, identity, composition *)
 
 Lemma term_vmap_ext h h' (t:term) :
  (forall v:variable, Names.In v (fvars t) -> h v = h' v) ->

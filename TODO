@@ -11,11 +11,14 @@ Meta
 
   - cleanup proofs Meta
   - faire les preuves de Meta directement sur Valid plutot que Pr ?
+  - general bsubst/bsubst lemma, now that it incorporates some lifting ?
 
 General
 
+- Plus de Class overloading ? Dur, cf tinterp / finterp (Prop ->, sections,...).
+
 - Peut-on éviter tous ces "fix IH 1" ??
-  Eviter tous ces preuves similaires (termes, formules, etc).
+  Eviter toutes ces preuves similaires (termes, formules, etc).
 
 (x) setfresh au lieu des assert + set ?
 
@@ -28,7 +31,7 @@ General
 KO : PreModel : revoir a se passer de BClosed general,
         maintenant que Valid impose des temoins BClosed
      --> Non, ou alors il faudrait revoir bsubst avec des -1 pour
-         les bvars au delà de celle qu'on substitue.
+         les bvars au delà de celle qu'on substitue (?)
 
 (x) PreModel : funsOk et predsOk sont-ils vraiment utiles ?
     ou bien sinon est-ce que AxOk suffit ?
@@ -39,9 +42,31 @@ KO : PreModel : revoir a se passer de BClosed general,
 	de reperer des idioties plus tot.
 
 (x) Axiomes de Peano + exos + modèle Coq
-- Idem pour ZF
-- Skolem
+(x) Idem pour ZF
+(x) Skolem
 
+ - Bridge with Goedel contribution by R O'Connor (seems to be a named encoding)
 
-Related works
-https://www.isa-afp.org/entries/Completeness-paper.pdf
+ - Equality :
+   * variant of Mix with equality hardwired ?
+   * equality theory as in the course notes
+   * Leibniz principle for equality theories
+   * interp et congruence : generaliser qqchose comme ZF.finterp_zf_congr
+
+ - ZF, Peano : try stating axioms (or displaying them) via
+   Equiv.mix2nam ou parser via Equiv.nam2mix
+   (far more readable than BVar)
+
+ - Peano : show that induction_schema on level-1 A's is enough
+ - Peano : nicer statements of Sym, Trans, ... without BClosed ??
+
+ - Direct proof that A\/~A isn't true in general when logic=J
+ - Kripke models
+
+ - Common tactics in Peano, ZF to factorize
+ - Provide a unification tactics in addition to semi-manual inst_axiom
+ 
+
+Related works to mention :
+ - Isabelle : https://www.isa-afp.org/entries/Completeness-paper.pdf
+ - Coq [Coq-Club] Sequent calculus for full First Order Logic in Coq	19 Septembre 2019 13:07

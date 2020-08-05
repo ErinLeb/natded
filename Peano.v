@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Mix Meta.
+Require Import Defs NameProofs Mix Meta Toolbox.
 Require Import Wellformed Theories Nary PreModels Models.
 Import ListNotations.
 Local Open Scope bool_scope.

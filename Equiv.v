@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Nam Subst Meta.
+Require Import Defs NameProofs Nam Subst Toolbox.
 Import ListNotations.
 Import Nam.Form.
 Local Open Scope bool_scope.
@@ -315,7 +315,7 @@ Proof.
  - case eqbspec.
    + intros ->.
      unfold Mix.fsubst.
-     rewrite Meta.form_vmap_id; auto.
+     rewrite Toolbox.form_vmap_id; auto.
      intros x. rewrite nam2mix_fvars. simpl.
      unfold Mix.varsubst.
      intros IN.
@@ -345,7 +345,7 @@ Lemma nam2mix_subst_nop x stk f :
 Proof.
  intros NI.
  rewrite nam2mix_subst_fsubst; auto.
- - cbn. unfold Mix.fsubst. rewrite Meta.form_vmap_id; auto.
+ - cbn. unfold Mix.fsubst. rewrite Toolbox.form_vmap_id; auto.
    intros v Hv. unfold Mix.varsubst. case eqbspec; auto. now intros ->.
  - intros v Hv. cbn. nameiff. now intros ->.
 Qed.
@@ -374,7 +374,7 @@ Proof.
      change (x::stk++[x]) with ((x::stk)++[x]).
      rewrite nam2mix_shadowstack by (simpl; auto).
      symmetry.
-     apply Meta.form_level_bsubst_id.
+     apply Toolbox.form_level_bsubst_id.
      now rewrite nam2mix_level.
    + intros NE.
      rewrite lift_nop.
@@ -406,7 +406,7 @@ Proof.
  intros Hz.
  rewrite 2 nam2mix_subst_bsubst0. cbn.
  split.
- - intros H. apply Meta.bsubst_fresh_inj in H; auto.
+ - intros H. apply Toolbox.bsubst_fresh_inj in H; auto.
    rewrite !nam2mix_fvars. cbn. namedec.
  - now intros ->.
 Qed.
@@ -426,7 +426,7 @@ Proof.
  rewrite nam2mix_subst_bsubst0. cbn.
  rewrite <- (nam2mix_bsubst0_var x f').
  split.
- - apply Meta.bsubst_fresh_inj.
+ - apply Toolbox.bsubst_fresh_inj.
    rewrite !nam2mix_fvars. cbn. namedec.
  - now intros ->.
 Qed.
@@ -607,7 +607,7 @@ Proof.
  apply nam2mix_canonical.
  rewrite !nam2mix0_subst_fsubst.
  rewrite nam2mix_term_subst by auto.
- apply Meta.form_fsubst_fsubst; auto.
+ apply Toolbox.form_fsubst_fsubst; auto.
  rewrite nam2mix_tvars. cbn. namedec.
 Qed.
 

@@ -5,7 +5,7 @@
     This file is released under the CC0 License, see the LICENSE file *)
 
 Require Import ChoiceFacts.
-Require Import Defs NameProofs Mix Meta.
+Require Import Defs NameProofs Mix Toolbox Meta.
 Require Import Wellformed Theories NaryFunctions Nary PreModels Models.
 Import ListNotations.
 Local Open Scope bool_scope.

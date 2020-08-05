@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Nam Subst Equiv Meta.
+Require Import Defs NameProofs Nam Subst Equiv Toolbox.
 Import ListNotations.
 Import Nam.Form.
 Local Open Scope bool_scope.

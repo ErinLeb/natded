@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs Mix Meta.
+Require Import Defs Mix Toolbox.
 Local Open Scope bool_scope.
 Local Open Scope eqb_scope.
 

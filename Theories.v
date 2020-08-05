@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs NameProofs Mix Meta ProofExamples Wellformed.
+Require Import Defs NameProofs Mix Toolbox Meta ProofExamples Wellformed.
 Require Import Restrict Countable.
 Import ListNotations.
 Local Open Scope bool_scope.

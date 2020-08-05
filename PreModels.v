@@ -4,7 +4,8 @@
 (** The NatDed development, Pierre Letouzey, 2019.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Defs Mix NameProofs Meta Restrict Theories NaryFunctions Nary.
+Require Import Defs Mix NameProofs Toolbox Meta Restrict Theories.
+Require Import NaryFunctions Nary.
 Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.

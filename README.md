@@ -48,7 +48,8 @@ Auxiliary files :
 
 ## Documentation
 
- - A [talk in french](https://www.irif.fr/\_media/rencontres/pps2019/letouzey.pdf) presenting the state of this development in September 2019 (Journéees PPS).
+ - A [talk](https://www.irif.fr/\_media/rencontres/pps2019/letouzey.pdf) presenting the state of this development in September 2019 (Journéees PPS).
+   The [markdown file](talk/expose.md) of these slides
 
  - Soon, the internship report of Samuel Ben Hamon (summer 2020). In the meanwhile, see [Rapport](Rapport).
 

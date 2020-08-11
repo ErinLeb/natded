@@ -159,7 +159,7 @@ Avant de se lancer dans le stage à proprement parler, il a fallu consacrer une 
 
 \subsubsection{Dépôt Git}
 
-La première journée du stage a été passée à appréhender un outil nouveau pour manipuler de gros projets de code : GitLab. \'A ce titre, et pour me fixer les idées, j'ai rédigé la cheatsheet présentée en \ref{gitsheet}.
+La première journée du stage a été passée à appréhender un outil nouveau pour manipuler de gros projets de code : GitLab. \`A ce titre, et pour me fixer les idées, j'ai rédigé la cheatsheet présentée en \ref{gitsheet}.
 
 L'usage de Git a été d'un grand recours, notamment lorsque nous voulions discuter d'un morceau de preuve en visio-conférence, car chacun pouvait travailler et mettre à jour le dépôt de son côté, la fusion se faisant ensuite aisément grâce à la commande \verb+git pull+.
 
@@ -210,10 +210,14 @@ Lemma ExcludedMiddle f1 : Provable Classic ([] ⊢ f1 \/ ~f1).
 \end{minipage} \begin{minipage}[c]{0.95\linewidth}
 Les symboles \verb+->+, \verb+/\+, \verb+\/+ et \verb+~+ utilisés à l'intérieur des séquents n'ont \emph{rien à voir} avec les opérateurs Coq du même nom : il s'agit d'une surcharge de notation pour rendre les preuves plus lisibles. C'est d'ailleurs cet usage du \emph{deep-embedding} qui permet de démontrer des résultats méta-théoriques.
 \end{minipage}
+\smallskip
 
-% TODO
-% ajouter verbatim def de formula et faire le lien /\, \/ <-> Op And, Or, etc.
-% dire que les quantificateurs n'ont pas de variable // de Bruijn (+ parler de BVar / #)
+Pour revenir sur la remarque précédente, on donne en annexe \ref{form} la définition des formules. On voit alors, par exemple, que \verb+A /\ B+ n'est qu'un sucre syntaxique pour \verb+Op And A B+.
+% au bon endroit ?
+Par ailleurs, on verra dans la suite que les quantificateurs ne sont pas associés à des variables. Cela vient du fait que la représentation des formules est \emph{locally-nameless}, et donc les variables liées sont représentées par des indices de \textsc{de Bruijn} grâce à un constructeur \verb+BVar : nat -> term+ (qui est ensuite abrégé par \verb+#+).
+\begin{minted}{coq}
+Notation "# n" := (BVar n) (at level 20, format "# n") : formula_scope.
+\end{minted}
 
 \section{Arithmétique de {\sc Peano}}
 
@@ -246,13 +250,10 @@ Le but initial a été de démontrer la commutativité de la loi $+$ dans le cad
 
 Par ailleurs, les débuts de preuve avaient tendance à être particulièrement inintéressants et répétitifs : passer la liste des axiomes de \textsc{Peano} en argument à la quantification existentielle\footnote{Avec toutefois un petit problème lorsqu'il s'agissait de raisonner par récurrence, puisque le schéma d'axiomes de récurrence engendre une infinité d'axiomes, ce que Coq a beaucoup de mal à gérer.}, justifier que la formule que l'on souhaite montrer respecte bien la signature de $\PA$, initier un raisonnement par récurrence avec la bonne instance du schéma d'axiomes de récurrence si nécessaire. Tous ces éléments rendaient les preuves lourdes et paraissaient pourtant hautement automatisables.
 
-% TODO
-% parler du fait que = n'est qu'un prédicat et n'est pas codé en dur dans la méta-théorie
-
 Quelques propriétés utiles étaient par ailleurs sans cesse utilisées. Si la transitivité et la symétrie de l'égalité font partie de toute théorie égalitaire qui se respecte, le besoin de règles de dérivation telles que \begin{prooftree*}
 \hypo{\Gamma \vdash u = v}
 \infer1[sym]{\Gamma \vdash v = u}
-\end{prooftree*} se fait cruellement ressentir. En l'état, l'utilisation de l'axiome de symétrie de l'égalité nécessitait d'avoir recours à la tactique \verb+assert+ pour rajouter un jugement précisant que le séquent $\PA \vdash \forall x, \forall y \cdot x = y \Rightarrow y = x$ est dérivable, puis d'utiliser les règles d'élimination adéquates (il s'agit de \emph{forward-reasoning}). Il en va de même pour les axiomes du type $\forall x, \forall y \cdot x = y \Rightarrow \Succ (x) = \Succ (y)$.
+\end{prooftree*} se fait cruellement ressentir. En l'état, l'utilisation de l'axiome de symétrie de l'égalité nécessitait d'avoir recours à la tactique \verb+assert+ pour rajouter un jugement précisant que le séquent $\PA \vdash \forall x, \forall y \cdot x = y \Rightarrow y = x$ est dérivable, puis d'utiliser les règles d'élimination adéquates : il s'agit de \emph{forward-reasoning}. Il en va de même pour les axiomes du type $\forall x, \forall y \cdot x = y \Rightarrow \Succ (x) = \Succ (y)$. Cette difficulté à manipuler l'égalité provient du choix qui a été fait par Pierre Letouzey de ne pas coder en dur les axiomes de l'égalité dans la méta-théorie (en posant notamment le principe de \textsc{Leibniz} comme axiome), mais plutôt d'ajouter à toute théorie $T$ que l'on est amené à définir les axiomes de symétrie, réflexivité et transitivité de l'égalité, ainsi qu'un certain nombre d'axiomes de compatibilités avec les autres symboles de la signature de $T$. Ce choix permet de travailler à un plus grand niveau d'abstraction, et laisse tout de même la possibilité de démontrer -- non sans peine -- un principe de \textsc{Leibniz} dans chacune des théories ainsi créées.
 
 Enfin, certaines tactiques et règles définies dans l'encodage de \verb+NatDed+ étaient passablement pénibles à utiliser. Entre autres, on peut citer \verb+R_All_i+, la règle d'introduction du quantificateur universel, qui engendrait un grand nombre de buts ennuyants à démontrer. On peut également mentionner tous les résultats faisant intervenir des ensembles finis, par exemple le lemme d'affaiblissement, car la représentation de ces ensembles en Coq est surprenante et se prête fort mal à des tactiques de simplification usuelles telles que \verb+cbn+ lorsqu'il reste des éléments abstraits.
 
@@ -297,15 +298,22 @@ Lemma AntiHereditarity :
                       Pr logic (Γ ⊢ A = B).
 \end{minted}
 
-% TODO
-% verbatim des tactiques faciles
-
 Une fois ces résultats établis, j'ai facilement pu créer les tactiques qui nous intéressaient, où il s'agissait essentiellement d'appliquer le théorème idoine et de simplifier à l'aide de tactiques de calcul spécifiques, telles que \verb+calc+ ou \verb+cbm+, qui ont été écrites par Pierre Letouzey pour faciliter la manipulation d'ensembles finis et de listes.
+\begin{minted}{coq}
+Ltac sym := apply Symmetry; calc.
+
+Ltac ahered := apply Hereditarity; calc.
+
+Ltac hered := apply AntiHereditarity; calc.
+
+Ltac trans b := apply Transitivity with (B := b); calc.
+\end{minted}
 \smallskip
 
 En plus de cela, j'ai aussi défini des tactiques qui permettent de gérer plus facilement la règle \verb+R_All_i+ ou d'ajouter la dérivabilité d'axiomes dans les hypothèses, pour pouvoir raisonner à rebours (i.e. de haut de bas de l'arbre de dérivation). Ces tactiques très simples ne sont finalement que des macros qui évitent d'avoir à réécrire plusieurs fois les mêmes petits bouts de preuve et de se concentrer sur l'aspect déduction naturelle plutôt que sur l'aspect Coq.
-% TODO
-% parler d'unification ?
+\smallskip
+
+Bien entendu, toutes les tactiques sus-mentionnées sont perfectibles, notamment dans la cherche des instances. L'algorithme d'unification nous assure, en effet, que le problème de savoir par quels termes instancier une règle de déduction naturelle est décidable. Cependant, il faut garder en tête la vocation pédagogique de ce projet, qui nous a conduits à souhaiter laisser l'utilisateur choisir les instances lui-même.
 
 \subsubsection{Pour utiliser des lemmes auxiliaires}\label{sol}
 
@@ -318,13 +326,14 @@ Lemma ModusPonens th :
 \end{minted}
 Grâce à ce résultat, la preuve d'un théorème $\phi$ utilisant des lemmes auxiliaires se fait en deux temps : dans un premier temps, on montre que $\phi$ est effectivement impliqué par tous les lemmes auxiliaires $\psi_1, \ldots, \psi_n$ que l'on souhaite utiliser (c'est là que repose toute la preuve), et dans un second temps, on utilise \verb+ModusPonens+ pour montrer que $\psi_1, \ldots, \psi_n$ sont bien des théorèmes eux aussi.
 
-% TODO
-% parler des listes d'axiomes qui fusionnent au niveau méta théorique // passage à l'échelle
+Le théorème \verb+ModusPonens+ nous a semblé être la solution la plus susceptible de passer à l'échelle, car il permet de fusionner les listes d'axiomes nécessaires à l'établissement d'un résultat de la forme \verb+IsTheorem+ au niveau méta-théorique. L'utilisateur n'a alors plus besoin de s'occuper des axiomes nécessaires à la démonstration des lemmes auxiliaires et peut se concentrer, sans peur et sans reproche, sur la preuve du théorème principal.
 
 
 \section{Théorie des ensembles de {\sc Zermelo-Fraenkel}}
 
 \subsection{Encodage des axiomes et méta-théorèmes}
+
+% Russell
 
 % achtung parsing
 
@@ -332,6 +341,8 @@ Grâce à ce résultat, la preuve d'un théorème $\phi$ utilisant des lemmes au
 % parler d'une formulation nommée des axiomes
 
 \subsection{Preuves exemples}
+
+% on a pu réutiliser des bouts de Peano
 
 \subsection{Construction de $\N$}
 
@@ -413,6 +424,30 @@ Inductive Pr (l:logic) : sequent -> Prop :=
       Pr l (Γ ⊢ B)
  | R_Absu Γ A : l=Classic -> Pr l (Not A :: Γ ⊢ False) ->
                   Pr l (Γ ⊢ A).
+\end{minted}
+
+\section{Définition des formules} \label{form}
+
+\begin{minted}{coq}
+Inductive term :=
+  | FVar : variable -> term (** Free variable (global name) *)
+  | BVar : nat -> term (** Bounded variable (de Bruijn indices) *)
+  | Fun : function_symbol -> list term -> term.
+
+Inductive formula :=
+  | True
+  | False
+  | Pred : predicate_symbol -> list term -> formula
+  | Not : formula -> formula
+  | Op : op -> formula -> formula -> formula
+  | Quant : quant -> formula -> formula.
+  
+Definition Iff a b := Op And (Op Impl a b) (Op Impl b a). 
+Notation "~ f" := (Not f) : formula_scope.
+Infix "/\" := (Op And) : formula_scope.
+Infix "\/" := (Op Or) : formula_scope.
+Infix "->" := (Op Impl) : formula_scope.
+Infix "<->" := Iff : formula_scope.
 \end{minted}
 
 \includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour GitLab}\label{gitsheet}]{TutoGitHub.pdf}

@@ -19,6 +19,7 @@
 \usepackage{minted}
 \usepackage{manfnt}
 \usepackage[bottom]{footmisc}
+%\usepackage{times}
 
 \usemintedstyle{tango}
 
@@ -27,6 +28,7 @@
 \DeclareUnicodeCharacter{2203}{$\exists$}
 \DeclareUnicodeCharacter{2200}{$\forall$}
 \DeclareUnicodeCharacter{2208}{$\in$}
+\DeclareUnicodeCharacter{3C4}{$\tau$}
 
 \makeatletter
 \AtBeginEnvironment{minted}{\dontdofcolorbox}
@@ -118,9 +120,10 @@ Dans un premier temps, il a fallu se familiariser avec les outils du stage : à 
 \end{itemize}
 \end{abstract}
 
-\newpage
-\renewcommand{\contentsname}{\centerline{Table des matières} \vspace*{-2em}}
+\begin{figure}[p]
+\renewcommand{\contentsname}{\centerline{Table des matières}}
 \tableofcontents
+\end{figure}
 
 \newpage
 
@@ -219,7 +222,7 @@ Les symboles \verb+->+, \verb+/\+, \verb+\/+ et \verb+~+ utilisés à l'intérie
 
 Pour revenir sur la remarque précédente, on donne en annexe \ref{form} la définition des formules. On voit alors, par exemple, que \verb+A /\ B+ n'est qu'un sucre syntaxique pour \verb+Op And A B+.
 
-% au bon endroit ?
+% QUES au bon endroit ?
 Par ailleurs, on verra dans la suite que les quantificateurs ne sont pas associés à des variables. Cela vient du fait que la représentation des formules est \emph{locally-nameless}, et donc les variables liées sont représentées par des indices de \textsc{de Bruijn} grâce à un constructeur \verb+BVar : nat -> term+ (qui est ensuite abrégé par \verb+#+, cf. annexe \ref{form}).
 
 %%%
@@ -320,7 +323,7 @@ Ltac trans b := apply Transitivity with (B := b); calc.
 En plus de cela, j'ai aussi défini des tactiques qui permettent de gérer plus facilement la règle \verb+R_All_i+ ou d'ajouter la dérivabilité d'axiomes dans les hypothèses, pour pouvoir raisonner à rebours (i.e. de haut de bas de l'arbre de dérivation). Ces tactiques très simples ne sont finalement que des macros qui évitent d'avoir à réécrire plusieurs fois les mêmes petits bouts de preuve et de se concentrer sur l'aspect déduction naturelle plutôt que sur l'aspect Coq.
 \smallskip
 
-% c'est vrai ??
+% QUES c'est vrai ??
 Bien entendu, toutes les tactiques sus-mentionnées sont perfectibles, notamment dans la cherche des instances. L'algorithme d'unification nous assure, en effet, que le problème de savoir par quels termes instancier une règle de déduction naturelle est décidable. Cependant, il faut garder en tête la vocation pédagogique de ce projet, qui nous a conduits à souhaiter laisser l'utilisateur choisir les instances lui-même.
 
 \subsubsection{Pour utiliser des lemmes auxiliaires}\label{sol}
@@ -391,10 +394,10 @@ Grâce au travail fait pour $\PA$, ces preuves ont essentiellement ressemblé à
 
 \subsection{Construction de $\N$}
 
-Le but initialement fixé était de montrer une résultat du type $\ZF \vdash \PA$. Cependant, par manque de temps et peut-être de courage face à l'ampleur de la tâche, qui aurait demandé d'établir un théorème de \textsc{Skolem}\footnote{Dont nous ne disposions pas à l'époque, mais que Pierre Letouzey a démontré ensuite.}, nous nous somme rabattus sur un objectif plus modeste, à savoir mettre en \oe uvre la construction de \textsc{von Neumann} des entiers :
+Le but initialement fixé était de montrer un résultat du type $\ZF \vdash \PA$. Cependant, par manque de temps et peut-être de courage face à l'ampleur de la tâche, qui aurait demandé d'établir un théorème de \textsc{Skolem}\footnote{Dont nous ne disposions pas à l'époque, mais que Pierre Letouzey a démontré ensuite.}, nous nous somme rabattus sur un objectif plus modeste, à savoir mettre en \oe uvre la construction de \textsc{von Neumann} des entiers :
 \begin{align*}
 0 &:= \varnothing \\
-n + 1 &:= \{ n \} \cup n.
+\Succ (n) &:= \{ n \} \cup n.
 \end{align*}
 
 Comme nous avions déjà établi l'existence de l'ensemble vide, il ne nous restait plus qu'à montrer que, pour tout $n$, l'ensemble $n \cup \{ n \}$ existait bien. Pour ce faire, nous avons défini un prédicat \verb+succ+
@@ -408,21 +411,19 @@ Lemma Successor : IsTheorem J ZF (∀∃ succ (#1) (#0)).
 Là encore, le travail effectué sur l'arithmétique de \textsc{Peano} a permis de faire en sorte que la preuve ressemble à une dérivation en déduction naturelle, avec en plus les avantages mentionnés en \ref{ex}. De plus, puisque nous avions déjà démontré l'existence, pour tous $a$ et $b$, du singleton $\{ a \}$ ainsi que celle de l'union $a \cup b$, la preuve principale (regroupée dans un théorème auxiliaire où l'énoncé des lemmes utilisés est posé en impliquant du théorème à démontrer, comme vu en \ref{sol}) tient en une trentaine de ligne.
 
 Une fois démontrés ces résultats, la construction de $\N$ est immédiate en utilisant le théorème de \textsc{Skolem}.
+
 %%%
 
 \section{Lien avec le $\lambda$-calcul}
 
 Pour finir le stage, on a encodé un $\lambda$-calcul enrichi et démontré une correspondance de \textsc{Curry-Howard}, qui est une alternative possible aux preuves dans $\NJ_0$.
 
+Cette section reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}. Par ailleurs, on se placera toujours dans le cadre de la \emph{logique propositionnelle intuitionniste}.
+
 \subsection{Choix de codage}
 
 % à la Church
-
-\subsection{Correspondance de {\sc Curry-Howard}}
-
-Cette partie reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}. Par ailleurs, on se placera toujours dans le cadre de la \emph{logique intuitionniste}.
-
-Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontrer le premier résultat du stage, à la savoir que le séquent $\vdash (\phi_1 \wedge \phi_2) \Rightarrow (\phi_1 \vee \phi_2)$ était dérivable. Pour ce faire, il a suffit d'exhiber le $\lambda$-terme témoin $\lambda x \cdot \iota_1 \pi_1 x$, qui est beaucoup plus aisé à manipuler qu'un arbre de dérivation complet. Notons au passage que le témoin contient en fait toute l'information de la preuve, car la question de savoir si un $\lambda$-terme est bien typé est décidable.
+% verbatim + annexe E
 
 \subsubsection{Logique minimale intuitionniste}
 
@@ -434,12 +435,31 @@ Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontre
 
 \subsubsection{Disjonction : filtrage par motif et injections}
 
+
+\subsection{Correspondance de {\sc Curry-Howard}}
+
+Afin d'établir un lien avec la déduction naturelle, nous avons établi, sans grande difficulté, le résultat suivant :
+\begin{minted}{coq}
+Theorem CurryHoward Γ u τ :
+  typed Γ u τ -> Pr J (to_ctxt Γ ⊢ to_form τ).
+\end{minted}
+L'opérateur \verb+to_form+ fait le lien -- plutôt évident -- entre les types et les formules, la seule subtilité étant que l'on transforme les variables de type en symboles de prédicat. Quant à \verb+to_ctxt+, il s'agit de l'application de \verb+to_form+ à tous les éléments d'une liste grâce à \verb+List.map+.
+\smallskip
+
+Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontrer le premier résultat du stage, à la savoir que le séquent $\vdash (\phi_1 \wedge \phi_2) \Rightarrow (\phi_1 \vee \phi_2)$ était dérivable.
+\begin{minted}{coq}
+Lemma ex : Pr J ([] ⊢ (Pred "A" [] /\ Pred "B" []) -> (Pred "A" [] \/ Pred "B" [])).
+\end{minted}
+Pour ce faire, il a suffit d'exhiber le $\lambda$-terme témoin $\lambda x \cdot \iota_1 \pi_1 x$, qui est beaucoup plus aisé à manipuler qu'un arbre de dérivation complet. Notons au passage que le témoin contient en fait toute l'information de la preuve, car la question de savoir si un $\lambda$-terme est bien typé est décidable.
+
 %%%
 
 \section{Conclusion}
 
-% retour sur exp
-% axes d'approfondissement
+\subsection{Apports mutuels du stage}
+
+\subsection{Prolongements envisageables}
+
 
 %%%
 

@@ -26,6 +26,7 @@
 \DeclareUnicodeCharacter{22A2}{$\vdash$}
 \DeclareUnicodeCharacter{2203}{$\exists$}
 \DeclareUnicodeCharacter{2200}{$\forall$}
+\DeclareUnicodeCharacter{2208}{$\in$}
 
 \makeatletter
 \AtBeginEnvironment{minted}{\dontdofcolorbox}
@@ -47,8 +48,8 @@
 \newcommand{\PA}{\mathsf{PA}}
 \newcommand{\HA}{\mathsf{HA}}
 \newcommand{\ZF}{\mathsf{ZF}}
-\newcommand{\NJ}{\mathsf{NJ}_1}
-\newcommand{\NK}{\mathsf{NK}_1}
+\newcommand{\NJ}{\mathsf{NJ}}
+\newcommand{\NK}{\mathsf{NK}}
 
 \newcommand{\fonc}[5]{#1 : 
 \left|
@@ -86,25 +87,28 @@
 \date{\today}
 
 \begin{document}
-\includegraphics[scale=0.45]{logo_ens.png} \hfill \includegraphics[scale=0.1]{logo-irif.png}
 \begin{center}
-    \vspace*{1em}
-    {\LARGE Rapport de stage} \\ \vspace{1em}
-    {\huge Extensions d'un cours de logique du premier ordre certifié en Coq} \\ \vspace{2em}
+	\vspace*{2em}
+	\includegraphics[scale=0.45]{logo_ens.png} \hspace*{1cm} \includegraphics[scale=0.1]{logo-irif.png} \\
+%\begin{center}
+	%\vspace*{1em}
+    \vspace*{6em}
+    {\LARGE Rapport de stage} \\ \vspace{2em}
+    {\huge Extensions d'un cours de logique du premier ordre certifié en Coq} \\ \vspace{4em}
     
-    {\Large Stage effectué du 1 juin au 17 juillet 2020} \\ \vspace{3em}
+    {\Large Stage effectué du 1 juin au 17 juillet 2020} \\ \vspace{6em}
     
     {\Large Samuel Ben Hamou} \\ \smallskip
     {\large \'Ecole Normale Supérieure Paris-Saclay} \\ 
-    {\large 1ère année, Département Informatique} \\ \vspace{2em}
+    {\large 1ère année, Département Informatique} \\ \vspace{4em}
     
     {\Large Sous la supervision de Pierre Letouzey} \\ \smallskip
-    {\large IRIF, INRIA et CNRS} \vspace{2em}
+    {\large IRIF, INRIA et CNRS} \vspace{4em}
 \end{center}
 
 
 \begin{abstract}
-Ce stage de recherche de fin de licence avait pour but de proposer des extensions à un encodage en Coq déjà existant de la déduction naturelle. Le dépôt du projet se trouve dans la branche \og Stage \fg{} à l'adresse suivante : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}.
+Ce stage de recherche de fin de licence avait pour but de proposer des extensions à un encodage en Coq déjà existant de la déduction naturelle.
 
 Dans un premier temps, il a fallu se familiariser avec les outils du stage : à la fois la manipulation de Git mais aussi l'encodage parfois étonnant des notions classiques de la logique (formules closes, variables liées, modèles, etc.). Un fois ce travail de défrichage effectué, nous avons pu enrichir le codage existant en suivant trois axes principaux, qui correspondent aux trois sections principales de ce rapport :
 \begin{itemize}
@@ -114,6 +118,7 @@ Dans un premier temps, il a fallu se familiariser avec les outils du stage : à 
 \end{itemize}
 \end{abstract}
 
+\newpage
 \renewcommand{\contentsname}{\centerline{Table des matières} \vspace*{-2em}}
 \tableofcontents
 
@@ -186,7 +191,7 @@ Pour ce dernier point, il a été utile d'établir l'admissibilité des règles 
 \`A titre d'illustration, voici l'énoncé de ces résultats tels que démontrés dans le projet. On donne également la démonstration du premier, afin d'avoir une idée de ce à quoi ressemble une preuve en déduction naturelle dans cet encodage.
 
 \begin{minted}{coq}
-Lemma ex1 f1 f2 : Provable Intuiti ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
+Lemma ex1 f1 f2 : Provable J ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
 Proof.
   apply Provable_alt.
   apply R_Imp_i.
@@ -196,7 +201,7 @@ Proof.
   apply in_eq.
 Qed.
 
-Lemma ex2 f1 f2 f3 : Provable Intuiti ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
+Lemma ex2 f1 f2 f3 : Provable J ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
 
 Lemma RAA f1 Γ : Pr Classic (Γ ⊢ ~~f1) -> Pr Classic (Γ ⊢ f1).
 
@@ -213,13 +218,15 @@ Les symboles \verb+->+, \verb+/\+, \verb+\/+ et \verb+~+ utilisés à l'intérie
 \smallskip
 
 Pour revenir sur la remarque précédente, on donne en annexe \ref{form} la définition des formules. On voit alors, par exemple, que \verb+A /\ B+ n'est qu'un sucre syntaxique pour \verb+Op And A B+.
+
 % au bon endroit ?
-Par ailleurs, on verra dans la suite que les quantificateurs ne sont pas associés à des variables. Cela vient du fait que la représentation des formules est \emph{locally-nameless}, et donc les variables liées sont représentées par des indices de \textsc{de Bruijn} grâce à un constructeur \verb+BVar : nat -> term+ (qui est ensuite abrégé par \verb+#+).
-\begin{minted}{coq}
-Notation "# n" := (BVar n) (at level 20, format "# n") : formula_scope.
-\end{minted}
+Par ailleurs, on verra dans la suite que les quantificateurs ne sont pas associés à des variables. Cela vient du fait que la représentation des formules est \emph{locally-nameless}, et donc les variables liées sont représentées par des indices de \textsc{de Bruijn} grâce à un constructeur \verb+BVar : nat -> term+ (qui est ensuite abrégé par \verb+#+, cf. annexe \ref{form}).
+
+%%%
 
 \section{Arithmétique de {\sc Peano}}
+
+Dans cette partie du stage, on a illustré et simplifié l'encodage de $\PA$ préexistant.
 
 \subsection{Constats de départ}
 
@@ -235,16 +242,16 @@ Ce prédicat permet d'énoncer des théorèmes en prenant en compte le fait que 
 
 Mon premier travail a été de mettre cet encodage à l'épreuve, afin de pouvoir ensuite déterminer les points à améliorer, et comparer la longueur des preuves avec et sans tactiques adjuvantes. Le but, bien entendu, était d'écrire les tactiques les plus générales possible, et ce pari a été plutôt réussi puisque certaines d'entre elles ont pu être réutilisées dans \verb+ZF.v+ par la suite. \`A cet effet, les résultats suivants ont été démontrés (on rappelle que \verb+#+ sert à désigner les indices de \textsc{de Bruijn}) :
 \begin{minted}{coq}
-Lemma ZeroRight : IsTheorem Intuiti PeanoTheory (∀ (#0 = #0 + Zero)).
+Lemma ZeroRight : IsTheorem J PeanoTheory (∀ (#0 = #0 + Zero)).
 
-Lemma SuccRight : IsTheorem Intuiti PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Succ(#0))).
+Lemma SuccRight : IsTheorem J PeanoTheory (∀∀ (Succ(#1 + #0) = #1 + Succ(#0))).
 
 Lemma Comm :
-  IsTheorem Intuiti PeanoTheory
+  IsTheorem J PeanoTheory
             ((∀ #0 = #0 + Zero) -> (∀∀ Succ(#1 + #0) = #1 + Succ(#0)) ->
                (∀∀ #0 + #1 = #1 + #0)).
 
-Lemma Commutativity : IsTheorem Intuiti PeanoTheory (∀∀ #0 + #1 = #1 + #0).
+Lemma Commutativity : IsTheorem J PeanoTheory (∀∀ #0 + #1 = #1 + #0).
 \end{minted}
 Le but initial a été de démontrer la commutativité de la loi $+$ dans le cadre de $\PA$, cependant, quelques lemmes intermédiaires furent nécessaires. L'existence d'un lemme \verb+Comm+ et d'un autre lemme \verb+Commutativity+ illustre la première pierre d'achoppement de l'encodage existant des théories : la difficulté à utiliser des lemmes auxiliaires dans le corps d'une preuve, puisque cela demanderait de savoir quels axiomes sont utilisés dans lesdits lemmes. La solution proposée dans ce problème est détaillée en section \ref{sol}.
 
@@ -313,6 +320,7 @@ Ltac trans b := apply Transitivity with (B := b); calc.
 En plus de cela, j'ai aussi défini des tactiques qui permettent de gérer plus facilement la règle \verb+R_All_i+ ou d'ajouter la dérivabilité d'axiomes dans les hypothèses, pour pouvoir raisonner à rebours (i.e. de haut de bas de l'arbre de dérivation). Ces tactiques très simples ne sont finalement que des macros qui évitent d'avoir à réécrire plusieurs fois les mêmes petits bouts de preuve et de se concentrer sur l'aspect déduction naturelle plutôt que sur l'aspect Coq.
 \smallskip
 
+% c'est vrai ??
 Bien entendu, toutes les tactiques sus-mentionnées sont perfectibles, notamment dans la cherche des instances. L'algorithme d'unification nous assure, en effet, que le problème de savoir par quels termes instancier une règle de déduction naturelle est décidable. Cependant, il faut garder en tête la vocation pédagogique de ce projet, qui nous a conduits à souhaiter laisser l'utilisateur choisir les instances lui-même.
 
 \subsubsection{Pour utiliser des lemmes auxiliaires}\label{sol}
@@ -328,28 +336,83 @@ Grâce à ce résultat, la preuve d'un théorème $\phi$ utilisant des lemmes au
 
 Le théorème \verb+ModusPonens+ nous a semblé être la solution la plus susceptible de passer à l'échelle, car il permet de fusionner les listes d'axiomes nécessaires à l'établissement d'un résultat de la forme \verb+IsTheorem+ au niveau méta-théorique. L'utilisateur n'a alors plus besoin de s'occuper des axiomes nécessaires à la démonstration des lemmes auxiliaires et peut se concentrer, sans peur et sans reproche, sur la preuve du théorème principal.
 
+%%%
 
 \section{Théorie des ensembles de {\sc Zermelo-Fraenkel}}
 
+Cette section est relative aux choix d'encodage des axiomes de $\ZF$, aux preuves de quelques résultats dans cette théorie ainsi qu'à l'usage que l'on a pu faire des tactiques créées pour l'arithmétique de \textsc{Peano}.
+
+Pour justifier l'utilité d'une théorie non-triviale des ensembles, on a commencé par montrer l'incohérence de la théorie naïve des ensembles qui ne contient qu'un schéma d'axiomes de compréhension non-restreint : \[ \forall x_1, \ldots, \forall x_n, \exists a, \forall y \cdot y \in a \Leftrightarrow A \] pour toute formule $A$ telle que $\fv(A) \subseteq \{ x_1, \ldots, x_n, y \}$. Pour ce faire, on a établi le lemme suivant, qui n'est rien d'autre que le paradoxe du \textsc{Russell}. \begin{minted}{coq}
+Lemma Russell : Pr J ([ ∃∀ (#0 ∈ #1 <-> ~(#0 ∈ #0)) ] ⊢ False).
+\end{minted}
+On remarque au passage que $\exists a, \forall y \cdot y \in a \Leftrightarrow \neg y \in y$ est bien une instance du schéma d'axiomes de compréhension non-restreint, puisqu'il suffit de poser $A := \neg y \in y$.
+
 \subsection{Encodage des axiomes et méta-théorèmes}
 
-% Russell
+Comme pour $\PA$, nous avons fait le choix d'inclure les axiomes de l'égalité dans ceux de $\ZF$. La liste exacte des axiomes que l'on a considérés se trouve en page 30 dans \cite{poly}.
 
-% achtung parsing
+La différence majeure avec $\PA$ est que les axiomes de $\ZF$ contiennent un grand nombre de quantificateurs. Cette différence était particulièrement frappante dans les schémas d'axiomes de séparation et de remplacement, pour lesquels nous avons été obligés de créer un nouvel opérateur \verb+lift_above+ afin d'ajuster convenablement les indices de \textsc{de Bruijn} d'une formule $A$ quelconque.
+\smallskip
 
-% écrire les axiomes (avec dB) est une source d'erreur, et il n'y a pas de garde fou, de l'intérêt des modèles (cf article zfmod) // détailler les typos
-% parler d'une formulation nommée des axiomes
+Le principal écueil rencontré dans l'encodage des axiomes résidait donc dans l'usage des indices de \textsc{de Bruijn}. En effet, outre les problèmes d'ajustement susmentionnés, l'usage d'indices à la place de variables nommées entraîne inévitablement un grand nombre de typos qu'il est extrêmement ardu de repérer sans vraiment éprouver la théorie. \`A ce stade, l'équivalence déjà établie par Pierre Letouzey entre les formulations locally-nameless et nommées aurait pu se révéler salutaire, car les axiomes auraient été éminemment plus facile à encoder dans cette seconde formulation. Il serait par ailleurs intéressant, afin de vérifier que les axiomes sont correctement encodés, de faire le lien avec des modèles de $\ZF$, comme proposé dans \cite{zfmod}.
 
-\subsection{Preuves exemples}
+L'autre difficulté rencontrée lors de cette phase d'axiomatisation est liée à l'analyse syntaxique de Coq, mais un usage intensif -- voire excessif -- des parenthèses permet de régler ce problème sans trop d'efforts.
 
-% on a pu réutiliser des bouts de Peano
+\`A titre d'exemple, voici une typo détectée (due à un problème d'analyse syntaxique) puis corrigée dans l'axiome d'extensionnalité \[ \forall a, \forall b \cdot (\forall x \cdot (x \in a \Leftrightarrow x \in b) \Rightarrow a = b). \] La forme initialement écrite était
+\begin{minted}{coq}
+Definition ext := ∀∀ (∀ (#0 ∈ #2 <-> #0 ∈ #1) -> #2 = #1).
+\end{minted}
+ce qui s'écrirait en formulation nommée $\forall a, \forall b, \forall x \cdot (x \in a \Leftrightarrow x \in b) \Rightarrow a = b$. En d'autres termes, cela voudrait dire que si deux ensembles $a$ et $b$ ont un élément en commun alors $a = b$, ce qui rendrait la théorie incohérente (en plus de n'être pas du tout l'axiome d'exensionnalité au sens où on l'entend). Cette erreur a été aisément corrigée par
+\begin{minted}{coq}
+Definition ext := ∀∀ ((∀ #0 ∈ #2 <-> #0 ∈ #1) -> #1 = #0).
+\end{minted}
+
+Une erreur semblable avait aussi été commise dans l'axiome de l'infini.
+\smallskip
+
+Une fois les axiomes de $\ZF$ encodés, il a fallu établir un certain nombre de méta-résultats nécessaire à la bonne définition du prédicat \verb+IsTheorem+. En particulier, il a fallu établir le résultat suivant, qui permet de définir la signature de $\ZF$ :
+\begin{minted}{coq}
+Lemma WCAx A : IsAx A -> WC ZFSign A.
+\end{minted}
+En premier lieu, ce résultat a été fort problématique, en raison des structures finies qu'il fait intervenir, et de l'incapacité des tactiques \verb+intuition+ ou \verb+cbn+ à gérer ces structures. Cependant, les lemmes établis par Pierre Letouzey plus tôt dans le développement ainsi que les théorèmes de la bibliothèque standard et du module Nat ont été d'une efficacité redoutable et ont permis d'obtenir une preuve d'une vingtaine de ligne, bien que cela ait plus fait appelle à l'expérience et à la grande connaissance des librairies de Pierre Letouzey qu'à ma simple intuition mathématique.
+
+\subsection{Preuves exemples} \label{ex}
+
+Pour mettre à l'épreuve la théorie $\ZF$ fraîchement encodée, nous avons démontré un certain nombre de résultats classiques, à savoir l'existence de l'ensemble vide, des singletons et la construction de l'opérateur $\cup$.
+\begin{minted}{coq}
+Lemma emptyset : IsTheorem J ZF (∃∀ ~(#0 ∈ #1)).
+
+Lemma singleton : IsTheorem J ZF (∀∃∀ (#0 ∈ #1 <-> #0 = #2)).
+
+Lemma unionset : IsTheorem J ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)).
+\end{minted}
+
+Grâce au travail fait pour $\PA$, ces preuves ont essentiellement ressemblé à des dérivations en déduction naturelle, et n'ont donc posé aucun problème majeur. En fait, Coq s'est révélé un atout précieux, notamment car il permet l'usage de règles gauches (dont l'admissibilité a bien sur été préalablement établie) et le regroupement de morceaux de dérivation semblables grâce à la tactique \verb+assert+, là où une dérivation papier nous aurait contraint à un copier-coller manuel.
 
 \subsection{Construction de $\N$}
 
-% construction de von Neumann
+Le but initialement fixé était de montrer une résultat du type $\ZF \vdash \PA$. Cependant, par manque de temps et peut-être de courage face à l'ampleur de la tâche, qui aurait demandé d'établir un théorème de \textsc{Skolem}\footnote{Dont nous ne disposions pas à l'époque, mais que Pierre Letouzey a démontré ensuite.}, nous nous somme rabattus sur un objectif plus modeste, à savoir mettre en \oe uvre la construction de \textsc{von Neumann} des entiers :
+\begin{align*}
+0 &:= \varnothing \\
+n + 1 &:= \{ n \} \cup n.
+\end{align*}
 
+Comme nous avions déjà établi l'existence de l'ensemble vide, il ne nous restait plus qu'à montrer que, pour tout $n$, l'ensemble $n \cup \{ n \}$ existait bien. Pour ce faire, nous avons défini un prédicat \verb+succ+
+\begin{minted}{coq}
+Definition succ x y := ∀ (#0 ∈ lift 0 y <-> #0 = lift 0 x \/ #0 ∈ lift 0 x).
+\end{minted}
+et démontré, grâce à \verb+ModusPonens+, le lemme suivant :
+\begin{minted}{coq}
+Lemma Successor : IsTheorem J ZF (∀∃ succ (#1) (#0)).
+\end{minted}
+Là encore, le travail effectué sur l'arithmétique de \textsc{Peano} a permis de faire en sorte que la preuve ressemble à une dérivation en déduction naturelle, avec en plus les avantages mentionnés en \ref{ex}. De plus, puisque nous avions déjà démontré l'existence, pour tous $a$ et $b$, du singleton $\{ a \}$ ainsi que celle de l'union $a \cup b$, la preuve principale (regroupée dans un théorème auxiliaire où l'énoncé des lemmes utilisés est posé en impliquant du théorème à démontrer, comme vu en \ref{sol}) tient en une trentaine de ligne.
+
+Une fois démontrés ces résultats, la construction de $\N$ est immédiate en utilisant le théorème de \textsc{Skolem}.
+%%%
 
 \section{Lien avec le $\lambda$-calcul}
+
+Pour finir le stage, on a encodé un $\lambda$-calcul enrichi et démontré une correspondance de \textsc{Curry-Howard}, qui est une alternative possible aux preuves dans $\NJ_0$.
 
 \subsection{Choix de codage}
 
@@ -359,7 +422,7 @@ Le théorème \verb+ModusPonens+ nous a semblé être la solution la plus suscep
 
 Cette partie reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}. Par ailleurs, on se placera toujours dans le cadre de la \emph{logique intuitionniste}.
 
-Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontrer le premier résultat du stage, à la savoir que le séquent $\vdash (\phi_1 \wedge \phi_2) \Rightarrow (\phi_1 \vee \phi_2)$ était dérivable. Pour ce faire il a suffit d'exhiber le $\lambda$-terme $\lambda x \cdot \iota_1 \pi_1 x$, qui est un témoin de preuve beaucoup plus aisé à manipuler qu'un arbre de dérivation complet.
+Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontrer le premier résultat du stage, à la savoir que le séquent $\vdash (\phi_1 \wedge \phi_2) \Rightarrow (\phi_1 \vee \phi_2)$ était dérivable. Pour ce faire, il a suffit d'exhiber le $\lambda$-terme témoin $\lambda x \cdot \iota_1 \pi_1 x$, qui est beaucoup plus aisé à manipuler qu'un arbre de dérivation complet. Notons au passage que le témoin contient en fait toute l'information de la preuve, car la question de savoir si un $\lambda$-terme est bien typé est décidable.
 
 \subsubsection{Logique minimale intuitionniste}
 
@@ -371,11 +434,14 @@ Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontre
 
 \subsubsection{Disjonction : filtrage par motif et injections}
 
+%%%
 
 \section{Conclusion}
 
 % retour sur exp
 % axes d'approfondissement
+
+%%%
 
 \bibliographystyle{plain}
 %\renewcommand{\refname}{Bibliographie}
@@ -384,6 +450,8 @@ Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontre
 
 \appendix
 \newpage
+
+\includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour GitLab}\label{gitsheet}]{TutoGitHub.pdf}
 
 \section{Définition de \texttt{Pr}} \label{pr}
 
@@ -443,21 +511,27 @@ Inductive formula :=
   | Quant : quant -> formula -> formula.
   
 Definition Iff a b := Op And (Op Impl a b) (Op Impl b a). 
+
 Notation "~ f" := (Not f) : formula_scope.
 Infix "/\" := (Op And) : formula_scope.
 Infix "\/" := (Op Or) : formula_scope.
 Infix "->" := (Op Impl) : formula_scope.
 Infix "<->" := Iff : formula_scope.
-\end{minted}
 
-\includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour GitLab}\label{gitsheet}]{TutoGitHub.pdf}
+Notation "# n" := (BVar n) (at level 20, format "# n") : formula_scope.
+
+Notation "∀ A" := (Quant All A)
+ (at level 200, right associativity) : formula_scope.
+Notation "∃ A" := (Quant Ex A)
+ (at level 200, right associativity) : formula_scope.
+\end{minted}
 
 \section{Preuve de \texttt{ZeroRight} : avant-après}\label{beforeafter_zeroright}
 
 La preuve originelle était :
 \begin{minted}{coq}
 Lemma ZeroRight :
-  IsTheorem Intuiti PeanoTheory
+  IsTheorem J PeanoTheory
             (∀ (#0 = #0 + Zero)).
 Proof.
   unfold IsTheorem.
@@ -482,7 +556,7 @@ Proof.
         ++ compute. inversion 1.
         ++ cbn. change (Fun "O" []) with Zero.
            eapply R_Imp_e. set (hyp := (_ -> _)%form).
-           assert ( sym : Pr Intuiti (hyp::axioms_list ⊢ ∀∀ (#1 = #0 -> #0 = #1))).
+           assert ( sym : Pr J (hyp::axioms_list ⊢ ∀∀ (#1 = #0 -> #0 = #1))).
            { apply R_Ax. compute; intuition. }
            apply R_All_e with (t := Zero + Zero) in sym. cbn in sym.
            apply R_All_e with (t := Zero) in sym. cbn in sym. exact sym.
@@ -497,12 +571,12 @@ Proof.
           -- compute. inversion 1.
           -- cbn. change (Fun "O" []) with Zero.
              apply R_Imp_i. set (H1 := FVar _ = _). set (H2 := _ -> _).
-             assert (hyp : Pr Intuiti
+             assert (hyp : Pr J
                               (H1 :: H2 :: axioms_list ⊢ Fun "S" [FVar "y"] =
                                Fun "S" [FVar "y" + Zero] /\
                                Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero)).
              { apply R_And_i.
-               - assert (AX4 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax4)).
+               - assert (AX4 : Pr J (H1 :: H2 :: axioms_list ⊢ ax4)).
                  { apply R_Ax. compute; intuition. }
                  apply R_Imp_e with (A := (FVar "y" = FVar "y" + Zero)%form);
                    [ | apply R_Ax; compute; intuition ].
@@ -510,13 +584,13 @@ Proof.
                  apply R_All_e with (t := FVar "y" + Zero) in AX4; [ | auto ].
                  cbn in AX4. exact AX4. 
                - apply R_Imp_e with (A := Fun "S" [FVar "y"] + Zero = Fun "S" [FVar "y" + Zero]).
-                 + assert (AX2 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax2)).
+                 + assert (AX2 : Pr J (H1 :: H2 :: axioms_list ⊢ ax2)).
                    { apply R_Ax. compute; intuition. }
                    unfold ax2 in AX2.
                    apply R_All_e with (t := Fun "S" [FVar "y"] + Zero) in AX2; [ | auto ].
                    apply R_All_e with (t := Fun "S" [FVar "y" + Zero]) in AX2; [ | auto ].
                    cbn in AX2. exact AX2.
-                 + assert (AX10 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax10)).
+                 + assert (AX10 : Pr J (H1 :: H2 :: axioms_list ⊢ ax10)).
                    { apply R_Ax. compute; intuition. }
                    unfold ax10 in AX10.
                    apply R_All_e with (t:= FVar "y") in AX10; [ | auto ].
@@ -525,7 +599,7 @@ Proof.
              apply R_Imp_e with
              (A :=  Fun "S" [FVar "y"] = Fun "S" [FVar "y" + Zero] /\
                     Fun "S" [FVar "y" + Zero] = Fun "S" [FVar "y"] + Zero).
-             ** assert (AX3 : Pr Intuiti (H1 :: H2 :: axioms_list ⊢ ax3)).
+             ** assert (AX3 : Pr J (H1 :: H2 :: axioms_list ⊢ ax3)).
                 { apply R_Ax. compute; intuition. }
                 unfold ax3 in AX3.
                 apply R_All_e with (t:= Fun "S" [FVar "y"]) in AX3; [ | auto ].
@@ -538,7 +612,7 @@ Proof.
 et en fin de stage, elle était devenue
 \begin{minted}{coq}
 Lemma ZeroRight :
-  IsTheorem Intuiti PeanoTheory
+  IsTheorem J PeanoTheory
             (∀ (#0 = #0 + Zero)).
 Proof.
  thm.
@@ -557,7 +631,7 @@ Proof.
 Qed.
 \end{minted}
 
-\section{Syntaxe et règles de typage du $\lambda$-calcul utilisé}
+\section{Syntaxe et règles de typage du $\lambda$-calcul utilisé} \label{lambda}
 
 La syntaxe des $\lambda$-termes est la suivante :
 \begin{align*}

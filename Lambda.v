@@ -34,11 +34,12 @@ Inductive typed : context -> term -> type -> Prop :=
   | Type_App : forall Γ u v σ τ, typed Γ u (Arr σ τ) -> typed Γ v σ -> typed Γ (App u v) τ
   | Type_Abs : forall Γ u σ τ,  typed (σ :: Γ) u τ -> typed Γ (Abs u) (Arr σ τ)
   | Type_Nabla : forall Γ u τ, typed Γ u Bot -> typed Γ (Nabla u) τ
-  | Type_Couple : forall Γ u v σ τ, typed Γ u σ -> typed Γ v τ -> typed Γ (Couple u v) (And σ τ)
+  | Type_Couple : forall Γ u v σ τ, typed Γ u σ -> typed Γ v τ ->
+                                    typed Γ (Couple u v) (And σ τ)
   | Type_Pi1 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi1 u) σ
   | Type_Pi2 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi2 u) τ
-  | Type_Case : forall Γ u v1 v2 τ1 τ2 σ, typed Γ u (Or τ1 τ2) -> typed (τ1 :: Γ) v1 σ
-                                          -> typed (τ2 :: Γ) v2 σ -> typed Γ (Case u v1 v2) σ
+  | Type_Case : forall Γ u v1 v2 τ1 τ2 σ, typed Γ u (Or τ1 τ2) -> typed (τ1 :: Γ) v1 σ ->
+                                          typed (τ2 :: Γ) v2 σ -> typed Γ (Case u v1 v2) σ
   | Type_I1 : forall Γ u σ τ, typed Γ u σ -> typed Γ (I1 u) (Or σ τ)
   | Type_I2 : forall Γ u σ τ, typed Γ u τ -> typed Γ (I2 u) (Or σ τ).
 

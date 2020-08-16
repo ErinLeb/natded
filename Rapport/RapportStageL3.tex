@@ -19,7 +19,9 @@
 \usepackage{minted}
 \usepackage{manfnt}
 \usepackage[bottom]{footmisc}
-%\usepackage{times}
+
+\usepackage{libertine}
+\renewcommand\ttdefault{cmtt}
 
 \usemintedstyle{tango}
 
@@ -102,14 +104,14 @@
     {\LARGE Rapport de stage} \\ \vspace{1em}
     {\huge Extensions d'un cours de logique du premier ordre certifié en Coq} \\ \vspace{1.5em}
     
-    {\Large Stage effectué du 1 juin au 17 juillet 2020} \\ \vspace{2.5em}
+    {\Large Stage effectué du 1 juin au 17 juillet 2020} \\ \vspace{2em}
     
     {\Large Samuel Ben Hamou} \\ \smallskip
     {\large \'Ecole Normale Supérieure Paris-Saclay} \\ 
     {\large 1ère année, Département Informatique} \\ \vspace{1.5em}
     
     {\Large Sous la supervision de Pierre Letouzey} \\ \smallskip
-    {\large IRIF, INRIA et CNRS} \vspace{1.5em}
+    {\large IRIF, INRIA et CNRS} \vspace{1em}
 \end{center}
 
 
@@ -140,7 +142,7 @@ Malgré les échanges de mails réguliers, le travail à distance a probablement
 
 Il n'en demeure pas moins que le stage a pu se dérouler sans trop d'embûches, et sans problèmes matériels majeurs. Par ailleurs, le travail à distance présente l'avantage non négligeable de permettre à chacun de travailler aux horaires qui lui conviennent le mieux, fût-ce tard le soir\footnote{Ou bien tôt le matin selon la façon dont on voit les choses.}.
 
-Le dépôt du projet se trouve dans la branche \og Stage \fg{} à l'adresse suivante : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}.
+Le dépôt GitLab du projet est consultable à l'adresse suivante : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}. Pour accéder aux fichiers modifiés pendant le stage il faut se rendre dans la branche du même nom.
 
 \subsection*{Motivations}
 
@@ -502,7 +504,8 @@ Aux règles de dérivations, nous avons ajouté trois nouvelles règles : une d'
 \begin{minted}{coq}
 Inductive typed : context -> term -> type -> Prop :=
   ...
-  | Type_Couple : forall Γ u v σ τ, typed Γ u σ -> typed Γ v τ -> typed Γ (Couple u v) (And σ τ)
+  | Type_Couple : forall Γ u v σ τ, typed Γ u σ -> typed Γ v τ ->
+                                    typed Γ (Couple u v) (And σ τ)
   | Type_Pi1 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi1 u) σ
   | Type_Pi2 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi2 u) τ
 \end{minted}
@@ -528,8 +531,8 @@ Nous avons, pour finir, ajouté trois nouvelles règles de dérivation de typage
 \begin{minted}{coq}
 Inductive typed : context -> term -> type -> Prop :=
   ...
-  | Type_Case : forall Γ u v1 v2 τ1 τ2 σ, typed Γ u (Or τ1 τ2) -> typed (τ1 :: Γ) v1 σ
-                                          -> typed (τ2 :: Γ) v2 σ -> typed Γ (Case u v1 v2) σ
+  | Type_Case : forall Γ u v1 v2 τ1 τ2 σ, typed Γ u (Or τ1 τ2) -> typed (τ1 :: Γ) v1 σ ->
+                                          typed (τ2 :: Γ) v2 σ -> typed Γ (Case u v1 v2) σ
   | Type_I1 : forall Γ u σ τ, typed Γ u σ -> typed Γ (I1 u) (Or σ τ)
   | Type_I2 : forall Γ u σ τ, typed Γ u τ -> typed Γ (I2 u) (Or σ τ).
 \end{minted}

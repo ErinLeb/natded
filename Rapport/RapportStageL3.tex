@@ -29,6 +29,7 @@
 \DeclareUnicodeCharacter{2200}{$\forall$}
 \DeclareUnicodeCharacter{2208}{$\in$}
 \DeclareUnicodeCharacter{3C4}{$\tau$}
+\DeclareUnicodeCharacter{3C3}{$\sigma$}
 
 \makeatletter
 \AtBeginEnvironment{minted}{\dontdofcolorbox}
@@ -127,6 +128,7 @@ Dans un premier temps, il a fallu se familiariser avec les outils du stage : à 
 
 \newpage
 
+% QUES meilleur nom ?
 \section{Introduction}
 
 \subsection{Contexte pratique du stage}
@@ -416,25 +418,118 @@ Une fois démontrés ces résultats, la construction de $\N$ est immédiate en u
 
 \section{Lien avec le $\lambda$-calcul}
 
-Pour finir le stage, on a encodé un $\lambda$-calcul enrichi et démontré une correspondance de \textsc{Curry-Howard}, qui est une alternative possible aux preuves dans $\NJ_0$.
+Pour finir le stage, nous avons encodé un $\lambda$-calcul enrichi et démontré une correspondance de \textsc{Curry-Howard}, qui est une alternative possible aux preuves dans $\NJ_0$.
 
 Cette section reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}. Par ailleurs, on se placera toujours dans le cadre de la \emph{logique propositionnelle intuitionniste}.
 
 \subsection{Choix de codage}
 
-% à la Church
-% verbatim + annexe E
+Le choix général d'encodage a été d'implémenter un $\lambda$-calcul à la \textsc{Curry}, c'est-à-dire où l'on traite les termes usuels du $\lambda$-calcul, sans annotation de type. Bien que syntaxiquement plus lourde, cette approche présente l'avantage d'être assez proche de la déduction naturelle, en ce sens qu'elle fait appelle à des environnements de typage, contrairement à une présentation à la \textsc{Church} qui n'utilise que des ensembles de variables annotées par un type.
+
+L'ensemble des constructions utilisées est détaillé dans les sous-sections qui suivent, et repris en annexe \ref{lambda}.
 
 \subsubsection{Logique minimale intuitionniste}
 
+Le $\lambda$-calcul simplement typé permet de simuler la logique minimale intuitionniste, i.e. la logique propositionnelle intuitionniste pourvue de l'implication.
+
+Nous avons donc repris la syntaxe du $\lambda$-calcul pur et y avons ajouté celle des types simples : les variables de type et les types flèche.
+\begin{minted}{coq}
+Inductive term :=
+  | Var : nat -> term
+  | App : term -> term -> term
+  | Abs : term -> term.
+  
+Inductive type :=
+  | Arr : type -> type -> type
+  | Atom : name -> type.
+\end{minted}
+
+Les règles de dérivation sont au nombre de trois : une pour chaque construction syntaxique.
+\begin{minted}{coq}
+Inductive typed : context -> term -> type -> Prop :=
+  | Type_Var : forall Γ τ n, nth_error Γ n = Some τ -> typed Γ (Var n) τ
+  | Type_App : forall Γ u v σ τ, typed Γ u (Arr σ τ) -> typed Γ v σ -> typed Γ (App u v) τ
+  | Type_Abs : forall Γ u σ τ,  typed (σ :: Γ) u τ -> typed Γ (Abs u) (Arr σ τ).
+\end{minted}
+
+Concernant les contextes de typage, comme il est difficile de manipuler des listes d'association en Coq, nous avons décidé de donner au constructeur \verb+Var+ le type \verb+nat -> term+, ce qui permet d'associer à chaque variable un indice. Cet indice est ensuite utilisé pour retrouver la variable dans le contexte de typage, qui ne sera donc qu'une liste de type, le type en première position étant associé à la première variable, etc.
+
 \subsubsection{Faux et opérateur $\nabla$}
 
-% la négation se déduit facilement du faux : non A = A -> faux
+Nous avons ensuite voulu enrichir notre $\lambda$-calcul pour y ajouter un type correspondant au faux. Pour ce faire, nous avons rajouté un constructeur de termes \verb+Nabla+, correspondant essentiellement à une exception dans un programme, et un type \verb+Bot+.
+\begin{minted}{coq}
+Inductive term :=
+  ...
+  | Nabla : term -> term.
+  
+Inductive type :=
+  ...
+  | Bot : type
+\end{minted}
+
+Nous avons ensuite ajouté une règle de typage correspondant à l'élimination du $\bot$.
+\begin{minted}{coq}
+Inductive typed : context -> term -> type -> Prop :=
+  ...
+  | Type_Nabla : forall Γ u τ, typed Γ u Bot -> typed Γ (Nabla u) τ.
+\end{minted}
+
+Il est à noter que le faux permet facilement de construire la négation, puisqu'il suffit de poser $\neg A := A \Rightarrow \bot$.
 
 \subsubsection{Conjonction : couples et projections}
 
+Nous avons ensuite voulu ajouter un opérateur $\wedge$. Pour cela, nous avons rajouté trois constructeurs syntaxiques aux termes : \verb+Couple+, qui permet d'implémenter des couples de $\lambda$-termes, ainsi que des projections \verb+Pi1+ et \verb+Pi2+ (censées permettre d'accéder respectivement au premier et au second élément d'un couple). Quant aux types, nous les avons augmentés d'un constructeur \verb+And+, dont le rôle est assez bien résumé par son nom.
+\begin{minted}{coq}
+Inductive term :=
+  ...
+  | Couple : term -> term -> term
+  | Pi1 : term -> term
+  | Pi2 : term -> term.
+
+Inductive type :=
+  ...
+  | And : type -> type -> type.
+\end{minted}
+
+Aux règles de dérivations, nous avons ajouté trois nouvelles règles : une d'introduction de la conjonction et deux d'élimination, une à gauche et une à droite.
+\begin{minted}{coq}
+Inductive typed : context -> term -> type -> Prop :=
+  ...
+  | Type_Couple : forall Γ u v σ τ, typed Γ u σ -> typed Γ v τ -> typed Γ (Couple u v) (And σ τ)
+  | Type_Pi1 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi1 u) σ
+  | Type_Pi2 : forall Γ u σ τ, typed Γ u (And σ τ) -> typed Γ (Pi2 u) τ
+\end{minted}
+
 \subsubsection{Disjonction : filtrage par motif et injections}
 
+Enfin, pour obtenir une logique propositionnelle intuitionniste complète, il ne nous restait qu'à avoir un opérateur $\vee$\footnote{Cette étape était nécessaire car, en logique intuitionniste, la règle de \textsc{de Morgan} $A \vee B \Leftrightarrow \neg (\neg A \wedge \neg B)$ devient fausse.}.
+
+Nous avons donc rajouté trois constructeurs aux termes : \verb+Case+, qui simule un filtrage par motif à deux motifs, et deux injections \verb+I1+ et \verb+I2+ qui permettent d'accéder respectivement au premier et au second motif. Nous avons aussi ajouté un constructeur de type \verb+Or+.
+\begin{minted}{coq}
+Inductive term :=
+  ...
+  | Case : term -> term -> term -> term
+  | I1 : term -> term
+  | I2 : term -> term.
+
+Inductive type :=
+  ...
+  | Or : type -> type -> type.
+\end{minted}
+
+Nous avons, pour finir, ajouté trois nouvelles règles de dérivation de typage : deux introductions du $\vee$ et une élimination.
+\begin{minted}{coq}
+Inductive typed : context -> term -> type -> Prop :=
+  ...
+  | Type_Case : forall Γ u v1 v2 τ1 τ2 σ, typed Γ u (Or τ1 τ2) -> typed (τ1 :: Γ) v1 σ
+                                          -> typed (τ2 :: Γ) v2 σ -> typed Γ (Case u v1 v2) σ
+  | Type_I1 : forall Γ u σ τ, typed Γ u σ -> typed Γ (I1 u) (Or σ τ)
+  | Type_I2 : forall Γ u σ τ, typed Γ u τ -> typed Γ (I2 u) (Or σ τ).
+\end{minted}
+\smallskip
+
+% QUES bonne justif ?
+Le $\lambda$-calcul ainsi créé possède autant de règle de typage que de constructeurs syntaxiques de termes, il est donc encore dirigé par la syntaxe, ce qui permet d'affirmer que les problèmes d'inférence et de vérification de type sont décidables. C'est dans cette propriété que réside tout l'intérêt de la correspondance de \textsc{Curry-Howard}.
 
 \subsection{Correspondance de {\sc Curry-Howard}}
 
@@ -450,10 +545,11 @@ Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontre
 \begin{minted}{coq}
 Lemma ex : Pr J ([] ⊢ (Pred "A" [] /\ Pred "B" []) -> (Pred "A" [] \/ Pred "B" [])).
 \end{minted}
-Pour ce faire, il a suffit d'exhiber le $\lambda$-terme témoin $\lambda x \cdot \iota_1 \pi_1 x$, qui est beaucoup plus aisé à manipuler qu'un arbre de dérivation complet. Notons au passage que le témoin contient en fait toute l'information de la preuve, car la question de savoir si un $\lambda$-terme est bien typé est décidable.
+Pour ce faire, il a suffit d'exhiber le $\lambda$-terme témoin $\lambda x \cdot \iota_1 \pi_1 x$, qui est beaucoup plus aisé à manipuler qu'un arbre de dérivation complet. Notons au passage que le témoin contient en fait toute l'information de la preuve car le problème de la vérification de type est décidable dans le $\lambda$-calcul que nous avons construit.
 
 %%%
 
+% QUES meilleur nom ?
 \section{Conclusion}
 
 \subsection{Apports mutuels du stage}

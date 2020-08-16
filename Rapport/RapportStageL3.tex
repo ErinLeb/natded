@@ -228,6 +228,8 @@ Pour revenir sur la remarque précédente, on donne en annexe \ref{form} la déf
 % QUES au bon endroit ?
 Par ailleurs, on verra dans la suite que les quantificateurs ne sont pas associés à des variables. Cela vient du fait que la représentation des formules est \emph{locally-nameless}, et donc les variables liées sont représentées par des indices de \textsc{de Bruijn} grâce à un constructeur \verb+BVar : nat -> term+ (qui est ensuite abrégé par \verb+#+, cf. annexe \ref{form}).
 
+\newpage
+
 %%%
 
 \section{Arithmétique de {\sc Peano}}
@@ -236,7 +238,7 @@ Dans cette partie du stage, on a illustré et simplifié l'encodage de $\PA$ pr�
 
 \subsection{Constats de départ}
 
-L'encodage de $\PA$ contenait déjà les axiomes ainsi que quelques éléments méta-théoriques. En outre, le fichier \verb+Theories.v+ propose un prédicat \verb+IsTheorem+ définit comme suit :
+L'encodage de $\PA$ contenait déjà les axiomes ainsi que quelques éléments méta-théoriques. En outre, le fichier \verb+Theories.v+ propose un prédicat \verb+IsTheorem+ défini comme suit :
 \begin{minted}{coq}
 Definition IsTheorem th T :=
   Wf th T /\
@@ -342,6 +344,8 @@ Grâce à ce résultat, la preuve d'un théorème $\phi$ utilisant des lemmes au
 
 Le théorème \verb+ModusPonens+ nous a semblé être la solution la plus susceptible de passer à l'échelle, car il permet de fusionner les listes d'axiomes nécessaires à l'établissement d'un résultat de la forme \verb+IsTheorem+ au niveau méta-théorique. L'utilisateur n'a alors plus besoin de s'occuper des axiomes nécessaires à la démonstration des lemmes auxiliaires et peut se concentrer, sans peur et sans reproche, sur la preuve du théorème principal.
 
+\newpage
+
 %%%
 
 \section{Théorie des ensembles de {\sc Zermelo-Fraenkel}}
@@ -414,6 +418,8 @@ Lemma Successor : IsTheorem J ZF (∀∃ succ (#1) (#0)).
 Là encore, le travail effectué sur l'arithmétique de \textsc{Peano} a permis de faire en sorte que la preuve ressemble à une dérivation en déduction naturelle, avec en plus les avantages mentionnés en \ref{ex}. De plus, puisque nous avions déjà démontré l'existence, pour tous $a$ et $b$, du singleton $\{ a \}$ ainsi que celle de l'union $a \cup b$, la preuve principale (regroupée dans un théorème auxiliaire où l'énoncé des lemmes utilisés est posé en impliquant du théorème à démontrer, comme vu en \ref{sol}) tient en une trentaine de ligne.
 
 Une fois démontrés ces résultats, la construction de $\N$ est immédiate en utilisant le théorème de \textsc{Skolem}.
+
+\newpage
 
 %%%
 
@@ -548,6 +554,8 @@ Lemma ex : Pr J ([] ⊢ (Pred "A" [] /\ Pred "B" []) -> (Pred "A" [] \/ Pred "B"
 \end{minted}
 Pour ce faire, il a suffit d'exhiber le $\lambda$-terme témoin $\lambda x \cdot \iota_1 \pi_1 x$, qui est beaucoup plus aisé à manipuler qu'un arbre de dérivation complet. Notons au passage que le témoin contient en fait toute l'information de la preuve car le problème de la vérification de type est décidable dans le $\lambda$-calcul que nous avons construit.
 
+\newpage
+
 %%%
 
 % QUES meilleur nom ?
@@ -581,6 +589,8 @@ Le sujet du stage était volontairement long, et plusieurs points n'ont pas pu �
 
 \item Enfin, si le théorème de complétude a déjà été établi par Pierre Letouzey, nous n'avons en revanche pas eu le temps de nous pencher sur les théorèmes d'incomplétude de \textsc{Gödel}, dont la démonstration en Coq serait sûrement inédite.
 \end{itemize}
+
+\newpage
 
 %%%
 

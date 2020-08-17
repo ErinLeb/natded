@@ -65,23 +65,6 @@
 \right.
 }
 
-\newtheorem{theorem}{Théorème}[section]
-\newtheorem{coro}{Corollaire}[theorem]
-\newtheorem{lemma}[theorem]{Lemme}
-\newtheorem{prop}[theorem]{Proposition}
-\theoremstyle{remark}
-\newtheorem*{rmq}{Remarque}
-\theoremstyle{remark}
-\newtheorem*{notation}{Notation}
-\theoremstyle{remark}
-\newtheorem{exemple}{Exemple}[section]
-\theoremstyle{definition}
-\newtheorem{df}[theorem]{Définition}
-\theoremstyle{definition}
-\newtheorem{algo}[theorem]{Algorithme}
-\theoremstyle{definition}
-\newtheorem{pb}[theorem]{Problème}
-
 \usepackage{titlesec}
 \titleformat*{\section}{\center\bf\Large\sffamily}
 \titleformat*{\subsection}{\center\bf\large\sffamily}
@@ -131,7 +114,6 @@ Dans un premier temps, il a fallu se familiariser avec les outils du stage : à 
 
 \newpage
 
-% QUES meilleur nom ?
 \section*{Introduction}
 
 \subsection*{Contexte pratique du stage}
@@ -236,7 +218,7 @@ Par ailleurs, on verra dans la suite que les quantificateurs ne sont pas associ�
 
 \section{Arithmétique de {\sc Peano}}
 
-Dans cette partie du stage, on a illustré et simplifié l'encodage de $\PA$ préexistant.
+Dans cette partie du stage, nous avons illustré et simplifié l'encodage de $\PA$ préexistant.
 
 \subsection{Constats de départ}
 
@@ -276,11 +258,11 @@ Enfin, certaines tactiques et règles définies dans l'encodage de \verb+NatDed+
 
 \subsection{Définition de nouvelles tactiques}
 
-Afin de régler les susmentionnés problèmes, j'ai mis au point un certain nombre de tactiques permettant de rendre les preuves plus courtes et plus lisibles, en somme plus proches des preuves que l'ont ferait sur papier. L'objectif ultime étant que l'on puisse facilement voir émerger l'arbre de dérivation du séquent que l'on est en train de démontrer. Afin de constater l'apport de ces nouvelles tactiques, une mise en regard des preuves du lemme \verb+ZeroRight+ avant (73 lignes) et après (13 lignes) simplifications et proposée en annexe \ref{beforeafter_zeroright}.
+Afin de régler les susmentionnés problèmes, nous avons mis au point un certain nombre de tactiques permettant de rendre les preuves plus courtes et plus lisibles, en somme plus proches des preuves que l'ont ferait sur papier. L'objectif ultime étant que l'on puisse facilement voir émerger l'arbre de dérivation du séquent que l'on est en train de démontrer. Afin de constater l'apport de ces nouvelles tactiques, une mise en regard des preuves du lemme \verb+ZeroRight+ avant (73 lignes) et après (13 lignes) simplifications et proposée en annexe \ref{beforeafter_zeroright}.
 
 \subsubsection{Pour les débuts de preuve}
 
-Dans l'objectif d'alléger les débuts de preuve, j'ai mis en place deux tactiques distinctes.
+Dans l'objectif d'alléger les débuts de preuve, nous avons mis en place deux tactiques distinctes.
 \smallskip
 
 La première, \verb+thm+, permet de traiter à peu de frais le but \verb+Wf th T+ affirmant que la formule à démontrer respecte la signature de la théorie $T$. Sa mise en place a été relativement aisée car la preuve du but qu'elle entend éliminer est toujours la même, indépendamment du théorème à démontrer ou de la théorie considérée. Il a donc suffit de copier-coller la preuve donnée dans \verb+ZeroRight+ (par exemple) pour obtenir cette tactique qui a fonctionné quasiment du premier coup. \'Evidemment, le stage avançant, la tactique a été enrichie par d'autres tactiques permettant notamment de calculer plus efficacement sur les listes, etc.
@@ -288,7 +270,7 @@ La première, \verb+thm+, permet de traiter à peu de frais le but \verb+Wf th T
 
 La seconde tactique élaborée, \verb+rec+, est dédiée aux preuves pas récurrence. Elle permet, à partir du but fourni par la tactique \verb+thm+ de trouver la bonne instance $A$ du schéma d'axiomes de récurrence et d'instancier ensuite la quantification existentielle par \verb$(induction_schema A) :: axioms_list$.
 
-Concrètement, cette tactique s'appuie sur une tactique auxiliaire \verb+parse+ qui prend en argument une formule $\phi$ contenant au moins une quantification universelle sous la forme non-restrictive \[ \phi_1 \Rightarrow \cdots \Rightarrow \forall x \cdot \phi_n \] avec éventuellement $n = 1$, et qui retourne $\phi_n$. Une fois la formule $\phi_n$ identifiée, \verb+rec+ l'utilise pour instancier le schéma d'axiomes de récurrence et initie la preuve, de sorte que l'utilise se retrouve avec deux buts, qui correspondent à l'initialisation et à l'hérédité de la preuve par récurrence. Pour ce faire, j'ai eu besoin de prouver deux lemmes auxiliaires qui permettent essentiellement de montrer que l'instance du schéma d'axiomes de récurrence choisie est bien licite, et qui proposent une forme plus facilement manipulable du principe de récurrence.
+Concrètement, cette tactique s'appuie sur une tactique auxiliaire \verb+parse+ qui prend en argument une formule $\phi$ contenant au moins une quantification universelle sous la forme non-restrictive \[ \phi_1 \Rightarrow \cdots \Rightarrow \forall x \cdot \phi_n \] avec éventuellement $n = 1$, et qui retourne $\phi_n$. Une fois la formule $\phi_n$ identifiée, \verb+rec+ l'utilise pour instancier le schéma d'axiomes de récurrence et initie la preuve, de sorte que l'utilise se retrouve avec deux buts, qui correspondent à l'initialisation et à l'hérédité de la preuve par récurrence. Pour ce faire, nous avons eu besoin de prouver deux lemmes auxiliaires qui permettent essentiellement de montrer que l'instance du schéma d'axiomes de récurrence choisie est bien licite, et qui proposent une forme plus facilement manipulable du principe de récurrence.
 
 Il est à noter que, en allant chercher le premier quantificateur universel qu'elle trouve dans la formule, \verb+parse+ et \verb+rec+, bien qu'elles n'illustrent pas toutes les instances du schéma d'axiomes de récurrence, permettent tout de même d'effectuer toutes les récurrence que l'on souhaite, pour peu que l'on prenne le temps de permuter convenablement les quantificateurs universels au préalable. En effet, si l'on veut faire une récurrence sur la variable qui n'est la première variable quantifiée, on peut toujours éliminer les quantificateurs qui la précèdent (avec la règle \verb+R_All_i+) afin d'appliquer la tactique \verb+rec+, puis les réintroduire avec \verb+R_All_e+. Cela revient essentiellement à utiliser la tactique \verb+intro+ avant de lancer un \verb+induction+ en Coq, puis d'utiliser \verb+revert+ pour rétablir le théorème initial. Au passage, on remarque que le schéma d'axiomes de récurrence usuellement énoncé est en fait redondant : certaines instances du schéma d'axiomes peuvent se retrouver à partir d'autres.
 
@@ -296,7 +278,7 @@ Il est à noter que, en allant chercher le premier quantificateur universel qu'e
 
 La création de tactiques permettant d'utiliser rapidement des propriétés telles que la symétrie de l'égalité ou sa compatibilité avec le prédicat $\Succ$ s'est fait en deux étapes.
 
-Dans un premier temps, j'ai démontré les lemmes suivants :
+Dans un premier temps, nous avons démontré les lemmes suivants :
 \begin{minted}{coq}
 Lemma Symmetry :
   forall logic A B Γ, BClosed A -> In ax2 Γ -> Pr logic (Γ ⊢ A = B) ->
@@ -315,7 +297,7 @@ Lemma AntiHereditarity :
                       Pr logic (Γ ⊢ A = B).
 \end{minted}
 
-Une fois ces résultats établis, j'ai facilement pu créer les tactiques qui nous intéressaient, où il s'agissait essentiellement d'appliquer le théorème idoine et de simplifier à l'aide de tactiques de calcul spécifiques, telles que \verb+calc+ ou \verb+cbm+, qui ont été écrites par Pierre Letouzey pour faciliter la manipulation d'ensembles finis et de listes.
+Une fois ces résultats établis, nous avons facilement pu créer les tactiques qui nous intéressaient, où il s'agissait essentiellement d'appliquer le théorème idoine et de simplifier à l'aide de tactiques de calcul spécifiques, telles que \verb+calc+ ou \verb+cbm+, qui ont été écrites par Pierre Letouzey pour faciliter la manipulation d'ensembles finis et de listes.
 \begin{minted}{coq}
 Ltac sym := apply Symmetry; calc.
 
@@ -327,7 +309,7 @@ Ltac trans b := apply Transitivity with (B := b); calc.
 \end{minted}
 \smallskip
 
-En plus de cela, j'ai aussi défini des tactiques qui permettent de gérer plus facilement la règle \verb+R_All_i+ ou d'ajouter la dérivabilité d'axiomes dans les hypothèses, pour pouvoir raisonner à rebours (i.e. de haut de bas de l'arbre de dérivation). Ces tactiques très simples ne sont finalement que des macros qui évitent d'avoir à réécrire plusieurs fois les mêmes petits bouts de preuve et de se concentrer sur l'aspect déduction naturelle plutôt que sur l'aspect Coq.
+En plus de cela, nous avons aussi défini des tactiques qui permettent de gérer plus facilement la règle \verb+R_All_i+ ou d'ajouter la dérivabilité d'axiomes dans les hypothèses, pour pouvoir raisonner à rebours (i.e. de haut de bas de l'arbre de dérivation). Ces tactiques très simples ne sont finalement que des macros qui évitent d'avoir à réécrire plusieurs fois les mêmes petits bouts de preuve et de se concentrer sur l'aspect déduction naturelle plutôt que sur l'aspect Coq.
 \smallskip
 
 % QUES c'est vrai ??
@@ -354,7 +336,7 @@ Le théorème \verb+ModusPonens+ nous a semblé être la solution la plus suscep
 
 Cette section est relative aux choix d'encodage des axiomes de $\ZF$, aux preuves de quelques résultats dans cette théorie ainsi qu'à l'usage que l'on a pu faire des tactiques créées pour l'arithmétique de \textsc{Peano}.
 
-Pour justifier l'utilité d'une théorie non-triviale des ensembles, on a commencé par montrer l'incohérence de la théorie naïve des ensembles qui ne contient qu'un schéma d'axiomes de compréhension non-restreint : \[ \forall x_1, \ldots, \forall x_n, \exists a, \forall y \cdot y \in a \Leftrightarrow A \] pour toute formule $A$ telle que $\fv(A) \subseteq \{ x_1, \ldots, x_n, y \}$. Pour ce faire, on a établi le lemme suivant, qui n'est rien d'autre que le paradoxe du \textsc{Russell}. \begin{minted}{coq}
+Pour justifier l'utilité d'une théorie non-triviale des ensembles, nous avons commencé par montrer l'incohérence de la théorie naïve des ensembles qui ne contient qu'un schéma d'axiomes de compréhension non-restreint : \[ \forall x_1, \ldots, \forall x_n, \exists a, \forall y \cdot y \in a \Leftrightarrow A \] pour toute formule $A$ telle que $\fv(A) \subseteq \{ x_1, \ldots, x_n, y \}$. Pour ce faire, nous avons établi le lemme suivant, qui n'est rien d'autre que le paradoxe du \textsc{Russell}. \begin{minted}{coq}
 Lemma Russell : Pr J ([ ∃∀ (#0 ∈ #1 <-> ~(#0 ∈ #0)) ] ⊢ False).
 \end{minted}
 On remarque au passage que $\exists a, \forall y \cdot y \in a \Leftrightarrow \neg y \in y$ est bien une instance du schéma d'axiomes de compréhension non-restreint, puisqu'il suffit de poser $A := \neg y \in y$.
@@ -561,7 +543,6 @@ Pour ce faire, il a suffit d'exhiber le $\lambda$-terme témoin $\lambda x \cdot
 
 %%%
 
-% QUES meilleur nom ?
 \section*{Conclusion}
 
 \subsection*{Apports mutuels du stage}

@@ -445,7 +445,7 @@ Inductive typed : context -> term -> type -> Prop :=
 
 Concernant les contextes de typage, comme il est difficile de manipuler des listes d'association en Coq, nous avons décidé de donner au constructeur \verb+Var+ le type \verb+nat -> term+, ce qui permet d'associer à chaque variable un indice. Cet indice est ensuite utilisé pour retrouver la variable dans le contexte de typage, qui ne sera donc qu'une liste de type, le type en première position étant associé à la première variable, etc.
 
-\subsubsection{Faux et opérateur $\nabla$}
+\subsubsection{Faux et constructeur $\nabla$}
 
 Nous avons ensuite voulu enrichir notre $\lambda$-calcul pour y ajouter un type correspondant au faux. Pour ce faire, nous avons rajouté un constructeur de termes \verb+Nabla+, correspondant essentiellement à une exception dans un programme, et un type \verb+Bot+.
 \begin{minted}{coq}

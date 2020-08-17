@@ -120,7 +120,7 @@ Dans un premier temps, il a fallu se familiariser avec les outils du stage : à 
 
 Ce stage a été effectué sous la direction de Pierre Letouzey, maître de conférence à l'Université Paris-Diderot, et membre du groupe $\pi r^2$ de l'IRIF. Compte tenu du contexte sanitaire, la majeur partie des échange a eu lieu par visio-conférence et par mail, à un rythme assez soutenu. J'ai cependant pu me rendre physiquement à l'IRIF afin de discuter dans la vraie vie avec avec mon maître de stage.
 
-Malgré les échanges de mails réguliers, le travail à distance a probablement été le plus gros inconvénient de ce stage : dans la mesure où je travaillais sur un codage créé par Pierre Letouzey, qui n'a pas écrit de manuel d'explication pour justifier ou expliquer ses choix d'implémentation (ce qui se conçoit parfaitement étant donné l'usage qu'il avait prévu de faire de son travail, qui n'était censé être utilisé que pour illustrer le cours de logique qu'il donne en M1), j'ai donc eu grandement besoin d'explications pour me lancer dans le travail, et il eût probablement été plus aisé d'avoir ce genre de discussions informelles si nous avions pu travailler dans deux bureaux adjacents.
+Malgré les échanges de mails réguliers, le travail à distance a probablement été le plus gros inconvénient de ce stage : dans la mesure où je travaillais sur un codage créé par Pierre Letouzey, qui n'a pas écrit de manuel d'explication pour justifier ou expliquer ses choix d'implémentation (ce qui se conçoit parfaitement étant donné l'usage qu'il avait prévu de faire de son travail, qui n'était censé être utilisé que pour illustrer le cours de logique qu'il donne en M1), j'ai donc eu grandement besoin d'explications pour me lancer, et il eût probablement été plus aisé d'avoir ce genre de discussions informelles si nous avions pu travailler dans deux bureaux adjacents.
 
 Il n'en demeure pas moins que le stage a pu se dérouler sans trop d'embûches, et sans problèmes matériels majeurs. Par ailleurs, le travail à distance présente l'avantage non négligeable de permettre à chacun de travailler aux horaires qui lui conviennent le mieux, fût-ce tard le soir\footnote{Ou bien tôt le matin selon la façon dont on voit les choses.}.
 
@@ -130,7 +130,7 @@ Le dépôt GitLab du projet est consultable à l'adresse suivante : \url{https:/
 
 Le but du stage a été d'enrichir l'encodage de \verb+NatDed+ déjà existant, tout en gardant en tête la vocation pédagogique du projet, puisqu'il s'agit d'illustrer un cours de logique de M1 \cite{poly}.
 
-\verb+NatDed+ étant à l'origine assez rustique, il était pédagogiquement intéressant de le rendre plus \textit{user-friendly}, mais aussi d'ajouter un certain nombre d'exemples et d'applications (la théorie $\ZF$ par exemple), qui manquaient au projet initial.
+\verb+NatDed+ étant à l'origine assez rustique, il était intéressant de le rendre plus \textit{user-friendly}, mais aussi d'ajouter un certain nombre d'exemples et d'applications, qui manquaient au projet initial.
 
 Par la suite, il a été à propos d'ajouter d'autres aspects de la logique à cet encodage, tels que le $\lambda$-calcul et la théorie des ensembles, qui sont tous deux des point abordés dans le cours donné par Pierre Letouzey. En effet, le $\lambda$-calcul est un élément essentiel de la construction des assistants de preuve tels que Coq.
 
@@ -368,11 +368,11 @@ Une fois les axiomes de $\ZF$ encodés, il a fallu établir un certain nombre de
 \begin{minted}{coq}
 Lemma WCAx A : IsAx A -> WC ZFSign A.
 \end{minted}
-En premier lieu, ce résultat a été fort problématique, en raison des structures finies qu'il fait intervenir, et de l'incapacité des tactiques \verb+intuition+ ou \verb+cbn+ à gérer ces structures. Cependant, les lemmes établis par Pierre Letouzey plus tôt dans le développement ainsi que les théorèmes de la bibliothèque standard et du module Nat ont été d'une efficacité redoutable et ont permis d'obtenir une preuve d'une vingtaine de ligne, bien que cela ait plus fait appelle à l'expérience et à la grande connaissance des librairies de Pierre Letouzey qu'à ma simple intuition mathématique.
+En premier lieu, ce résultat a été fort problématique, en raison des structures finies qu'il fait intervenir, et de l'incapacité des tactiques \verb+intuition+ ou \verb+cbn+ à gérer ces structures. Cependant, les lemmes établis par Pierre Letouzey plus tôt dans le développement ainsi que les théorèmes de la bibliothèque standard et du module Nat ont été d'une efficacité redoutable et ont permis d'obtenir une preuve d'une vingtaine de ligne, bien que cela ait plus fait appel à l'expérience et à la grande connaissance des librairies de Pierre Letouzey qu'à ma simple intuition mathématique.
 
 \subsection{Preuves exemples} \label{ex}
 
-Pour mettre à l'épreuve la théorie $\ZF$ fraîchement encodée, nous avons démontré un certain nombre de résultats classiques, à savoir l'existence de l'ensemble vide, des singletons et la construction de l'opérateur $\cup$.
+Pour mettre à l'épreuve la théorie $\ZF$ fraîchement encodée, nous avons démontré un certain nombre de résultats classiques : l'existence de l'ensemble vide, des singletons et la construction de l'opérateur $\cup$.
 \begin{minted}{coq}
 Lemma emptyset : IsTheorem J ZF (∃∀ ~(#0 ∈ #1)).
 
@@ -415,7 +415,7 @@ Cette section reprend les concepts et les constructions du cours de $\lambda$-ca
 
 \subsection{Choix de codage}
 
-Le choix général d'encodage a été d'implémenter un $\lambda$-calcul à la \textsc{Curry}, c'est-à-dire où l'on traite les termes usuels du $\lambda$-calcul, sans annotation de type. Bien que syntaxiquement plus lourde, cette approche présente l'avantage d'être assez proche de la déduction naturelle, en ce sens qu'elle fait appelle à des environnements de typage, contrairement à une présentation à la \textsc{Church} qui n'utilise que des ensembles de variables annotées par un type.
+Le choix général d'encodage a été d'implémenter un $\lambda$-calcul à la \textsc{Curry}, c'est-à-dire où l'on traite les termes usuels du $\lambda$-calcul, sans annotation de type. Bien que syntaxiquement plus lourde, cette approche présente l'avantage d'être assez proche de la déduction naturelle, en ce sens qu'elle fait appel à des environnements de typage, contrairement à une présentation à la \textsc{Church} qui n'utilise que des ensembles de variables annotées par un type.
 
 L'ensemble des constructions utilisées est détaillé dans les sous-sections qui suivent, et repris en annexe \ref{lambda}.
 

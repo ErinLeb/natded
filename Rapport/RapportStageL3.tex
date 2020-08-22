@@ -101,11 +101,11 @@
 \begin{abstract}
 Ce stage de recherche de fin de licence avait pour but de proposer des extensions à un encodage en Coq déjà existant de la déduction naturelle.
 
-Dans un premier temps, il a fallu se familiariser avec les outils du stage : à la fois la manipulation de Git mais aussi l'encodage parfois étonnant des notions classiques de la logique (formules closes, variables liées, modèles, etc.). Un fois ce travail de défrichage effectué, nous avons pu enrichir le codage existant en suivant trois axes principaux, qui correspondent aux trois sections principales de ce rapport :
+Dans un premier temps, il a fallu se familiariser avec les outils du stage : à la fois la manipulation de git mais aussi l'encodage parfois étonnant des notions classiques de la logique (formules closes, variables liées, modèles, etc.). Un fois ce travail de défrichage effectué, nous avons pu enrichir le codage existant en suivant trois axes principaux, qui correspondent aux trois sections principales de ce rapport :
 \begin{itemize}
 \item l'arithmétique de \textsc{Peano}, qui avait déjà été encodée mais où tout restait à faire du point de vue des exemples et de la maniabilité des preuves,
 \item la théorie des ensembles $\ZF$, où il s'est agit non seulement d'encoder les axiomes et de faire quelques preuves exemples, mais aussi de proposer une construction de $\N$,
-\item le $\lambda$-calcul enfin, où nous avons pu établir la correspondance de \textsc{Curry-Howard} pour des logiques de plus en plus expressives.
+\item le $\lambda$-calcul enfin, où nous avons pu établir une correspondance de \textsc{Curry-Howard} pour des logiques propositionnelles de plus en plus expressives.
 \end{itemize}
 \end{abstract}
 
@@ -124,11 +124,11 @@ Malgré les échanges de mails réguliers, le travail à distance a probablement
 
 Il n'en demeure pas moins que le stage a pu se dérouler sans trop d'embûches, et sans problèmes matériels majeurs. Par ailleurs, le travail à distance présente l'avantage non négligeable de permettre à chacun de travailler aux horaires qui lui conviennent le mieux, fût-ce tard le soir\footnote{Ou bien tôt le matin selon la façon dont on voit les choses.}.
 
-Le dépôt GitLab du projet est consultable à l'adresse suivante : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}. Pour accéder aux fichiers modifiés pendant le stage il faut se rendre dans la branche du même nom.
+Le dépôt GitLab du projet est consultable à l'adresse suivante : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}.
 
 \subsection*{Motivations}
 
-Le but du stage a été d'enrichir l'encodage de \verb+NatDed+ déjà existant, tout en gardant en tête la vocation pédagogique du projet, puisqu'il s'agit d'illustrer un cours de logique de M1 \cite{poly}.
+Le but du stage a été d'enrichir l'encodage \verb+NatDed+ -- un encodage profond de la déduction naturelle -- déjà existant, tout en gardant en tête la vocation pédagogique du projet, puisqu'il s'agit d'illustrer un cours de logique de M1 \cite{poly}.
 
 \verb+NatDed+ étant à l'origine assez rustique, il était intéressant de le rendre plus \textit{user-friendly}, mais aussi d'ajouter un certain nombre d'exemples et d'applications, qui manquaient au projet initial.
 
@@ -136,14 +136,14 @@ Par la suite, il a été à propos d'ajouter d'autres aspects de la logique à c
 
 \subsection*{Encodage existant et état de l'art}
 
-L'encodage \verb+NatDed+ existait déjà avant le stage. \`A ce moment là, il contenait déjà un système de déduction naturelle avec des séquents, ainsi qu'un grand nombre de lemmes et résultats utiles, y compris sur la méta-théorie. Deux méthodes sont possibles pour établir une preuve dans cette encodage : une méthode constructive, reposant sur le prédicat \verb+Pr+ dont la définition est donnée en annexe \ref{pr}, qui permet de construire une preuve pas à pas, mais n'est pas forcément pratique à utiliser pour démontrer des résultats méta-théoriques. L'autre méthode, \verb+Valid+, permet de vérifier qu'une dérivation est bien formée (cela implique donc de fournir directement une dérivation complète, ce qui alourdi considérablement le style des preuves). Le choix qui a été fait pour stage est d'utiliser \verb+Pr+ systématiquement.
+L'encodage \verb+NatDed+ existait déjà avant le stage. \`A ce moment là, il contenait déjà un système de déduction naturelle avec des séquents, ainsi qu'un grand nombre de lemmes et résultats utiles, y compris sur la méta-théorie. Pour l'encodage des formules de la logique du premier ordre, Pierre Letouzey avait choisi un système \emph{locally nameless}, i.e. où les variables liées sont représentées par des indices de \textsc{de Bruijn} et les variables libres par un constructeur \verb+FVar : string -> term+ (par exemple $x$ s'écrira \verb+FVar "x"+)\footnote{Pour la définition complète des formules, on pourra se reporter à l'annexe \ref{form}.}. En parallèle de cette convention, une équivalence avec un système reposant totalement sur des variables nommées était proposée, mais quoiqu'elle eût peut se révéler fort utile, cette équivalence n'a guère été utilisée pendant le stage.
 
-En ce qui concerne la façon d'encoder les formules de la logique du premier ordre, Pierre Letouzey avait choisi un système \emph{locally nameless}, i.e. où les variables liées sont représentées par des indices de \textsc{de Bruijn} et les variables libres par un constructeur \verb+FVar : string -> term+ (par exemple $x$ s'écrira \verb+FVar "x"+). En parallèle de cette convention, une équivalence avec un système reposant totalement sur des variables nommées était proposée, mais quoiqu'elle eût peut se révéler fort utile, cette équivalence n'a guère été utilisée pendant le stage.
+Concernant les preuves, deux méthodes sont possibles pour les établir. \verb+Pr+ est une description inductive et relativement légère de la prouvabilité d'un séquent, permettant de construire des preuves pas à pas. Par contre, Coq ne permet pas ensuite de revenir facilement analyser les étapes internes de cette preuve, c'est pourquoi un autre prédicat, \verb+Valid+, qui explicite l'ensemble de la dérivation de preuve et permet des études méta-théoriques plus poussées est disponible, en contrepartie d'un style de preuve nettement plus lourd. L'équivalence entre \verb+Pr+ et \verb+Valid+ avait déjà été montré. Le choix qui a été fait pour stage est d’utiliser Pr systématiquement.
 \medskip
 
 A priori, il s'agit du premier codage Coq de la déduction naturelle qui allie les trois aspects suivants :
 \begin{itemize}
-\item \emph{Calcul} : l'ensemble du système n'est pas purement syntaxique, puisqu'il tire également partie de la capacité de Coq à effectuer un certain nombre de calculs à la place de l'utilisateur. Par exemple, les substitutions sont entièrement gérées par une fonction \verb+bsubst+.
+\item \emph{Calcul} : l'ensemble du système n'est pas que de la syntaxe inerte, puisqu'il tire également partie de la capacité de Coq à effectuer un certain nombre de calculs à la place de l'utilisateur. Par exemple, les substitutions sont entièrement gérées par une fonction \verb+bsubst+ ; et l'on dispose d'une d'une fonction booléenne permettant de vérifier la validité d'une dérivation.
 \item \emph{Méta-théorie} assez poussée, dans la mesure où un théorème de complétude a pu être démontré.
 \item \emph{Pédagogie} : avec un peu de patience -- et, je l'espère, en s'aidant du travail effectué pendant le stage -- on peut utiliser ce codage pour illustrer un cours sur la théorie de la démonstration, ou bien justifier que l'on peut admettre un certain nombre de résultats longs à démontrer en exhibant une preuve (plus ou moins lisible à l'\oe il nu) dans ce système.
 \end{itemize}
@@ -179,11 +179,9 @@ Pour ce dernier point, il a été utile d'établir l'admissibilité des règles 
 \'Evidemment, les règles RAA et absu sont équivalentes, mais la forme RAA était plus commode pour montrer le tiers-exclu.
 
 \`A titre d'illustration, voici l'énoncé de ces résultats tels que démontrés dans le projet. On donne également la démonstration du premier, afin d'avoir une idée de ce à quoi ressemble une preuve en déduction naturelle dans cet encodage.
-
 \begin{minted}{coq}
-Lemma ex1 f1 f2 : Provable J ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
+Lemma ex1 f1 f2 : Pr J ([] ⊢ (f1 /\ f2) -> (f1 \/ f2)).
 Proof.
-  apply Provable_alt.
   apply R_Imp_i.
   apply R_Or_i1.
   apply R_And_e1 with (B := f2).
@@ -191,14 +189,16 @@ Proof.
   apply in_eq.
 Qed.
 
-Lemma ex2 f1 f2 f3 : Provable J ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
+Lemma ex2 f1 f2 f3 : Pr J ([] ⊢ (f1 -> f2 -> f3) <-> (f1 /\ f2 -> f3)).
 
-Lemma RAA f1 Γ : Pr Classic (Γ ⊢ ~~f1) -> Pr Classic (Γ ⊢ f1).
+Lemma RAA f1 Γ : Pr K (Γ ⊢ ~~f1) -> Pr K (Γ ⊢ f1).
 
-Lemma DeMorgan f1 f2 Γ : Pr Classic (Γ ⊢ ~(~f1 /\ f2)) -> Pr Classic (Γ ⊢ ~~(f1 \/ ~f2)).
+Lemma DeMorgan f1 f2 Γ : Pr K (Γ ⊢ ~(~f1 /\ f2)) -> Pr K (Γ ⊢ ~~(f1 \/ ~f2)).
 
-Lemma ExcludedMiddle f1 : Provable Classic ([] ⊢ f1 \/ ~f1).
+Lemma ExcludedMiddle f1 : Pr K ([] ⊢ f1 \/ ~f1).
 \end{minted}
+Au niveau de Coq, \verb+f1+, \verb+f2+ et \verb+f3+ sont des variables de type \verb+forumla+. Quant aux lettres \verb+K+ et \verb+J+, elles font respectivement référence aux logiques classique et intuitionniste.
+
 
 \noindent \begin{minipage}[t]{0.05\linewidth}
 \dbend
@@ -207,10 +207,9 @@ Les symboles \verb+->+, \verb+/\+, \verb+\/+ et \verb+~+ utilisés à l'intérie
 \end{minipage}
 \smallskip
 
-Pour revenir sur la remarque précédente, on donne en annexe \ref{form} la définition des formules. On voit alors, par exemple, que \verb+A /\ B+ n'est qu'un sucre syntaxique pour \verb+Op And A B+.
+Pour revenir sur la remarque précédente, on voit dans l'annexe \ref{form} que, par exemple, \verb+A /\ B+ n'est qu'un sucre syntaxique pour \verb+Op And A B+.
 
-% QUES au bon endroit ?
-Par ailleurs, on verra dans la suite que les quantificateurs ne sont pas associés à des variables. Cela vient du fait que la représentation des formules est \emph{locally-nameless}, et donc les variables liées sont représentées par des indices de \textsc{de Bruijn} grâce à un constructeur \verb+BVar : nat -> term+ (qui est ensuite abrégé par \verb+#+, cf. annexe \ref{form}).
+Par ailleurs, on verra dans la suite que les quantificateurs ne sont pas associés à des noms de variables. Cela vient du fait que la représentation des formules est \emph{locally-nameless}, et donc les variables liées sont représentées par des indices de \textsc{de Bruijn} grâce à un constructeur \verb+BVar : nat -> term+ (qui est ensuite abrégé par \verb+#+, cf. annexe \ref{form}).
 
 \newpage
 
@@ -218,14 +217,14 @@ Par ailleurs, on verra dans la suite que les quantificateurs ne sont pas associ�
 
 \section{Arithmétique de {\sc Peano}}
 
-Dans cette partie du stage, nous avons illustré et simplifié l'encodage de $\PA$ préexistant.
+Dans cette partie du stage, nous avons illustré au premier ordre et simplifié l'encodage de $\PA$ préexistant.
 
 \subsection{Constats de départ}
 
 L'encodage de $\PA$ contenait déjà les axiomes ainsi que quelques éléments méta-théoriques. En outre, le fichier \verb+Theories.v+ propose un prédicat \verb+IsTheorem+ défini comme suit :
 \begin{minted}{coq}
 Definition IsTheorem th T :=
-  Wf th T /\
+  WC th T /\
   exists axs,
     Forall th.(IsAxiom) axs /\
     Pr logic (axs ⊢ T).
@@ -252,27 +251,27 @@ Par ailleurs, les débuts de preuve avaient tendance à être particulièrement 
 Quelques propriétés utiles étaient par ailleurs sans cesse utilisées. Si la transitivité et la symétrie de l'égalité font partie de toute théorie égalitaire qui se respecte, le besoin de règles de dérivation telles que \begin{prooftree*}
 \hypo{\Gamma \vdash u = v}
 \infer1[sym]{\Gamma \vdash v = u}
-\end{prooftree*} se fait cruellement ressentir. En l'état, l'utilisation de l'axiome de symétrie de l'égalité nécessitait d'avoir recours à la tactique \verb+assert+ pour rajouter un jugement précisant que le séquent $\PA \vdash \forall x, \forall y \cdot x = y \Rightarrow y = x$ est dérivable, puis d'utiliser les règles d'élimination adéquates : il s'agit de \emph{forward-reasoning}. Il en va de même pour les axiomes du type $\forall x, \forall y \cdot x = y \Rightarrow \Succ (x) = \Succ (y)$. Cette difficulté à manipuler l'égalité provient du choix qui a été fait par Pierre Letouzey de ne pas coder en dur les axiomes de l'égalité dans la méta-théorie (en posant notamment le principe de \textsc{Leibniz} comme axiome), mais plutôt d'ajouter à toute théorie $T$ que l'on est amené à définir les axiomes de symétrie, réflexivité et transitivité de l'égalité, ainsi qu'un certain nombre d'axiomes de compatibilités avec les autres symboles de la signature de $T$. Ce choix permet de travailler à un plus grand niveau d'abstraction, et laisse tout de même la possibilité de démontrer -- non sans peine -- un principe de \textsc{Leibniz} dans chacune des théories ainsi créées.
+\end{prooftree*} se fait cruellement ressentir. En l'état, l'utilisation de l'axiome de symétrie de l'égalité nécessitait d'avoir recours à la tactique \verb+assert+ pour rajouter un jugement précisant que le séquent $\PA \vdash \forall x, \forall y \cdot x = y \Rightarrow y = x$ est dérivable, puis d'utiliser les règles d'élimination adéquates : il s'agit de \emph{forward-reasoning}. Il en va de même pour les axiomes du type $\forall x, \forall y \cdot x = y \Rightarrow \Succ (x) = \Succ (y)$. Cette difficulté à manipuler l'égalité provient du choix qui a été fait par Pierre Letouzey de ne pas coder en dur les axiomes de l'égalité dans la méta-théorie (ce qui reviendrait à poser le principe de \textsc{Leibniz} comme axiome), mais plutôt d'ajouter à toute théorie $T$ que l'on est amené à définir les axiomes de symétrie, réflexivité et transitivité de l'égalité, ainsi qu'un certain nombre d'axiomes de compatibilités avec les autres symboles de la signature de $T$. Ce choix permet de travailler à un plus grand niveau d'abstraction, et laisse tout de même la possibilité de démontrer -- non sans peine -- un principe de \textsc{Leibniz} dans chacune des théories ainsi créées.
 
 Enfin, certaines tactiques et règles définies dans l'encodage de \verb+NatDed+ étaient passablement pénibles à utiliser. Entre autres, on peut citer \verb+R_All_i+, la règle d'introduction du quantificateur universel, qui engendrait un grand nombre de buts ennuyants à démontrer. On peut également mentionner tous les résultats faisant intervenir des ensembles finis, par exemple le lemme d'affaiblissement, car la représentation de ces ensembles en Coq est surprenante et se prête fort mal à des tactiques de simplification usuelles telles que \verb+cbn+ lorsqu'il reste des éléments abstraits.
 
 \subsection{Définition de nouvelles tactiques}
 
-Afin de régler les susmentionnés problèmes, nous avons mis au point un certain nombre de tactiques permettant de rendre les preuves plus courtes et plus lisibles, en somme plus proches des preuves que l'ont ferait sur papier. L'objectif ultime étant que l'on puisse facilement voir émerger l'arbre de dérivation du séquent que l'on est en train de démontrer. Afin de constater l'apport de ces nouvelles tactiques, une mise en regard des preuves du lemme \verb+ZeroRight+ avant (73 lignes) et après (13 lignes) simplifications et proposée en annexe \ref{beforeafter_zeroright}.
+Afin de régler les susmentionnés problèmes, nous avons mis au point un certain nombre de tactiques permettant de rendre les preuves plus courtes et plus lisibles, en somme plus proches des preuves que l'ont ferait sur papier. L'objectif ultime étant que l'on puisse facilement voir émerger l'arbre de dérivation du séquent que l'on est en train de démontrer. Afin de constater l'apport de ces nouvelles tactiques, l'annexe \ref{beforeafter_zeroright} propose une mise en regard des preuves du lemme \verb+ZeroRight+ avant simplifications (73 lignes) et après (13 lignes).
 
 \subsubsection{Pour les débuts de preuve}
 
 Dans l'objectif d'alléger les débuts de preuve, nous avons mis en place deux tactiques distinctes.
 \smallskip
 
-La première, \verb+thm+, permet de traiter à peu de frais le but \verb+Wf th T+ affirmant que la formule à démontrer respecte la signature de la théorie $T$. Sa mise en place a été relativement aisée car la preuve du but qu'elle entend éliminer est toujours la même, indépendamment du théorème à démontrer ou de la théorie considérée. Il a donc suffit de copier-coller la preuve donnée dans \verb+ZeroRight+ (par exemple) pour obtenir cette tactique qui a fonctionné quasiment du premier coup. \'Evidemment, le stage avançant, la tactique a été enrichie par d'autres tactiques permettant notamment de calculer plus efficacement sur les listes, etc.
+La première, \verb+thm+, permet de traiter à peu de frais le but \verb+WC th T+ affirmant que la formule à démontrer respecte la signature de la théorie $T$. Sa mise en place a été relativement aisée car la preuve du but qu'elle entend éliminer est toujours la même, indépendamment du théorème à démontrer ou de la théorie considérée. Il a donc suffit de copier-coller la preuve donnée dans \verb+ZeroRight+ (par exemple) pour obtenir cette tactique qui a fonctionné quasiment du premier coup. \'Evidemment, le stage avançant, la tactique a été enrichie par d'autres tactiques permettant notamment de calculer plus efficacement sur les listes, etc.
 \smallskip
 
 La seconde tactique élaborée, \verb+rec+, est dédiée aux preuves pas récurrence. Elle permet, à partir du but fourni par la tactique \verb+thm+ de trouver la bonne instance $A$ du schéma d'axiomes de récurrence et d'instancier ensuite la quantification existentielle par \verb$(induction_schema A) :: axioms_list$.
 
-Concrètement, cette tactique s'appuie sur une tactique auxiliaire \verb+parse+ qui prend en argument une formule $\phi$ contenant au moins une quantification universelle sous la forme non-restrictive \[ \phi_1 \Rightarrow \cdots \Rightarrow \forall x \cdot \phi_n \] avec éventuellement $n = 1$, et qui retourne $\phi_n$. Une fois la formule $\phi_n$ identifiée, \verb+rec+ l'utilise pour instancier le schéma d'axiomes de récurrence et initie la preuve, de sorte que l'utilise se retrouve avec deux buts, qui correspondent à l'initialisation et à l'hérédité de la preuve par récurrence. Pour ce faire, nous avons eu besoin de prouver deux lemmes auxiliaires qui permettent essentiellement de montrer que l'instance du schéma d'axiomes de récurrence choisie est bien licite, et qui proposent une forme plus facilement manipulable du principe de récurrence.
+Concrètement, cette tactique s'appuie sur une tactique auxiliaire \verb+parse+ qui prend en argument une formule $\phi$ contenant au moins une quantification universelle sous la forme générale \[ \phi_1 \Rightarrow \cdots \Rightarrow \forall x \cdot \phi_n \] avec éventuellement $n = 1$, et qui retourne $\phi_n$. Une fois la formule $\phi_n$ identifiée, \verb+rec+ l'utilise pour instancier le schéma d'axiomes de récurrence et initie la preuve, de sorte que l'utilise se retrouve avec deux buts, qui correspondent à l'initialisation et à l'hérédité de la preuve par récurrence. Pour ce faire, nous avons eu besoin de prouver deux lemmes auxiliaires qui permettent essentiellement de montrer que l'instance du schéma d'axiomes de récurrence choisie est bien licite, et qui proposent une forme plus facilement manipulable du principe de récurrence.
 
-Il est à noter que, en allant chercher le premier quantificateur universel qu'elle trouve dans la formule, \verb+parse+ et \verb+rec+, bien qu'elles n'illustrent pas toutes les instances du schéma d'axiomes de récurrence, permettent tout de même d'effectuer toutes les récurrence que l'on souhaite, pour peu que l'on prenne le temps de permuter convenablement les quantificateurs universels au préalable. En effet, si l'on veut faire une récurrence sur la variable qui n'est la première variable quantifiée, on peut toujours éliminer les quantificateurs qui la précèdent (avec la règle \verb+R_All_i+) afin d'appliquer la tactique \verb+rec+, puis les réintroduire avec \verb+R_All_e+. Cela revient essentiellement à utiliser la tactique \verb+intro+ avant de lancer un \verb+induction+ en Coq, puis d'utiliser \verb+revert+ pour rétablir le théorème initial. Au passage, on remarque que le schéma d'axiomes de récurrence usuellement énoncé est en fait redondant : certaines instances du schéma d'axiomes peuvent se retrouver à partir d'autres.
+Il est à noter que, en allant chercher le premier quantificateur universel qu'elle trouve dans la formule, \verb+parse+ et \verb+rec+, bien qu'elles n'illustrent pas toutes les instances du schéma d'axiomes de récurrence, permettent tout de même d'effectuer toutes les récurrence que l'on souhaite, pour peu que l'on prenne le temps de permuter convenablement les quantificateurs universels au préalable. En effet, si l'on veut faire une récurrence sur la variable qui n'est la première variable quantifiée, on peut toujours éliminer les quantificateurs qui la précèdent (avec la règle \verb+R_All_i+) afin d'appliquer la tactique \verb+rec+, puis les réintroduire avec \verb+R_All_e+. En Coq, cela revient essentiellement à utiliser les tactiques \verb+intro+ puis \verb+revert+ pour permuter les quantificateurs universels, puis de lancer \verb+induction+ sur la nouvelle première variable. Au passage, on remarque que le schéma d'axiomes de récurrence usuellement énoncé est en fait redondant : certaines instances du schéma d'axiomes peuvent se retrouver à partir d'autres.
 
 \subsubsection{Pour raccourcir certains raisonnements}
 
@@ -296,6 +295,7 @@ Lemma AntiHereditarity :
   forall logic A B Γ, BClosed A -> In ax13 Γ -> Pr logic (Γ ⊢ Succ A = Succ B) ->
                       Pr logic (Γ ⊢ A = B).
 \end{minted}
+L'intervention du prédicat \verb+BClosed+ provient de ce que, pour des raisons techniques liées à l'instantiation des axiomes par la fonction \verb+bsubst+, des résultats tels que \verb+Symmetry+ ne passent bien que dans le cas de formules utilisant correctement les indices de \textsc{de Bruijn}.
 
 Une fois ces résultats établis, nous avons facilement pu créer les tactiques qui nous intéressaient, où il s'agissait essentiellement d'appliquer le théorème idoine et de simplifier à l'aide de tactiques de calcul spécifiques, telles que \verb+calc+ ou \verb+cbm+, qui ont été écrites par Pierre Letouzey pour faciliter la manipulation d'ensembles finis et de listes.
 \begin{minted}{coq}
@@ -312,12 +312,11 @@ Ltac trans b := apply Transitivity with (B := b); calc.
 En plus de cela, nous avons aussi défini des tactiques qui permettent de gérer plus facilement la règle \verb+R_All_i+ ou d'ajouter la dérivabilité d'axiomes dans les hypothèses, pour pouvoir raisonner à rebours (i.e. de haut de bas de l'arbre de dérivation). Ces tactiques très simples ne sont finalement que des macros qui évitent d'avoir à réécrire plusieurs fois les mêmes petits bouts de preuve et de se concentrer sur l'aspect déduction naturelle plutôt que sur l'aspect Coq.
 \smallskip
 
-% QUES c'est vrai ??
 Bien entendu, toutes les tactiques sus-mentionnées sont perfectibles, notamment dans la cherche des instances. L'algorithme d'unification nous assure, en effet, que le problème de savoir par quels termes instancier une règle de déduction naturelle est décidable. Cependant, il faut garder en tête la vocation pédagogique de ce projet, qui nous a conduits à souhaiter laisser l'utilisateur choisir les instances lui-même.
 
 \subsubsection{Pour utiliser des lemmes auxiliaires}\label{sol}
 
-Le principal problème posé par l'usage de lemmes auxiliaires est le fait qu'ils sont toujours de la forme \verb+IsTheorem+, alors que le corps d'une preuve fait plutôt intervenir le prédicat \verb+Pr+. La solution proposée pour palier à cela a été d'établir une espèce de \emph{modus ponens} méta-théorique sur \verb+IsTheorem+. Plus précisément, on a démontré
+Le principal problème posé par l'usage de lemmes auxiliaires est le fait qu'ils sont toujours de la forme \verb+IsTheorem+, alors que le corps d'une preuve fait plutôt intervenir le prédicat \verb+Pr+. La solution proposée pour palier à cela a été d'établir une sorte de \emph{modus ponens} méta-théorique sur \verb+IsTheorem+. Plus précisément, on a démontré
 \begin{minted}{coq}
 Lemma ModusPonens th :
   forall A B , IsTheorem th (A -> B) -> IsTheorem th A ->
@@ -336,7 +335,7 @@ Le théorème \verb+ModusPonens+ nous a semblé être la solution la plus suscep
 
 Cette section est relative aux choix d'encodage des axiomes de $\ZF$, aux preuves de quelques résultats dans cette théorie ainsi qu'à l'usage que l'on a pu faire des tactiques créées pour l'arithmétique de \textsc{Peano}.
 
-Pour justifier l'utilité d'une théorie non-triviale des ensembles, nous avons commencé par montrer l'incohérence de la théorie naïve des ensembles qui ne contient qu'un schéma d'axiomes de compréhension non-restreint : \[ \forall x_1, \ldots, \forall x_n, \exists a, \forall y \cdot y \in a \Leftrightarrow A \] pour toute formule $A$ telle que $\fv(A) \subseteq \{ x_1, \ldots, x_n, y \}$. Pour ce faire, nous avons établi le lemme suivant, qui n'est rien d'autre que le paradoxe du \textsc{Russell}. \begin{minted}{coq}
+Pour justifier l'utilité d'une théorie non-triviale des ensembles, nous avons commencé par montrer l'incohérence de la théorie naïve des ensembles qui ne contient qu'un schéma d'axiomes de compréhension non-restreint : \[ \forall x_1, \ldots, \forall x_n, \exists a, \forall y \cdot y \in a \Leftrightarrow A \] pour toute formule $A$ dont toutes les variables libres appartiennent à $\{ x_1, \ldots, x_n, y \}$. Pour ce faire, nous avons établi le lemme suivant, qui n'est rien d'autre que le paradoxe du \textsc{Russell}. \begin{minted}{coq}
 Lemma Russell : Pr J ([ ∃∀ (#0 ∈ #1 <-> ~(#0 ∈ #0)) ] ⊢ False).
 \end{minted}
 On remarque au passage que $\exists a, \forall y \cdot y \in a \Leftrightarrow \neg y \in y$ est bien une instance du schéma d'axiomes de compréhension non-restreint, puisqu'il suffit de poser $A := \neg y \in y$.
@@ -345,10 +344,10 @@ On remarque au passage que $\exists a, \forall y \cdot y \in a \Leftrightarrow \
 
 Comme pour $\PA$, nous avons fait le choix d'inclure les axiomes de l'égalité dans ceux de $\ZF$. La liste exacte des axiomes que l'on a considérés se trouve en page 30 dans \cite{poly}.
 
-La différence majeure avec $\PA$ est que les axiomes de $\ZF$ contiennent un grand nombre de quantificateurs. Cette différence était particulièrement frappante dans les schémas d'axiomes de séparation et de remplacement, pour lesquels nous avons été obligés de créer un nouvel opérateur \verb+lift_above+ afin d'ajuster convenablement les indices de \textsc{de Bruijn} d'une formule $A$ quelconque.
+La différence majeure avec $\PA$ est que les axiomes de $\ZF$ contiennent un grand nombre de quantificateurs. Cette différence était particulièrement frappante dans les schémas d'axiomes de séparation et de remplacement, pour lesquels nous avons été obligés de créer un nouvel opérateur \verb+lift_above+ (renommé \verb+lift+ par la suite) afin d'ajuster convenablement les indices de \textsc{de Bruijn} d'une formule $A$ quelconque. 
 \smallskip
 
-Le principal écueil rencontré dans l'encodage des axiomes résidait donc dans l'usage des indices de \textsc{de Bruijn}. En effet, outre les problèmes d'ajustement susmentionnés, l'usage d'indices à la place de variables nommées entraîne inévitablement un grand nombre de typos qu'il est extrêmement ardu de repérer sans vraiment éprouver la théorie. \`A ce stade, l'équivalence déjà établie par Pierre Letouzey entre les formulations locally-nameless et nommées aurait pu se révéler salutaire, car les axiomes auraient été éminemment plus facile à encoder dans cette seconde formulation. Il serait par ailleurs intéressant, afin de vérifier que les axiomes sont correctement encodés, de faire le lien avec des modèles de $\ZF$, comme proposé dans \cite{zfmod}.
+Le principal écueil rencontré dans l'encodage des axiomes résidait donc dans l'usage des indices de \textsc{de Bruijn}. En effet, outre les problèmes d'ajustement susmentionnés, l'usage d'indices à la place de variables nommées entraîne inévitablement un grand nombre de typos qu'il est extrêmement ardu de repérer sans vraiment éprouver la théorie. \`A ce stade, l'équivalence déjà établie par Pierre Letouzey entre les formulations locally-nameless et nommées aurait pu se révéler salutaire, car les axiomes auraient été éminemment plus facile à encoder dans cette seconde formulation. Il a par ailleurs été intéressant, afin de vérifier que les axiomes sont correctement encodés, de faire le lien avec des modèles de $\ZF$, comme proposé dans \cite{zfmod}.
 
 L'autre difficulté rencontrée lors de cette phase d'axiomatisation est liée à l'analyse syntaxique de Coq, mais un usage intensif -- voire excessif -- des parenthèses permet de régler ce problème sans trop d'efforts.
 
@@ -364,7 +363,7 @@ Definition ext := ∀∀ ((∀ #0 ∈ #2 <-> #0 ∈ #1) -> #1 = #0).
 Une erreur semblable avait aussi été commise dans l'axiome de l'infini.
 \smallskip
 
-Une fois les axiomes de $\ZF$ encodés, il a fallu établir un certain nombre de méta-résultats nécessaire à la bonne définition du prédicat \verb+IsTheorem+. En particulier, il a fallu établir le résultat suivant, qui permet de définir la signature de $\ZF$ :
+Une fois les axiomes de $\ZF$ encodés, il a fallu établir un certain nombre de méta-résultats nécessaire à la bonne définition de la théorie. En particulier, il a fallu établir le résultat suivant, qui permet de définir la signature de $\ZF$ :
 \begin{minted}{coq}
 Lemma WCAx A : IsAx A -> WC ZFSign A.
 \end{minted}
@@ -381,9 +380,9 @@ Lemma singleton : IsTheorem J ZF (∀∃∀ (#0 ∈ #1 <-> #0 = #2)).
 Lemma unionset : IsTheorem J ZF (∀∀∃∀ (#0 ∈ #1 <-> #0 ∈ #3 \/ #0 ∈ #2)).
 \end{minted}
 
-Grâce au travail fait pour $\PA$, ces preuves ont essentiellement ressemblé à des dérivations en déduction naturelle, et n'ont donc posé aucun problème majeur. En fait, Coq s'est révélé un atout précieux, notamment car il permet l'usage de règles gauches (dont l'admissibilité a bien sur été préalablement établie) et le regroupement de morceaux de dérivation semblables grâce à la tactique \verb+assert+, là où une dérivation papier nous aurait contraint à un copier-coller manuel.
+Grâce au travail fait pour $\PA$, ces preuves ont essentiellement ressemblé à des dérivations en déduction naturelle, et n'ont donc posé aucun problème majeur. En fait, Coq s'est révélé un atout précieux, notamment car il permet l'usage de règles gauches (dont l'admissibilité a bien sûr été préalablement établie) et le regroupement de morceaux de dérivation semblables grâce à la tactique \verb+assert+, là où une dérivation papier nous aurait contraint à un copier-coller manuel.
 
-\subsection{Construction de $\N$}
+\subsection{Construction des entiers}
 
 Le but initialement fixé était de montrer un résultat du type $\ZF \vdash \PA$. Cependant, par manque de temps et peut-être de courage face à l'ampleur de la tâche, qui aurait demandé d'établir un théorème de \textsc{Skolem}\footnote{Dont nous ne disposions pas à l'époque, mais que Pierre Letouzey a démontré ensuite.}, nous nous somme rabattus sur un objectif plus modeste, à savoir mettre en \oe uvre la construction de \textsc{von Neumann} des entiers :
 \begin{align*}
@@ -401,7 +400,7 @@ Lemma Successor : IsTheorem J ZF (∀∃ succ (#1) (#0)).
 \end{minted}
 Là encore, le travail effectué sur l'arithmétique de \textsc{Peano} a permis de faire en sorte que la preuve ressemble à une dérivation en déduction naturelle, avec en plus les avantages mentionnés en \ref{ex}. De plus, puisque nous avions déjà démontré l'existence, pour tous $a$ et $b$, du singleton $\{ a \}$ ainsi que celle de l'union $a \cup b$, la preuve principale (regroupée dans un théorème auxiliaire où l'énoncé des lemmes utilisés est posé en impliquant du théorème à démontrer, comme vu en \ref{sol}) tient en une trentaine de ligne.
 
-Une fois démontrés ces résultats, la construction de $\N$ est immédiate en utilisant le théorème de \textsc{Skolem}.
+Une fois démontrés ces résultats, la construction des entiers successifs est immédiate en utilisant le théorème de \textsc{Skolem}.
 
 \newpage
 
@@ -415,7 +414,7 @@ Cette section reprend les concepts et les constructions du cours de $\lambda$-ca
 
 \subsection{Choix de codage}
 
-Le choix général d'encodage a été d'implémenter un $\lambda$-calcul à la \textsc{Curry}, c'est-à-dire où l'on traite les termes usuels du $\lambda$-calcul, sans annotation de type. Bien que syntaxiquement plus lourde, cette approche présente l'avantage d'être assez proche de la déduction naturelle, en ce sens qu'elle fait appel à des environnements de typage, contrairement à une présentation à la \textsc{Church} qui n'utilise que des ensembles de variables annotées par un type.
+Le choix général d'encodage a été d'implémenter un $\lambda$-calcul à la \textsc{Curry}, c'est-à-dire où l'on traite les termes usuels du $\lambda$-calcul, sans annotation de type. Les différences dans entre les syntaxe de \textsc{Curry} et de \textsc{Church} étant plutôt anecdotiques pour l'usage que nous souhaitions faire du $\lambda$-calcul, nous avons opté pour celle présentée dans \cite{polylam}.
 
 L'ensemble des constructions utilisées est détaillé dans les sous-sections qui suivent, et repris en annexe \ref{lambda}.
 
@@ -520,8 +519,7 @@ Inductive typed : context -> term -> type -> Prop :=
 \end{minted}
 \smallskip
 
-% QUES bonne justif ?
-Le $\lambda$-calcul ainsi créé possède autant de règle de typage que de constructeurs syntaxiques de termes, il est donc encore dirigé par la syntaxe, ce qui permet d'affirmer que les problèmes d'inférence et de vérification de type sont décidables. C'est dans cette propriété que réside tout l'intérêt de la correspondance de \textsc{Curry-Howard}.
+Le $\lambda$-calcul ainsi créé possède autant de règle de typage que de constructeurs syntaxiques de termes et il est encore dirigé par la syntaxe, ce qui permet d'affirmer que les problèmes d'inférence et de vérification de type sont décidables. C'est dans cette propriété que réside tout l'intérêt de la correspondance de \textsc{Curry-Howard}.
 
 \subsection{Correspondance de {\sc Curry-Howard}}
 
@@ -530,7 +528,7 @@ Afin d'établir un lien avec la déduction naturelle, nous avons établi, sans g
 Theorem CurryHoward Γ u τ :
   typed Γ u τ -> Pr J (to_ctxt Γ ⊢ to_form τ).
 \end{minted}
-L'opérateur \verb+to_form+ fait le lien -- plutôt évident -- entre les types et les formules, la seule subtilité étant que l'on transforme les variables de type en symboles de prédicat. Quant à \verb+to_ctxt+, il s'agit de l'application de \verb+to_form+ à tous les éléments d'une liste grâce à \verb+List.map+.
+L'opérateur \verb+to_form+ fait le lien -- plutôt évident -- entre les types et les formules, la seule subtilité étant que l'on transforme les variables de type en symboles de prédicat d'arité nulle. Quant à \verb+to_ctxt+, il s'agit de l'application de \verb+to_form+ à tous les éléments d'une liste grâce à \verb+List.map+.
 \smallskip
 
 Le théorème de \textsc{Curry-Howard} a ensuite été utilisé pour redémontrer le premier résultat du stage, à la savoir que le séquent $\vdash (\phi_1 \wedge \phi_2) \Rightarrow (\phi_1 \vee \phi_2)$ était dérivable.
@@ -547,11 +545,11 @@ Pour ce faire, il a suffit d'exhiber le $\lambda$-terme témoin $\lambda x \cdot
 
 \subsection*{Apports mutuels du stage}
 
-Ce stage m'a permis d'avoir un premier aperçu, quelque peu biaisé du fait des conditions sanitaires, de ce à quoi peut ressembler le quotidien d'un chercheur. J'ai notamment pu découvrir la suprême frustration que constitue le fait d'achopper pendant plusieurs jours sur un problème, qui se trouve ensuite balayé d'un revers de main par quelqu'un d'autre -- en l'occurrence Pierre Letouzey -- soit car cette personne est plus coutumière des outils utilisés, soit tout simplement parce qu'elle trouve la bonne idée qui nous échappait depuis le début. J'ai aussi eu la joie de découvrir la satisfaction que procure un travail qui avance à bon rythme et qui prend une tournure plus intéressante que prévu, satisfaction qui efface sans nul doute l'amertume de des échecs passés.
+Ce stage m'a permis d'avoir un premier aperçu, quelque peu biaisé du fait des conditions sanitaires, de ce à quoi peut ressembler le quotidien d'un chercheur. J'ai notamment pu découvrir la suprême frustration que constitue le fait d'achopper pendant plusieurs jours sur un problème, qui se trouve ensuite balayé d'un revers de main par quelqu'un d'autre -- en l'occurrence Pierre Letouzey -- soit car cette personne est plus coutumière des outils utilisés, soit tout simplement parce qu'elle trouve la bonne idée qui nous échappait depuis le début. J'ai aussi eu la joie de découvrir la satisfaction que procure un travail qui avance à bon rythme et qui prend une tournure plus intéressante que prévu, satisfaction qui efface sans nul doute l'amertume des échecs passés.
 
 Par ailleurs, j'ai pu me rendre compte à quel point l'activité de recherche scientifique est, pour reprendre les mots de Pierre Letouzey, un \og artisanat \fg{}, et qu'il me reste encore un long chemin à parcourir avant de pouvoir devenir moi-même un chercheur autonome, travail pour lequel ma motivation s'est encore développée pendant ce stage.
 
-Enfin, j'ai eu la chance de travailler sur un sujet qui m'intéresse énormément, la logique et les assistants de preuve, auprès de l'un des fondateurs du domaine, que je ne remercierai jamais assez pour l'infinie patience dont il a fait preuve avec moi. Bien qu'assez proche du cours de logique que j'ai suivi au second semestre, ce stage m'a permis d'approfondir ma compréhension des concepts élémentaires de la logique, ainsi que d'améliorer ma maîtrise de Coq, un outil que je prenais pour ésotérique et peu utilisable en pratique, mais qui s'est révélé un allié puissant et parfois salutaire.
+Enfin, j'ai eu la chance de travailler sur un sujet qui m'intéresse énormément, la logique et les assistants de preuve, auprès d'un connaisseur du domaine, que je ne remercierai jamais assez pour l'infinie patience dont il a fait preuve avec moi. Bien qu'assez proche du cours de logique que j'ai suivi au second semestre, ce stage m'a permis d'approfondir ma compréhension des concepts élémentaires de la logique, ainsi que d'améliorer ma maîtrise de Coq, un outil que je prenais pour ésotérique et peu utilisable en pratique, mais qui s'est révélé un allié puissant et parfois salutaire.
 \medskip
 
 De mon côté, j'espère avoir contribué à rendre le projet \verb+NatDed+ plus utilisable dans le cadre d'un cours d'introduction à la logique, d'une part en le rendant plus ergonomique (et donc plus aisé à utiliser en temps réel), et d'autre part en lui ajoutant de nouvelles perspectives d'illustration, notamment en ce qui concerne $\ZF$ et le $\lambda$-calcul.
@@ -565,13 +563,13 @@ Le sujet du stage était volontairement long, et plusieurs points n'ont pas pu �
 \begin{itemize}[label=$\bigstar$]
 \item Comme mentionné plusieurs fois dans le rapport, l'encodage \emph{locally-nameless} des formules logique présente un certain nombre de défauts, dont la lisibilité. Il serait dès lors intéressant, dans l'optique d'un cours magistral, d'utiliser un encodage nommé pour toutes les variables, qu'elles soient libres ou liées. Ce travail a déjà été amorcé puisque Pierre Letouzey a démontré un théorème d'équivalence entre les deux formulations, il ne resterait donc plus qu'à traduire tous les énoncés des résultats que l'on veut présenter.
 
-\item Les tactiques définies au cours du travail sur l'arithmétique de \textsc{Peano} gagneraient peut-être à être totalement automatisées, grâce à l'algorithme d'unification.
+\item Les tactiques définies au cours du travail sur l'arithmétique de \textsc{Peano} gagneraient peut-être à être totalement automatisées grâce à l'algorithme d'unification, même si exhiber des témoins de $\forall_{\mathrm{E}}$ et $\exists_{\mathrm{I}}$ a également son intérêt pédagogique.
 
 \item Ce stage s'est principalement concentré sur des aspects syntaxiques. Il pourrait être intéressant de creuser d'avantage les aspects méta-théoriques et sémantiques de la logique, par exemple en implémentant la sémantique de \textsc{Kripke} pour la logique intuitionniste, ou bien en creusant les modèles de $\ZF$ grâce à \cite{zfmod}.
 
-\item Nous avons montré un sens de la correspondance de \textsc{Curry-Howard} -- celui qui permet de passer d'une dérivation de typage à une preuve -- mais la réciproque mérite aussi d'être considérée, quoiqu'elle soit moins utile en pratique.
+\item Nous avons montré un sens de la correspondance de \textsc{Curry-Howard} -- celui qui permet de passer d'une dérivation de typage à une preuve -- mais la réciproque mérite aussi d'être considérée, puisqu'il permettrait de démontrer des résultats négatifs sans avoir à utiliser de théorème de correction.
 
-\item Enfin, si le théorème de complétude a déjà été établi par Pierre Letouzey, nous n'avons en revanche pas eu le temps de nous pencher sur les théorèmes d'incomplétude de \textsc{Gödel}, dont la démonstration en Coq serait sûrement inédite.
+\item Enfin, si le théorème de complétude a déjà été établi par Pierre Letouzey, nous n'avons en revanche pas eu le temps de nous pencher sur les théorèmes d'incomplétude de \textsc{Gödel}, dont la démonstration permettrait de proposer un cadre unifié à tout l'encodage \verb+NatDed+.
 \end{itemize}
 
 \newpage
@@ -586,9 +584,46 @@ Le sujet du stage était volontairement long, et plusieurs points n'ont pas pu �
 \appendix
 \newpage
 
-\includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour GitLab}\label{gitsheet}]{TutoGitHub.pdf}
+\includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour git}\label{gitsheet}]{TutoGit.pdf}
 
-\section{Définition de \texttt{Pr}} \label{pr}
+\section{Définition des formules} \label{form}
+
+\begin{minted}{coq}
+Inductive term :=
+  | FVar : variable -> term (** Free variable (global name) *)
+  | BVar : nat -> term (** Bounded variable (de Bruijn indices) *)
+  | Fun : function_symbol -> list term -> term.
+
+Inductive formula :=
+  | True
+  | False
+  | Pred : predicate_symbol -> list term -> formula
+  | Not : formula -> formula
+  | Op : op -> formula -> formula -> formula
+  | Quant : quant -> formula -> formula.
+  
+Definition Iff a b := Op And (Op Impl a b) (Op Impl b a). 
+
+Notation "~ f" := (Not f) : formula_scope.
+Infix "/\" := (Op And) : formula_scope.
+Infix "\/" := (Op Or) : formula_scope.
+Infix "->" := (Op Impl) : formula_scope.
+Infix "<->" := Iff : formula_scope.
+
+Notation "# n" := (BVar n) (at level 20, format "# n") : formula_scope.
+
+Notation "∀ A" := (Quant All A)
+ (at level 200, right associativity) : formula_scope.
+Notation "∃ A" := (Quant Ex A)
+ (at level 200, right associativity) : formula_scope.
+ 
+Definition context := list formula.
+
+Inductive sequent :=
+| Seq : context -> formula -> sequent.
+\end{minted}
+
+\section{Définition du prédicat de prouvabilité \texttt{Pr}} \label{pr}
 
 \begin{minted}{coq}
 Inductive Pr (l:logic) : sequent -> Prop :=
@@ -627,38 +662,6 @@ Inductive Pr (l:logic) : sequent -> Prop :=
       Pr l (Γ ⊢ B)
  | R_Absu Γ A : l=Classic -> Pr l (Not A :: Γ ⊢ False) ->
                   Pr l (Γ ⊢ A).
-\end{minted}
-
-\section{Définition des formules} \label{form}
-
-\begin{minted}{coq}
-Inductive term :=
-  | FVar : variable -> term (** Free variable (global name) *)
-  | BVar : nat -> term (** Bounded variable (de Bruijn indices) *)
-  | Fun : function_symbol -> list term -> term.
-
-Inductive formula :=
-  | True
-  | False
-  | Pred : predicate_symbol -> list term -> formula
-  | Not : formula -> formula
-  | Op : op -> formula -> formula -> formula
-  | Quant : quant -> formula -> formula.
-  
-Definition Iff a b := Op And (Op Impl a b) (Op Impl b a). 
-
-Notation "~ f" := (Not f) : formula_scope.
-Infix "/\" := (Op And) : formula_scope.
-Infix "\/" := (Op Or) : formula_scope.
-Infix "->" := (Op Impl) : formula_scope.
-Infix "<->" := Iff : formula_scope.
-
-Notation "# n" := (BVar n) (at level 20, format "# n") : formula_scope.
-
-Notation "∀ A" := (Quant All A)
- (at level 200, right associativity) : formula_scope.
-Notation "∃ A" := (Quant Ex A)
- (at level 200, right associativity) : formula_scope.
 \end{minted}
 
 \section{Preuve de \texttt{ZeroRight} : avant-après}\label{beforeafter_zeroright}
@@ -768,8 +771,14 @@ Qed.
 
 \section{Syntaxe et règles de typage du $\lambda$-calcul utilisé} \label{lambda}
 
-La syntaxe des $\lambda$-termes est la suivante :
+La syntaxe des types est la suivante :
 \begin{align*}
+\sigma, \tau, \ldots ::&= a, b, \ldots & \text{variables de type} \\
+&| \; \sigma \Rightarrow \tau & \text{type flèche} \\
+&| \; \bot & \text{faux} \\
+&| \; \sigma \wedge \tau & \text{type conjonction} \\
+&| \; \sigma \vee \tau & \text{type disjonction}
+\end{align*} et celle des $\lambda$-termes est \begin{align*}
 u, v, \ldots ::&= x, y, \ldots & \text{variables}\\
 &| \; uv & \text{application} \\
 &| \; \lambda x \cdot u & \text{abstraction} \\
@@ -779,14 +788,9 @@ u, v, \ldots ::&= x, y, \ldots & \text{variables}\\
 &| \; \pi_2 u & \text{seconde projection} \\
 &| \; \mathtt{case} \, u \, \mathtt{of} \, \iota_1 x_1 \mapsto v_1 \; | \; \iota_2 x_2 \mapsto v_2 & \text{filtrage par motif} \\
 &| \; \iota_1 u & \text{première injection} \\
-&| \; \iota_2 u & \text{seconde injection}
-\end{align*} et celle des types est \begin{align*}
-\sigma, \tau, \ldots ::&= a, b, \ldots & \text{variables de type} \\
-&| \; \sigma \Rightarrow \tau & \text{type flèche} \\
-&| \; \bot & \text{faux} \\
-&| \; \sigma \wedge \tau & \text{type conjonction} \\
-&| \; \sigma \vee \tau & \text{type disjonction}.
-\end{align*}
+&| \; \iota_2 u & \text{seconde injection}.
+\end{align*} Le constructeur $\nabla$ correspond au \verb+False_rec+ de Coq.
+\medskip
 
 Les règles de typage sont :
 \[ \begin{array}{lcr}
@@ -810,19 +814,27 @@ Les règles de typage sont :
 \end{prooftree}} & \\
 & & \\
 \text{\begin{prooftree}
+\hypo{\Gamma \vdash u : \sigma}
+\hypo{\Gamma \vdash v : \tau}
+\infer2[paire]{\Gamma \vdash \langle u, v \rangle : \sigma \wedge \tau}
+\end{prooftree}} &
+\text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \wedge \tau}
 \infer1[$\pi_1$]{\Gamma \vdash \pi_1 u : \sigma}
 \end{prooftree}} &
 \text{\begin{prooftree}
 \hypo{\Gamma \vdash u : \sigma \wedge \tau}
 \infer1[$\pi_2$]{\Gamma \vdash \pi_2 u : \tau}
-\end{prooftree}} &
+\end{prooftree}}\\
+& & \\
+&
 \text{
 \begin{prooftree}
-\hypo{\Gamma \vdash u : \sigma}
-\hypo{\Gamma \vdash v : \tau}
-\infer2[paire]{\Gamma \vdash \langle u, v \rangle : \sigma \wedge \tau}
-\end{prooftree}}\\
+\hypo{\Gamma \vdash u : \sigma \vee \tau}
+\hypo{\Gamma, x_1 : \sigma \vdash v_1 : \mu}
+\hypo{\Gamma, x_2 : \tau \vdash v_2 : \mu}
+\infer3[pattern]{\Gamma \vdash \mathtt{case} \, u \, \mathtt{of} \, \iota_1 x_1 \mapsto v_1 \; | \; \iota_2 x_2 \mapsto v_2 : \mu}
+\end{prooftree}} & \\
 & & \\
 \text{
 \begin{prooftree}
@@ -833,16 +845,7 @@ Les règles de typage sont :
 \begin{prooftree}
 \hypo{\Gamma \vdash u : \tau}
 \infer1[$\iota_2$]{\Gamma \vdash \iota_2 u : \sigma \vee \tau}
-\end{prooftree}} \\
-& & \\
-&
-\text{
-\begin{prooftree}
-\hypo{\Gamma \vdash u : \sigma \vee \tau}
-\hypo{\Gamma, x_1 : \sigma \vdash v_1 : \mu}
-\hypo{\Gamma, x_2 : \tau \vdash v_2 : \mu}
-\infer3[pattern]{\Gamma \vdash \mathtt{case} \, u \, \mathtt{of} \, \iota_1 x_1 \mapsto v_1 \; | \; \iota_2 x_2 \mapsto v_2 : \mu}
-\end{prooftree}} &
+\end{prooftree}}
 \end{array} \]
 
 \end{document}

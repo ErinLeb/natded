@@ -138,7 +138,7 @@ Par la suite, il a été à propos d'ajouter d'autres aspects de la logique à c
 
 L'encodage \verb+NatDed+ existait déjà avant le stage. \`A ce moment là, il contenait déjà un système de déduction naturelle avec des séquents, ainsi qu'un grand nombre de lemmes et résultats utiles, y compris sur la méta-théorie. Pour l'encodage des formules de la logique du premier ordre, Pierre Letouzey avait choisi un système \emph{locally nameless}, i.e. où les variables liées sont représentées par des indices de \textsc{de Bruijn} et les variables libres par un constructeur \verb+FVar : string -> term+ (par exemple $x$ s'écrira \verb+FVar "x"+)\footnote{Pour la définition complète des formules, on pourra se reporter à l'annexe \ref{form}.}. En parallèle de cette convention, une équivalence avec un système reposant totalement sur des variables nommées était proposée, mais quoiqu'elle eût peut se révéler fort utile, cette équivalence n'a guère été utilisée pendant le stage.
 
-Concernant les preuves, deux méthodes sont possibles pour les établir. \verb+Pr+ est une description inductive et relativement légère de la prouvabilité d'un séquent, permettant de construire des preuves pas à pas. Par contre, Coq ne permet pas ensuite de revenir facilement analyser les étapes internes de cette preuve, c'est pourquoi un autre prédicat, \verb+Valid+, qui explicite l'ensemble de la dérivation de preuve et permet des études méta-théoriques plus poussées est disponible, en contrepartie d'un style de preuve nettement plus lourd. L'équivalence entre \verb+Pr+ et \verb+Valid+ avait déjà été montré. Le choix qui a été fait pour stage est d’utiliser Pr systématiquement.
+Concernant les preuves, deux méthodes sont possibles pour les établir. \verb+Pr+ est une description inductive et relativement légère de la prouvabilité d'un séquent, permettant de construire des preuves pas à pas. Par contre, Coq ne permet pas ensuite de revenir facilement analyser les étapes internes de cette preuve, c'est pourquoi un autre prédicat, \verb+Valid+, qui explicite l'ensemble de la dérivation de preuve et permet des études méta-théoriques plus poussées est disponible, en contrepartie d'un style de preuve nettement plus lourd. L'équivalence entre \verb+Pr+ et \verb+Valid+ avait déjà été montrée. Le choix qui a été fait pour stage est d’utiliser Pr systématiquement.
 \medskip
 
 A priori, il s'agit du premier codage Coq de la déduction naturelle qui allie les trois aspects suivants :
@@ -152,11 +152,11 @@ A priori, il s'agit du premier codage Coq de la déduction naturelle qui allie l
 
 Avant de se lancer dans le stage à proprement parler, il a fallu consacrer une petite semaine à l'acquisition de réflexes de travail, à la fois sur le support (GitLab) et sur l'encodage lui-même.
 
-\subsubsection*{Dépôt Git}
+\subsubsection*{Dépôt GitLab}
 
 La première journée du stage a été passée à appréhender un outil nouveau pour manipuler de gros projets de code : GitLab. \`A ce titre, et pour me fixer les idées, j'ai rédigé la cheatsheet présentée en \ref{gitsheet}.
 
-L'usage de Git a été d'un grand recours, notamment lorsque nous voulions discuter d'un morceau de preuve en visio-conférence, car chacun pouvait travailler et mettre à jour le dépôt de son côté, la fusion se faisant ensuite aisément grâce à la commande \verb+git pull+.
+L'usage de git a été d'un grand recours, notamment lorsque nous voulions discuter d'un morceau de preuve en visio-conférence, car chacun pouvait travailler et mettre à jour le dépôt de son côté, la fusion se faisant ensuite aisément grâce à la commande \verb+git pull+.
 
 \subsubsection*{Premières preuves}
 
@@ -198,7 +198,7 @@ Lemma DeMorgan f1 f2 Γ : Pr K (Γ ⊢ ~(~f1 /\ f2)) -> Pr K (Γ ⊢ ~~(f1 \/ ~f
 Lemma ExcludedMiddle f1 : Pr K ([] ⊢ f1 \/ ~f1).
 \end{minted}
 Au niveau de Coq, \verb+f1+, \verb+f2+ et \verb+f3+ sont des variables de type \verb+forumla+. Quant aux lettres \verb+K+ et \verb+J+, elles font respectivement référence aux logiques classique et intuitionniste.
-
+\smallskip
 
 \noindent \begin{minipage}[t]{0.05\linewidth}
 \dbend

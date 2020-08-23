@@ -79,12 +79,12 @@
 \begin{document}
 %\begin{center}
 	%\vspace*{2em}
-	\includegraphics[scale=0.45]{logo_ens.png} %\hspace*{1cm}
-	\hfill \includegraphics[scale=0.1]{logo-irif.png} \\
+	\includegraphics[scale=0.36]{logo_ens.png} %\hspace*{1cm}
+	\hfill \includegraphics[scale=0.08]{logo-irif.png} \\
 \begin{center}
-	\vspace*{0.5em}
+	\vspace*{-0.5em}
     %\vspace*{6em}
-    {\LARGE Rapport de stage} \\ \vspace{1em}
+    {\LARGE Rapport de stage} \\ \vspace{0.5em}
     {\huge Extensions d'un cours de logique du premier ordre certifié en Coq} \\ \vspace{1.5em}
     
     {\Large Stage effectué du 1 juin au 17 juillet 2020} \\ \vspace{2em}
@@ -115,8 +115,10 @@ Dans un premier temps, il a fallu se familiariser avec les outils du stage : à 
 \newpage
 
 \section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
 
 \subsection*{Contexte pratique du stage}
+\addcontentsline{toc}{subsection}{Contexte pratique du stage}
 
 Ce stage a été effectué sous la direction de Pierre Letouzey, maître de conférence à l'Université Paris-Diderot, et membre du groupe $\pi r^2$ de l'IRIF. Compte tenu du contexte sanitaire, la majeur partie des échange a eu lieu par visio-conférence et par mail, à un rythme assez soutenu. J'ai cependant pu me rendre physiquement à l'IRIF afin de discuter dans la vraie vie avec avec mon maître de stage.
 
@@ -127,6 +129,7 @@ Il n'en demeure pas moins que le stage a pu se dérouler sans trop d'embûches, 
 Le dépôt GitLab du projet est consultable à l'adresse suivante : \url{https://gitlab.math.univ-paris-diderot.fr/letouzey/natded}.
 
 \subsection*{Motivations}
+\addcontentsline{toc}{subsection}{Motivations}
 
 Le but du stage a été d'enrichir l'encodage \verb+NatDed+ -- un encodage profond de la déduction naturelle -- déjà existant, tout en gardant en tête la vocation pédagogique du projet, puisqu'il s'agit d'illustrer un cours de logique de M1 \cite{poly}.
 
@@ -135,10 +138,11 @@ Le but du stage a été d'enrichir l'encodage \verb+NatDed+ -- un encodage profo
 Par la suite, il a été à propos d'ajouter d'autres aspects de la logique à cet encodage, tels que le $\lambda$-calcul et la théorie des ensembles, qui sont tous deux des point abordés dans le cours donné par Pierre Letouzey. En effet, le $\lambda$-calcul est un élément essentiel de la construction des assistants de preuve tels que Coq.
 
 \subsection*{Encodage existant et état de l'art}
+\addcontentsline{toc}{subsection}{Encodage existant et état de l'art}
 
 L'encodage \verb+NatDed+ existait déjà avant le stage. \`A ce moment là, il contenait déjà un système de déduction naturelle avec des séquents, ainsi qu'un grand nombre de lemmes et résultats utiles, y compris sur la méta-théorie. Pour l'encodage des formules de la logique du premier ordre, Pierre Letouzey avait choisi un système \emph{locally nameless}, i.e. où les variables liées sont représentées par des indices de \textsc{de Bruijn} et les variables libres par un constructeur \verb+FVar : string -> term+ (par exemple $x$ s'écrira \verb+FVar "x"+)\footnote{Pour la définition complète des formules, on pourra se reporter à l'annexe \ref{form}.}. En parallèle de cette convention, une équivalence avec un système reposant totalement sur des variables nommées était proposée, mais quoiqu'elle eût peut se révéler fort utile, cette équivalence n'a guère été utilisée pendant le stage.
 
-Concernant les preuves, deux méthodes sont possibles pour les établir. \verb+Pr+ est une description inductive et relativement légère de la prouvabilité d'un séquent, permettant de construire des preuves pas à pas. Par contre, Coq ne permet pas ensuite de revenir facilement analyser les étapes internes de cette preuve, c'est pourquoi un autre prédicat, \verb+Valid+, qui explicite l'ensemble de la dérivation de preuve et permet des études méta-théoriques plus poussées est disponible, en contrepartie d'un style de preuve nettement plus lourd. L'équivalence entre \verb+Pr+ et \verb+Valid+ avait déjà été montrée. Le choix qui a été fait pour stage est d’utiliser Pr systématiquement.
+Concernant les preuves, deux méthodes sont possibles pour les établir. \verb+Pr+ est une description inductive et relativement légère de la prouvabilité d'un séquent, permettant de construire des preuves pas à pas (sa définition complète est donnée en annexe \ref{pr}). Par contre, Coq ne permet pas ensuite de revenir facilement analyser les étapes internes de cette preuve, c'est pourquoi un autre prédicat, \verb+Valid+, qui explicite l'ensemble de la dérivation de preuve et permet des études méta-théoriques plus poussées est disponible, en contrepartie d'un style de preuve nettement plus lourd. L'équivalence entre \verb+Pr+ et \verb+Valid+ avait déjà été montrée. Le choix qui a été fait pour stage est d’utiliser Pr systématiquement.
 \medskip
 
 A priori, il s'agit du premier codage Coq de la déduction naturelle qui allie les trois aspects suivants :
@@ -149,6 +153,7 @@ A priori, il s'agit du premier codage Coq de la déduction naturelle qui allie l
 \end{itemize}
 
 \subsection*{Mise en place de l'environnement de travail}
+\addcontentsline{toc}{subsection}{Mise en place de l'environnement de travail}
 
 Avant de se lancer dans le stage à proprement parler, il a fallu consacrer une petite semaine à l'acquisition de réflexes de travail, à la fois sur le support (GitLab) et sur l'encodage lui-même.
 
@@ -414,7 +419,7 @@ Cette section reprend les concepts et les constructions du cours de $\lambda$-ca
 
 \subsection{Choix de codage}
 
-Le choix général d'encodage a été d'implémenter un $\lambda$-calcul à la \textsc{Curry}, c'est-à-dire où l'on traite les termes usuels du $\lambda$-calcul, sans annotation de type. Les différences dans entre les syntaxe de \textsc{Curry} et de \textsc{Church} étant plutôt anecdotiques pour l'usage que nous souhaitions faire du $\lambda$-calcul, nous avons opté pour celle présentée dans \cite{polylam}.
+Le choix général d'encodage a été d'implémenter un $\lambda$-calcul à la \textsc{Curry}, c'est-à-dire où l'on traite les termes usuels du $\lambda$-calcul, sans annotation de type. Les différences entre les syntaxe de \textsc{Curry} et de \textsc{Church} étant plutôt anecdotiques pour l'usage que nous souhaitions faire du $\lambda$-calcul, nous avons opté pour celle présentée dans \cite{polylam}.
 
 L'ensemble des constructions utilisées est détaillé dans les sous-sections qui suivent, et repris en annexe \ref{lambda}.
 
@@ -542,8 +547,10 @@ Pour ce faire, il a suffit d'exhiber le $\lambda$-terme témoin $\lambda x \cdot
 %%%
 
 \section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
 
 \subsection*{Apports mutuels du stage}
+\addcontentsline{toc}{subsection}{Apports mutuels du stage}
 
 Ce stage m'a permis d'avoir un premier aperçu, quelque peu biaisé du fait des conditions sanitaires, de ce à quoi peut ressembler le quotidien d'un chercheur. J'ai notamment pu découvrir la suprême frustration que constitue le fait d'achopper pendant plusieurs jours sur un problème, qui se trouve ensuite balayé d'un revers de main par quelqu'un d'autre -- en l'occurrence Pierre Letouzey -- soit car cette personne est plus coutumière des outils utilisés, soit tout simplement parce qu'elle trouve la bonne idée qui nous échappait depuis le début. J'ai aussi eu la joie de découvrir la satisfaction que procure un travail qui avance à bon rythme et qui prend une tournure plus intéressante que prévu, satisfaction qui efface sans nul doute l'amertume des échecs passés.
 
@@ -557,6 +564,7 @@ De mon côté, j'espère avoir contribué à rendre le projet \verb+NatDed+ plus
 J'espère aussi que mon travail aura permis à Pierre Letouzey de mieux cerner les limites du projet, et que cela l'aidera s'il souhaite poursuivre son travail sur \verb+NatDed+.
 
 \subsection*{Prolongements envisageables}
+\addcontentsline{toc}{subsection}{Prolongements envisageables}
 
 Le sujet du stage était volontairement long, et plusieurs points n'ont pas pu être abordés. De plus, au cours du stage, plusieurs perspectives non explorées ont été évoquées, voici donc une liste non-exhaustive de prolongements envisageables de ce stage.
 
@@ -567,7 +575,7 @@ Le sujet du stage était volontairement long, et plusieurs points n'ont pas pu �
 
 \item Ce stage s'est principalement concentré sur des aspects syntaxiques. Il pourrait être intéressant de creuser d'avantage les aspects méta-théoriques et sémantiques de la logique, par exemple en implémentant la sémantique de \textsc{Kripke} pour la logique intuitionniste, ou bien en creusant les modèles de $\ZF$ grâce à \cite{zfmod}.
 
-\item Nous avons montré un sens de la correspondance de \textsc{Curry-Howard} -- celui qui permet de passer d'une dérivation de typage à une preuve -- mais la réciproque mérite aussi d'être considérée, puisqu'il permettrait de démontrer des résultats négatifs sans avoir à utiliser de théorème de correction.
+\item Nous avons montré un sens de la correspondance de \textsc{Curry-Howard} -- celui qui permet de passer d'une dérivation de typage à une preuve -- mais la réciproque mérite aussi d'être considérée, par exemple pour établir des résultats de non-prouvabilité.
 
 \item Enfin, si le théorème de complétude a déjà été établi par Pierre Letouzey, nous n'avons en revanche pas eu le temps de nous pencher sur les théorèmes d'incomplétude de \textsc{Gödel}, dont la démonstration permettrait de proposer un cadre unifié à tout l'encodage \verb+NatDed+.
 \end{itemize}
@@ -582,6 +590,10 @@ Le sujet du stage était volontairement long, et plusieurs points n'ont pas pu �
 \bibliography{biblio}
 
 \appendix
+\addcontentsline{toc}{section}{Annexes}
+    \addtocontents{toc}{\protect\makeatletter}
+    \addtocontents{toc}{\string\let\string\l@section\string\l@subsubsection}
+    \addtocontents{toc}{\protect\makeatother}
 \newpage
 
 \includepdf[pages=1, nup=1x1, frame=true, scale=0.8, pagecommand=\section{Cheatsheet pour git}\label{gitsheet}]{TutoGit.pdf}

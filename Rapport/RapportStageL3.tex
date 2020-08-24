@@ -368,7 +368,7 @@ Definition ext := ∀∀ ((∀ #0 ∈ #2 <-> #0 ∈ #1) -> #1 = #0).
 Une erreur semblable avait aussi été commise dans l'axiome de l'infini.
 \smallskip
 
-Une fois les axiomes de $\ZF$ encodés, il a fallu établir un certain nombre de méta-résultats nécessaire à la bonne définition de la théorie. En particulier, il a fallu établir le résultat suivant, qui permet de définir la signature de $\ZF$ :
+Une fois les axiomes de $\ZF$ encodés, il a fallu établir un certain nombre de méta-théorèmes nécessaire à la bonne définition de la théorie. En particulier, il a fallu établir le lemme suivant, qui permet de définir la signature de $\ZF$ :
 \begin{minted}{coq}
 Lemma WCAx A : IsAx A -> WC ZFSign A.
 \end{minted}
@@ -417,9 +417,9 @@ Pour finir le stage, nous avons encodé un $\lambda$-calcul enrichi et démontr�
 
 Cette section reprend les concepts et les constructions du cours de $\lambda$-calcul de Jean Goubault-Larrecq \cite{polylam}. Par ailleurs, on se placera toujours dans le cadre de la \emph{logique propositionnelle intuitionniste}.
 
-\subsection{Choix de codage}
+\subsection{Choix d'encodage}
 
-Le choix général d'encodage a été d'implémenter un $\lambda$-calcul à la \textsc{Curry}, c'est-à-dire où l'on traite les termes usuels du $\lambda$-calcul, sans annotation de type. Les différences entre les syntaxe de \textsc{Curry} et de \textsc{Church} étant plutôt anecdotiques pour l'usage que nous souhaitions faire du $\lambda$-calcul, nous avons opté pour celle présentée dans \cite{polylam}.
+Le choix général d'encodage a été d'implémenter un $\lambda$-calcul à la \textsc{Curry}, c'est-à-dire où l'on traite les termes usuels du $\lambda$-calcul, sans annotation de type. Les différences entre les syntaxes de \textsc{Curry} et de \textsc{Church} étant plutôt anecdotiques pour l'usage que nous souhaitions faire du $\lambda$-calcul, nous avons opté pour celle présentée dans \cite{polylam}.
 
 L'ensemble des constructions utilisées est détaillé dans les sous-sections qui suivent, et repris en annexe \ref{lambda}.
 

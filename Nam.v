@@ -168,6 +168,22 @@ Notation "∃ x , A" := (Quant Ex x A)
 
 Definition test_form := (∃ "x", True <-> Pred "p" [Var "x";#3])%form.
 
+Module AggressiveNotations.
+Local Notation "x = y" := (Pred "=" (@cons term x [y])) : formula_scope.
+Local Notation O := (Fun "O" []).
+Definition S x := (Fun "S" [x]).
+Definition idvar (x:string) : variable := x.
+Local Coercion idvar : string >-> variable.
+Local Coercion Var : variable >-> term.
+Definition pred_form :=
+  Quant All "x"
+   (Op Impl (Not (Pred "=" [Var "x"; Fun "O" []]))
+            (Quant Ex "y" (Pred "=" [Var "x"; Fun "S" [Var "y"]]))).
+Print pred_form.
+Definition pred_form_bis :=
+ (∀ "x", ~ "x" = O -> ∃ "y", "x" = S "y")%form.
+End AggressiveNotations.
+
 (** Formula printing *)
 
 (** Notes:

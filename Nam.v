@@ -432,9 +432,10 @@ Inductive derivation :=
 
 Definition claim '(Rule _ s _) := s.
 
-Definition valid_deriv_step logic '(Rule r s ld) :=
-  match r, s, List.map claim ld with
-  | Ax,     (Γ ⊢ A), [] => List.existsb (Form.αeq A) Γ
+Definition valid_deriv_step logic '(Rule rule stmt subderivs) :=
+  let premises := List.map claim subderivs in
+  match rule, stmt, premises with
+  | Ax,     (Γ ⊢ A), [] => List.existsb (fun F => A =? F) Γ
   | Tr_i,   (_ ⊢ True), [] => true
   | Fa_e,   (Γ ⊢ _), [s] => s =? (Γ ⊢ False)
   | Not_i,  (Γ ⊢ Not A), [s] => s =? (A::Γ ⊢ False)
@@ -453,10 +454,8 @@ Definition valid_deriv_step logic '(Rule r s ld) :=
      (s =? (Γ ⊢ B)) &&& (s2 =? (Γ ⊢ A))
   | All_i x,  s, [Γ ⊢ A] =>
      (s =? (Γ ⊢ ∀x,A)) &&& negb (Names.mem x (Ctx.freevars Γ))
-  | All_e t, (Γ ⊢ B), [Γ'⊢ ∀x,A] =>
-    (Γ =? Γ') &&& (B =? Form.subst x t A)
-  | Ex_i t,  (Γ ⊢ ∃x,A), [Γ'⊢B] =>
-    (Γ =? Γ') &&& (B =? Form.subst x t A)
+  | All_e t, s, [Γ ⊢ ∀x,A] => s =? (Γ ⊢ Form.subst x t A)
+  | Ex_i t,  (Γ ⊢ ∃x,A), [s] => s =? (Γ ⊢ Form.subst x t A)
   | Ex_e x,  s, [s1; A::Γ ⊢ B] =>
      (s =? (Γ ⊢ B)) &&& (s1 =? (Γ ⊢ ∃x, A)) &&&
      negb (Names.mem x (Seq.freevars s))

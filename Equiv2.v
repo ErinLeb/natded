@@ -161,6 +161,8 @@ Proof.
      rewrite nam2mix_fvars. simpl. namedec.
  - rewrite nam2mix_subst_bsubst0; auto.
  - rewrite nam2mix_subst_bsubst0; auto.
+   rewrite <- !andb_lazy_alt. f_equal.
+   apply eq_true_iff_eq. now rewrite !eqb_eq.
  - cbn.
    apply eq_true_iff_eq.
    rewrite !andb_true_iff.

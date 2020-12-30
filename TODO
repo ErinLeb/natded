@@ -70,3 +70,4 @@ KO : PreModel : revoir a se passer de BClosed general,
 Related works to mention :
  - Isabelle : https://www.isa-afp.org/entries/Completeness-paper.pdf
  - Coq [Coq-Club] Sequent calculus for full First Order Logic in Coq	19 Septembre 2019 13:07
+ - Proposition Calculus in Coq, Floris von Doorn, 2015 (contrib PropCalc). NB: propositional, pas de ∀∃

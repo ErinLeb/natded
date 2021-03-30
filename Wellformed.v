@@ -182,7 +182,7 @@ Proof.
  intros E ((CK,BC),FC).
  repeat split; unfold BClosed in *; cbn in *.
  - rewrite check_bsubst; auto. cbn. now rewrite E, eqb_refl.
- - apply Nat.le_0_r, level_bsubst; auto with *.
+ - apply Nat.le_0_r, level_bsubst; lia.
  - rewrite <- !form_fclosed_spec in *. now rewrite fclosed_bsubst.
 Qed.
 

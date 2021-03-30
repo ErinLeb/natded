@@ -80,7 +80,7 @@ Proof.
      { apply level_bsubst'. auto. }
      assert (level (bsubst 0 (Succ(BVar 0)) B) <= level B).
      { apply level_bsubst'. auto. }
-     omega with *.
+     lia.
    + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.
      cbn. now rewrite !fclosed_bsubst, HB'.
 Qed.
@@ -450,7 +450,7 @@ Proof.
  unfold PeanoTheory. simpl.
  unfold PeanoAx.IsAx.
  intros [IN|(B & -> & CK & CL)] G.
- - compute in IN. intuition; subst; cbn; intros; subst; omega.
+ - compute in IN. intuition; subst; cbn; intros; subst; lia.
  - unfold PeanoAx.induction_schema.
    apply interp_nforall.
    intros stk Len. rewrite app_nil_r. cbn.

@@ -34,20 +34,20 @@ Qed.
 Lemma lift_nop_le k t : level t <= k -> lift k t = t.
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto.
- - case Nat.leb_spec; auto. omega.
+ - case Nat.leb_spec; auto. lia.
  - rewrite list_max_map_le. intros H. f_equal. apply map_id_iff; auto.
 Qed.
 
 Lemma lift_nop k t : BClosed t -> lift k t = t.
 Proof.
- unfold BClosed. intros H. apply lift_nop_le. rewrite H; omega.
+ unfold BClosed. intros H. apply lift_nop_le. rewrite H; lia.
 Qed.
 
 Lemma lift_incrlevel k t : k < level t -> level (lift k t) = S (level t).
 Proof.
  revert t. fix IH 1; destruct t; cbn.
  - inversion 1.
- - case Nat.leb_spec; cbn; omega.
+ - case Nat.leb_spec; cbn; lia.
  - revert l; fix IHl 1; destruct l as [|t l]; cbn.
    + inversion 1.
    + rewrite Nat.max_lt_iff. intros LT.
@@ -56,9 +56,9 @@ Proof.
      * rewrite (IH t), (IHl l); auto.
      * rewrite (IH t); auto.
        generalize (lift_nop_le k (Fun f l) H0). cbn - [Nat.max].
-       intros [= ->]. omega with *.
-     * rewrite (IHl l), (lift_nop_le k t); auto. omega with *.
-     * omega with *.
+       intros [= ->]. lia.
+     * rewrite (IHl l), (lift_nop_le k t); auto. lia.
+     * lia.
 Qed.
 
 Lemma check_lift sign k t :
@@ -94,9 +94,9 @@ Proof.
       assumption.
   + specialize (IHf1 k).
     specialize (IHf2 k).
-    omega with *.
+    lia.
   + specialize (IHf (S k)).
-    omega.
+    lia.
 Qed.
 
 Lemma check_lift_form sign f k :
@@ -159,10 +159,10 @@ Lemma level_bsubst_term_max n u t :
 Proof.
  revert t. fix IH 1; destruct t; cbn -[Nat.max].
  - auto with arith.
- - case eqbspec; cbn -[Nat.max]; omega with *.
+ - case eqbspec; cbn -[Nat.max]; lia.
  - revert l. fix IHl 1; destruct l; cbn -[Nat.max].
    + auto with arith.
-   + specialize (IH t). specialize (IHl l). omega with *.
+   + specialize (IH t). specialize (IHl l). lia.
 Qed.
 
 Lemma level_bsubst_max n u f :
@@ -171,9 +171,9 @@ Proof.
  revert n u.
  induction f; intros; cbn -[Nat.max]; auto with arith.
  - apply (level_bsubst_term_max n u (Fun "" l)).
- - specialize (IHf1 n u). specialize (IHf2 n u). omega with *.
+ - specialize (IHf1 n u). specialize (IHf2 n u). lia.
  - assert (H := level_lift 0 u).
-   specialize (IHf (S n) (lift 0 u)). omega with *.
+   specialize (IHf (S n) (lift 0 u)). lia.
 Qed.
 
 (** When substituting the highest var (or above), we can be
@@ -184,7 +184,7 @@ Lemma level_bsubst_term n u t :
  level (bsubst n u t) <= Nat.max n (level u).
 Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto with arith.
- - case eqbspec; cbn; auto; intros; omega with *.
+ - case eqbspec; cbn; auto; intros; lia.
  - intros Hl. rewrite map_map. apply list_max_map_le.
    rewrite list_max_map_le in Hl; auto.
 Qed.
@@ -199,7 +199,7 @@ Proof.
  - rewrite max_le in *; intuition.
  - rewrite Nat.le_pred_le_succ in Hf.
    apply Nat.le_pred_le_succ. rewrite IHf; auto.
-   generalize (level_lift 0 u). omega with *.
+   generalize (level_lift 0 u). lia.
 Qed.
 
 (** Other specialized results when [u] has no higher vars than [n] *)
@@ -222,7 +222,7 @@ Proof.
  - now apply (level_bsubst_term' n u (Fun "" l)).
  - apply Nat.max_le_compat; auto.
  - apply Nat.pred_le_mono; auto with arith.
-   apply IHf. transitivity (S (level u)). apply level_lift. omega.
+   apply IHf. transitivity (S (level u)). apply level_lift. lia.
 Qed.
 
 (** A reverse result about the level of [bsubst] :
@@ -240,7 +240,7 @@ Proof.
    + auto.
    + intros H. apply Nat.max_lub_iff in H. destruct H as (H,Hl).
      destruct (IH t H), (IHl l Hl);
-     try (right; omega with * ). left; omega with *.
+     try (right; lia). left; lia.
 Qed.
 
 Lemma level_subst_inv n u f :
@@ -252,13 +252,13 @@ Proof.
  - apply (level_term_subst_inv n u (Fun "" l) H).
  - apply Nat.max_lub_iff in H. destruct H as (H1,H2).
    destruct (IHf1 _ _ H1), (IHf2 _ _ H2);
-     try (right; omega with * ). left; omega with *.
+     try (right; lia). left; lia.
  - destruct (IHf (S n) (lift 0 u)).
-   + omega with *.
-   + left; omega.
+   + lia.
+   + left; lia.
    + right.
-     case (Nat.leb_spec (level u) 0). omega.
-     intros LT. rewrite (lift_incrlevel 0 u LT) in *. omega.
+     case (Nat.leb_spec (level u) 0). lia.
+     intros LT. rewrite (lift_incrlevel 0 u LT) in *. lia.
 Qed.
 
 (** [bsubst] above the level does nothing *)
@@ -267,7 +267,7 @@ Lemma term_level_bsubst_id n u (t:term) :
  level t <= n -> bsubst n u t = t.
 Proof.
  induction t as [ | |f l IH] using term_ind'; cbn; try easy.
- - case eqbspec; auto. intros ->. omega.
+ - case eqbspec; auto. intros ->. lia.
  - intros LE.
    rewrite list_max_map_le in LE. f_equal. apply map_id_iff. intuition.
 Qed.
@@ -278,15 +278,15 @@ Proof.
  revert n u.
  induction f; cbn; intros n u LE; f_equal; auto.
  - injection (term_level_bsubst_id n u (Fun "" l)); cbn; auto.
- - apply IHf1. omega with *.
- - apply IHf2. omega with *.
- - apply IHf. omega with *.
+ - apply IHf1. lia.
+ - apply IHf2. lia.
+ - apply IHf. lia.
 Qed.
 
 Lemma bclosed_bsubst_id n u (t:term) :
  BClosed t -> bsubst n u t = t.
 Proof.
- unfold BClosed. intros. apply term_level_bsubst_id. auto with *.
+ unfold BClosed. intros. apply term_level_bsubst_id. lia.
 Qed.
 
 (** [bsubst] by the same [BVar] does nothing *)
@@ -338,7 +338,7 @@ Proof.
  - now cbn.
  - cbn in Ht. cbn.
    case eqbspec; intros; subst; cbn; case eqbspec; auto; try easy.
-   intros. exfalso. omega.
+   intros. exfalso. lia.
  - cbn. f_equal. rewrite map_map.
    apply map_ext_in. intros a IN. apply IH; auto.
    cbn in Ht. rewrite list_max_map_le in Ht; auto.
@@ -353,7 +353,7 @@ Proof.
  - injection (term_bsubst_bsubst n m u (Fun "" l) H) as E. exact E.
  - apply Nat.max_lub_iff in H. destruct H as (H1,H2); auto.
  - apply Nat.max_lub_iff in H. destruct H as (H1,H2); auto.
- - apply (IHf (S n) (S m) (lift _ u)). omega.
+ - apply (IHf (S n) (S m) (lift _ u)). lia.
 Qed.
 
 (** [bsubst] and [fvars] : over-approximations *)
@@ -756,23 +756,22 @@ Lemma level_form_vmap h (f:formula) :
  BClosed_sub h -> level (vmap h f) <= level f.
 Proof.
  intros Hh.
- induction f; cbn; auto with *.
- - apply (level_term_vmap h (Fun "" l) Hh).
- - omega with *.
+ induction f; cbn; try lia.
+ apply (level_term_vmap h (Fun "" l) Hh).
 Qed.
 
 Lemma bclosed_term_vmap h (t:term) :
  BClosed_sub h -> BClosed t -> BClosed (vmap h t).
 Proof.
  unfold BClosed. intros Hh Ht.
- generalize (level_term_vmap h t Hh). omega.
+ generalize (level_term_vmap h t Hh). lia.
 Qed.
 
 Lemma bclosed_form_vmap h (f:formula) :
  BClosed_sub h -> BClosed f -> BClosed (vmap h f).
 Proof.
  unfold BClosed. intros Hh Hf.
- generalize (level_form_vmap h f Hh). omega.
+ generalize (level_form_vmap h f Hh). lia.
 Qed.
 
 Lemma bclosed_ctx_vmap h (c:context) :

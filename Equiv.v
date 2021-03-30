@@ -67,7 +67,7 @@ Proof.
  revert t.
  fix IH 1. destruct t; cbn.
  - destruct (list_index v stack) eqn:E; cbn; auto with arith.
-   apply list_index_lt_length in E. omega.
+   apply list_index_lt_length in E. lia.
  - clear f. revert l.
    fix IH' 1. destruct l as [|t l]; cbn; auto with arith.
    apply Nat.max_lub; auto.
@@ -80,14 +80,14 @@ Proof.
  induction f; intros stack; cbn; auto with arith.
  - apply (nam2mix_term_level stack (Nam.Fun "" l)).
  - apply Nat.max_lub; auto.
- - specialize (IHf (v::stack)). cbn in *. omega.
+ - specialize (IHf (v::stack)). cbn in *. lia.
 Qed.
 
 Lemma nam2mix_term_bclosed t :
  Mix.BClosed (nam2mix_term [] t).
 Proof.
  unfold Mix.BClosed.
- generalize (nam2mix_term_level [] t); simpl; omega.
+ generalize (nam2mix_term_level [] t); simpl; lia.
 Qed.
 
 Lemma nam2mix_bclosed f :
@@ -251,7 +251,7 @@ Proof.
    + rewrite list_index_app_l' by (simpl; intuition).
      destruct (list_index v stk) eqn:E; cbn; auto.
      apply list_index_lt_length in E.
-     case eqbspec; intros; subst; auto; omega.
+     case eqbspec; intros; subst; auto; lia.
  - f_equal; clear f.
    rewrite !map_map. apply map_ext_in. auto.
 Qed.
@@ -379,7 +379,7 @@ Proof.
    + intros NE.
      rewrite lift_nop.
      2:{ unfold Mix.BClosed.
-         generalize (nam2mix_term_level [] u). simpl. omega. }
+         generalize (nam2mix_term_level [] u). simpl. lia. }
      destruct (Names.mem v (Term.vars u)) eqn:IN; simpl.
      * f_equal.
        setfresh vars z Hz.
@@ -649,9 +649,9 @@ Proof.
    fix IHl 1. destruct l as [|t l]; simpl; trivial.
    intros LE FR.
    f_equal.
-   + apply IH; auto. omega with *.
+   + apply IH; auto. lia.
      intros v IN. apply FR in IN. namedec.
-   + apply IHl; auto. omega with *.
+   + apply IHl; auto. lia.
      intros v IN. apply FR in IN. namedec.
 Qed.
 
@@ -667,15 +667,15 @@ Proof.
    injection (mix_nam_mix_term_gen stack (Mix.Fun "" l)); auto.
  - f_equal. auto.
  - cbn in *. f_equal.
-   + apply IHf1; auto. omega with *.
+   + apply IHf1; auto. lia.
      intros v IN. apply FR in IN. namedec.
-   + apply IHf2; auto. omega with *.
+   + apply IHf2; auto. lia.
      intros v IN. apply FR in IN. namedec.
  - cbn in *. f_equal.
    apply IHf; auto.
    + constructor; auto.
      setfresh vars z Hz. rewrite <- names_of_list_in. namedec.
-   + simpl. omega with *.
+   + simpl. lia.
    + simpl.
      intros v [<-|IN].
      * setfresh vars z Hz. namedec.

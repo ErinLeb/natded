@@ -386,7 +386,7 @@ Proof.
  - simpl.
    cbn in HA. apply Nat.succ_lt_mono in HA.
    assert (L : level A <= 1).
-   { unfold WF,BClosed in W. cbn in W. omega. }
+   { unfold WF,BClosed in W. cbn in W. lia. }
    assert (HA' : forall t, height (bsubst 0 t A) < h).
    { intro. now rewrite height_bsubst. }
    destruct q; split.

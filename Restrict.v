@@ -87,13 +87,13 @@ Qed.
 Lemma restrict_term_bclosed sign x t :
  BClosed t -> BClosed (restrict_term sign x t).
 Proof.
- unfold BClosed. assert (H := restrict_term_level sign x t). auto with *.
+ unfold BClosed. assert (H := restrict_term_level sign x t). lia.
 Qed.
 
 Lemma restrict_level sign x f :
   level (restrict sign x f) <= level f.
 Proof.
- induction f; cbn; auto using Nat.max_le_compat with *.
+ induction f; cbn; auto using Nat.max_le_compat with *; try lia.
  destruct predsymbs; cbn; auto with *.
  case eqbspec; cbn; auto with *.
  intros _. clear p a.
@@ -104,7 +104,7 @@ Qed.
 Lemma restrict_bclosed sign x f :
  BClosed f -> BClosed (restrict sign x f).
 Proof.
- unfold BClosed. assert (H := restrict_level sign x f). auto with *.
+ unfold BClosed. assert (H := restrict_level sign x f). lia.
 Qed.
 
 Lemma restrict_term_fvars sign x t :
@@ -421,7 +421,7 @@ Proof.
  - rewrite map_map. apply list_max_map_le.
    auto using forcelevel_term_level.
  - apply max_le; auto.
- - specialize (IHf (S n)). auto with *.
+ - specialize (IHf (S n)). lia.
 Qed.
 
 Lemma forcelevel_bclosed x f :
@@ -472,7 +472,7 @@ Lemma forcelevel_term_id n x t :
 Proof.
  induction t as [ | | f l IH] using term_ind';
    cbn - [Nat.ltb]; intros H; auto with *.
- - case Nat.ltb_spec; cbn; auto; omega.
+ - case Nat.ltb_spec; cbn; auto; lia.
  - f_equal.
    rewrite list_max_map_le in H.
    apply map_id_iff; auto.
@@ -482,9 +482,10 @@ Lemma forcelevel_id n x f :
  level f <= n -> forcelevel n x f = f.
 Proof.
  revert n.
- induction f; cbn; intros; rewrite ?max_le in *; f_equal; intuition.
+ induction f; cbn; intros; rewrite ?max_le in *; f_equal; trivial;
+  (apply IHf || apply IHf1 || apply IHf2 || idtac); try lia.
  apply map_id_iff. rewrite list_max_map_le in H.
- auto using forcelevel_term_id.
+   auto using forcelevel_term_id.
 Qed.
 
 Lemma forcelevel_ctx_id x c :
@@ -534,14 +535,14 @@ Proof.
  induction t as [ | | f l IH] using term_ind'; cbn; auto.
  - case eqbspec.
    + intros; subst.
-     case Nat.leb_spec; try omega. cbn. now rewrite eqb_refl.
+     case Nat.leb_spec; try lia. cbn. now rewrite eqb_refl.
    + simpl.
      case Nat.leb_spec.
      * intros LE NE. cbn - [Nat.ltb].
-       case eqbspec; [intros; exfalso; omega|intros _].
-       case Nat.ltb_spec; auto; omega.
+       case eqbspec; [intros; exfalso; lia|intros _].
+       case Nat.ltb_spec; auto; lia.
      * intros LT _. cbn - [Nat.ltb].
-       case Nat.ltb_spec; auto; omega.
+       case Nat.ltb_spec; auto; lia.
  - f_equal. rewrite !map_map. apply map_ext_iff; auto.
 Qed.
 

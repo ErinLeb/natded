@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019-2020.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Export Setoid Morphisms RelationClasses Arith Omega Bool String
+Require Export Setoid Morphisms RelationClasses Arith Lia Bool String
                MSetRBT StringOrder List Utils.
 Require DecimalString.
 Import ListNotations.

@@ -43,8 +43,8 @@ Proof.
  intros. set (m := S n) in *.
  assert (IH : level (downvars m) = S m) by now apply IHn.
  clearbody m. clear IHn.
- cbn -[Nat.max]. change (list_max _) with (level (downvars m)).
- rewrite IH. omega with *.
+ cbn -[Nat.max]. change (Utils.list_max _) with (level (downvars m)).
+ rewrite IH. lia.
 Qed.
 
 Lemma level_downvars_le n : level (downvars n) <= S n.
@@ -101,7 +101,7 @@ Proof.
  - unfold BClosed in *. rewrite nForall_level in *.
    cbn in LA.
    apply Nat.sub_0_le. rewrite level_bsubst_max.
-   apply Nat.max_lub; try omega with *.
+   apply Nat.max_lub; try lia.
    apply level_downvars_le.
  - rewrite <- nForall_fclosed in *.
    rewrite <- form_fclosed_spec in *.

@@ -66,10 +66,10 @@ Proof.
  - now inversion 2.
  - destruct n as [|n]; intros Hn Hn'; trivial.
    cbn - [base]. rewrite Nat.sub_0_r. f_equal. apply IH.
-   transitivity n; [|omega].
-   apply Nat.div_le_upper_bound; unfold base; auto with *.
-   transitivity n; [|omega].
-   apply Nat.div_le_upper_bound; unfold base; auto with *.
+   + transitivity n; [|lia].
+     apply Nat.div_le_upper_bound; unfold base; lia.
+   + transitivity n; [|lia].
+     apply Nat.div_le_upper_bound; unfold base; lia.
 Qed.
 
 Lemma N_of_digits_bound l :
@@ -79,7 +79,7 @@ Proof.
  - now compute.
  - cbn - [N.mul N.pow N.of_nat].
    rewrite Nat2N.inj_succ, N.pow_succ_r'.
-   destruct a; omega with *.
+   destruct a; lia.
 Qed.
 
 Lemma N_of_ascii_bound c : (N_of_ascii c < 2^8)%N.
@@ -109,7 +109,7 @@ Proof.
      rewrite Nat.div_small by apply nat_of_ascii_bound; simpl.
      rewrite <- IH at 3.
      apply string_enum_indep; auto.
-     unfold base. omega with *.
+     unfold base. lia.
 Qed.
 
 Lemma countable_variables : Countable variable.
@@ -145,7 +145,7 @@ Proof.
    rewrite (Nat.add_succ_r n), !Nat.add_0_r;
    rewrite <- ?(Nat.add_1_r k), <- ?Nat.add_assoc; simpl;
    rewrite !Nat.mul_add_distr_r, !Nat.mul_add_distr_l; simpl;
-   omega with *.
+   lia.
 Qed.
 
 Lemma tri_incr_iff k l : k<l <-> k * S k < l * S l.
@@ -154,16 +154,16 @@ Proof.
  { intros. apply Nat.mul_lt_mono; auto with *. }
  split; auto.
  destruct (Nat.compare_spec k l); auto.
- - subst. omega with *.
- - apply H in H0. omega with *.
+ - subst. lia.
+ - apply H in H0. lia.
 Qed.
 
 Lemma tri_inj k l : k = l <-> k * S k = l * S l.
 Proof.
  split; [now intros ->|].
  destruct (Nat.compare_spec k l); auto.
- apply tri_incr_iff in H; omega.
- apply tri_incr_iff in H; omega.
+ apply tri_incr_iff in H; lia.
+ apply tri_incr_iff in H; lia.
 Qed.
 
 Lemma inv_tri_carac_aux n k l:
@@ -173,10 +173,10 @@ Proof.
  rewrite !Nat.add_succ_r, !Nat.add_0_r.
  intros Hk Hl.
  assert (k < S l).
- { apply tri_incr_iff. omega. }
+ { apply tri_incr_iff. lia. }
  assert (l < S k).
- { apply tri_incr_iff. omega. }
- omega.
+ { apply tri_incr_iff. lia. }
+ lia.
 Qed.
 
 Lemma inv_tri_carac n k :
@@ -212,14 +212,11 @@ Proof.
    assert (2*(z*S z/2) = z * S z).
    { symmetry. apply Nat.div_exact; auto with *. }
    rewrite H.
-   rewrite Nat.add_1_r.
-   split; try omega.
-   rewrite Nat.mul_add_distr_l.
-   rewrite (Nat.mul_comm z (S z)). omega with *. }
+   rewrite Nat.add_1_r. lia. }
  rewrite H.
  clear k H.
  rewrite Nat.add_1_r.
- f_equal; omega with *.
+ f_equal; lia.
 Qed.
 
 Lemma countable_nat2 : Countable (nat*nat).
@@ -348,7 +345,7 @@ Proof.
  destruct (Hf (fun n => S (f n n))) as (a,Ha).
  set (fa := fun n : nat => S (f n n)) in *.
  assert (f a a = fa a) by now rewrite Ha.
- unfold fa in H. omega.
+ unfold fa in H. lia.
 Qed.
 
 (** Same for [nat->A] as soon as [A] has at least two elements *)

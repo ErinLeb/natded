@@ -136,7 +136,7 @@ Proof.
      rewrite !pred_max. simpl.
      assert (H := level_lift_form 1 B).
      apply Nat.sub_0_le.
-     repeat apply Nat.max_lub; omega with *.
+     repeat apply Nat.max_lub; lia.
    + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.
      cbn. now rewrite fclosed_lift, HB'.
  - repeat split; unfold replacement_schema; cbn.
@@ -149,7 +149,7 @@ Proof.
      assert (H := level_lift_form 1 C).
      assert (H' := level_lift_form 2 C).
      apply Nat.sub_0_le.
-     repeat apply Nat.max_lub; omega with *.
+     repeat apply Nat.max_lub; lia.
    + apply nForall_fclosed. rewrite <- form_fclosed_spec in *.
      cbn. now rewrite !fclosed_lift, HC'.
 Qed.

@@ -636,7 +636,7 @@ Proof.
    + red; red in FC. cbn in *. namedec.
  - exists []; split; auto.
    subst logic. apply ExEx.
-   assert (Nat.pred (level A) = 0) by apply CL. omega.
+   assert (Nat.pred (level A) = 0) by apply CL. lia.
 Qed.
 
 Fixpoint term_funs t :=
@@ -893,12 +893,12 @@ Proof.
        right; left. rewrite H.
        cbn. f_equal. f_equal. symmetry.
        apply form_level_bsubst_id.
-       assert (pred (level f) = 0) by apply W. omega.
+       assert (pred (level f) = 0) by apply W. lia.
      * intros [H|[H|H]]; auto.
        right. rewrite <- H.
        cbn. f_equal. f_equal. symmetry.
        apply form_level_bsubst_id.
-       assert (pred (level f) = 0) by apply W. omega.
+       assert (pred (level f) = 0) by apply W. lia.
    + intros A [HA|HA].
      * cbn. apply signext_wc with th; auto using WCAxiom.
        rewrite Hm. apply delcst_HenkinAll_signext.
@@ -1077,7 +1077,7 @@ Lemma ax_completion_grows th n m : n <= m ->
 Proof.
  intros LE A.
  rewrite !ax_completion_carac. intros [H|(k & Hk & H)]; auto.
- right. exists k; auto with *.
+ right. exists k. intuition; lia.
 Qed.
 
 Lemma ax_completion_init th :

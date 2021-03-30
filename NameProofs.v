@@ -156,7 +156,7 @@ Proof.
  inversion_clear ND.
  rewrite InA_In in H.
  rewrite IH; clear IH; auto.
- rewrite NamesP.add_cardinal_2. omega.
+ rewrite NamesP.add_cardinal_2. lia.
  apply Hf'; auto.
  intros x Hx. nameiff. intros [Eq|IN].
  apply Hf in Eq; auto. congruence.
@@ -309,7 +309,7 @@ Proof.
  apply NamesP.subset_antisym; auto.
  intros x IN.
  destruct (NamesP.In_dec x u) as [H|H]; auto.
- generalize (NamesP.subset_cardinal_lt SU IN H). omega.
+ generalize (NamesP.subset_cardinal_lt SU IN H). lia.
 Qed.
 
 Lemma string_app_length s s' :
@@ -359,9 +359,9 @@ Proof.
  - right. apply Prefix_refl.
  - assert (String.length (x++String a "") = String.length x).
    { now f_equal. }
-   rewrite string_app_length in *. simpl in *. omega.
+   rewrite string_app_length in *. simpl in *. lia.
  - apply Prefix_length in H.
-   rewrite string_app_length in *. simpl in *. omega.
+   rewrite string_app_length in *. simpl in *. lia.
 Qed.
 
 Lemma fresh_loop_ok names id n :
@@ -375,7 +375,7 @@ Proof.
    assert (E : cardinal (strict_prefixes id) = cardinal vars).
    { apply NamesP.subset_cardinal in SU.
      rewrite strict_prefixes_cardinal in *.
-     omega. }
+     lia. }
    apply subset_equal in E; auto. clear SU.
    rewrite <- E.
    unfold strict_prefixes. nameiff. intuition.
@@ -383,7 +383,7 @@ Proof.
    destruct (mem id vars) eqn:ME; simpl.
    + rewrite mem_spec in ME.
      apply IHn.
-     * rewrite string_app_length. simpl. omega.
+     * rewrite string_app_length. simpl. lia.
      * rewrite strict_prefixes_more; auto.
        { intros x. red in SU. nameiff. intuition. }
    + rewrite <- mem_spec. now destruct mem.
@@ -393,7 +393,7 @@ Lemma fresh_ok names :
   ~In (fresh names) names.
 Proof.
  unfold fresh. apply fresh_loop_ok.
- simpl. omega.
+ simpl. lia.
  change "x" with (""++String "x" "").
  rewrite strict_prefixes_more.
  unfold strict_prefixes. simpl. namedec.

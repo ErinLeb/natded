@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019-2020.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import Bool Arith Omega Ascii String AsciiOrder StringOrder List.
+Require Import Bool Arith Lia Ascii String AsciiOrder StringOrder List.
 Import ListNotations.
 Open Scope lazy_bool_scope.
 Add Search Blacklist "OrdersEx.Nat_as".
@@ -37,7 +37,7 @@ Defined.
 
 Lemma pred_0 n : Nat.pred n = 0 <-> n <= 1.
 Proof.
- omega.
+ lia.
 Qed.
 
 (** Generic boolean equalities (via Coq Classes) *)
@@ -346,49 +346,49 @@ Lemma list_drop_nth_high {A} n k (l:list A) d :
   n <= k ->
   nth k (list_drop n l) d = nth (S k) l d.
 Proof.
- revert k l. induction n; destruct l, k; cbn; auto with arith; omega.
+ revert k l. induction n; destruct l, k; cbn; auto with arith; lia.
 Qed.
 
 Lemma list_drop_nth_low {A} n k (l:list A) d :
   k < n ->
   nth k (list_drop n l) d = nth k l d.
 Proof.
- revert k l. induction n; destruct l, k; cbn; auto with arith; omega.
+ revert k l. induction n; destruct l, k; cbn; auto with arith; lia.
 Qed.
 
 (** Max and lists *)
 
 Lemma max_le n m p : Nat.max n m <= p <-> n <= p /\ m <= p.
 Proof.
- omega with *.
+ lia.
 Qed.
 
 Lemma max_lt n m p : Nat.max n m < p <-> n < p /\ m < p.
 Proof.
- omega with *.
+ lia.
 Qed.
 
 Lemma max_0 n m : Nat.max n m = 0 <-> n=0 /\ m=0.
 Proof.
- omega with *.
+ lia.
 Qed.
 
 Lemma max_mono a a' b b' :
  a <= a' -> b <= b' -> Nat.max a b <= Nat.max a' b'.
 Proof.
- omega with *.
+ lia.
 Qed.
 
 Lemma pred_max a b :
  Nat.pred (Nat.max a b) = Nat.max (Nat.pred a) (Nat.pred b).
 Proof.
-symmetry. apply Nat.max_monotone. red. red. auto with *.
+symmetry. apply Nat.max_monotone. red. red. auto with *; lia.
 Qed.
 
 Lemma list_max_le l p :
  list_max l <= p <-> (forall n, In n l -> n <= p).
 Proof.
- induction l; simpl; rewrite ?max_le in *; intuition.
+ induction l; simpl; rewrite ?max_le in *; intuition; lia.
 Qed.
 
 (** /!\ The other direction is only true for non-empty lists *)
@@ -396,13 +396,13 @@ Qed.
 Lemma list_max_lt l p :
  list_max l < p -> (forall n, In n l -> n < p).
 Proof.
- induction l; simpl; rewrite ?max_lt in *; intuition.
+ induction l; simpl; rewrite ?max_lt in *; intuition; lia.
 Qed.
 
 Lemma list_max_0 l :
  list_max l = 0 <-> forall n, In n l -> n = 0.
 Proof.
- induction l; simpl; rewrite ?max_0 in *; intuition.
+ induction l; simpl; rewrite ?max_0 in *; intuition; lia.
 Qed.
 
 Lemma list_max_map_le {A} (f:A->nat) l p :
@@ -443,8 +443,8 @@ Proof.
  induction l; simpl.
  - intros [ ].
  - intros [-> | IN].
-   + omega with *.
-   + transitivity (list_max l); auto. omega with *.
+   + lia.
+   + transitivity (list_max l); auto. lia.
 Qed.
 
 Lemma list_max_map_in {A} (f:A->nat) l a :
@@ -453,8 +453,8 @@ Proof.
  induction l; simpl.
  - intros [ ].
  - intros [-> | IN].
-   + omega with *.
-   + transitivity (list_max (map f l)); auto. omega with *.
+   + lia.
+   + transitivity (list_max (map f l)); auto. lia.
 Qed.
 
 (** Map *)

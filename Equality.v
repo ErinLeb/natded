@@ -29,8 +29,8 @@ Lemma add_compat G x x' y y' :
 Proof.
  intros Hx Hx' Hy IN3 IN5 IN6 Hxx' Hyy'.
  trans (x' + y); auto.
- - red. red in Hx, Hy. cbn. omega with *.
- - red. red in Hx', Hy. cbn. omega with *.
+ - red. red in Hx, Hy. cbn. lia.
+ - red. red in Hx', Hy. cbn. lia.
  - eapply R_Imp_e; [ | exact Hxx'].
    inst_axiom ax5 [x; x'; y]. revert H. cbn.
    rewrite !(lift_nop _ x), !lift_nop by auto.
@@ -50,8 +50,8 @@ Lemma mul_compat G x x' y y' :
 Proof.
  intros Hx Hx' Hy IN3 IN5 IN6 Hxx' Hyy'.
  trans (x' * y); auto.
- - red. red in Hx, Hy. cbn. omega with *.
- - red. red in Hx', Hy. cbn. omega with *.
+ - red. red in Hx, Hy. cbn. lia.
+ - red. red in Hx', Hy. cbn. lia.
  - eapply R_Imp_e; [ | exact Hxx'].
    inst_axiom ax7 [x; x'; y]. revert H. cbn.
    rewrite !(lift_nop _ x), !lift_nop by auto.
@@ -82,10 +82,10 @@ Proof.
      destruct l as [|x [| ]]; try easy. cbn in *.
      rewrite andb_true_r in C.
      ahered.
-     * red; red in Hu. cbn in Hu. omega with *.
+     * red; red in Hu. cbn in Hu. lia.
      * apply IH; auto.
-       { red; red in Hu. cbn in Hu. omega with *. }
-       { red; red in Hu'. cbn in Hu'. omega with *. }
+       { red; red in Hu. cbn in Hu. lia. }
+       { red; red in Hu'. cbn in Hu'. lia. }
    + (* + *)
      intros Hl -> _ _ C.
      destruct l as [|x [|y [| ]]]; try easy. cbn in *.
@@ -159,31 +159,31 @@ Proof.
      * apply Pr_pop. apply Leibniz_term; intuition.
      * trans Y'; auto. apply R'_Ax.
        apply Pr_pop. sym; auto. apply Leibniz_term; intuition.
- - cbn. apply ContraIff. apply IHN; auto. cbn in HN. omega.
+ - cbn. apply ContraIff. apply IHN; auto. cbn in HN. lia.
  - cbn. red in Hu,Hu'. cbn in Hu,Hu'. rewrite !max_0 in *.
    destruct Hu as (Hu1 & Hu2), Hu' as (Hu1' & Hu2').
    cbn in HA. rewrite <- andb_lazy_alt, andb_true_iff in HA.
-   cbn in HN. apply OpIff; apply IHN; intuition; omega with *.
+   cbn in HN. apply OpIff; apply IHN; intuition; lia.
  - cbn. red in Hu,Hu'. cbn in Hu,Hu'. rewrite pred_0 in Hu,Hu'.
    apply QuantIff.
    All_i_fresh. clear Hv.
    cbn. reIff.
    destruct (level_subst_inv (S n) (lift 0 u) A).
-   + omega with *.
+   + lia.
    + rewrite !(form_level_bsubst_id (S n)); auto.
      apply R_And_i; apply R_Imp_i, R'_Ax.
    + destruct (level_subst_inv (S n) (lift 0 u') A).
-     * omega with *.
+     * lia.
      * rewrite !(form_level_bsubst_id (S n)); auto.
        apply R_And_i; apply R_Imp_i, R'_Ax.
      * assert (BClosed u).
-       { red. generalize (lift_incrlevel 0 u). omega. }
+       { red. generalize (lift_incrlevel 0 u). lia. }
        assert (BClosed u').
-       { red. generalize (lift_incrlevel 0 u'). omega. }
+       { red. generalize (lift_incrlevel 0 u'). lia. }
        rewrite !lift_nop in * by auto.
        rewrite !(swap_bsubst 0); auto.
        apply IHN; auto.
-       { rewrite height_bsubst. cbn in HN. omega. }
+       { rewrite height_bsubst. cbn in HN. lia. }
        { cbn in HA. apply check_bsubst; auto. }
        { apply Nat.le_0_r. now rewrite swap_bsubst, level_bsubst. }
        { apply Nat.le_0_r. now rewrite swap_bsubst, level_bsubst. }
@@ -194,7 +194,7 @@ Lemma Leibniz_Pr A :
   Pr Intuiti (axioms_list ⊢ ∀∀ #0 = #1 -> A -> bsubst 0 (#1) A).
 Proof.
  intros (HA,HA'). cbn in HA. red in HA'. cbn in HA'.
- assert (HA'' : level A <= 1) by omega with *.
+ assert (HA'' : level A <= 1) by lia.
  All_i_fresh. cbn.
  All_i_fresh. cbn. clear Hv Hv0.
  rewrite (form_level_bsubst_id 1 _ A) by easy.
@@ -217,7 +217,7 @@ Proof.
    + cbn. now rewrite check_bsubst, CA.
    + red. cbn -[Nat.max]. rewrite !pred_max. cbn.
      generalize (level_bsubst_max 0 (#1) A). cbn - [Nat.max].
-     red in LA. cbn in LA. omega with *.
+     red in LA. cbn in LA. lia.
    + rewrite <- form_fclosed_spec in *. cbn in *.
      rewrite fclosed_bsubst; auto. now rewrite FA.
  - exists axioms_list. split.

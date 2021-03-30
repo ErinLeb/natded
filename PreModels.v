@@ -145,7 +145,7 @@ Proof.
  - setoid_rewrite Nat.max_lt_iff in EL. apply IHA1; eauto with set.
  - setoid_rewrite Nat.max_lt_iff in EL. apply IHA2; eauto with set.
  - intros m. apply IHA; eauto with set.
-   destruct k; cbn; auto. intros H. apply EL. omega.
+   destruct k; cbn; auto. intros H. apply EL. lia.
 Qed.
 
 Lemma cinterp_ext G L G' L' (c:context) :
@@ -228,9 +228,9 @@ Proof.
    rewrite Nat.sub_diag; simpl. f_equal. rewrite <- Hu. symmetry.
    apply tinterp_bclosed; auto.
  - intro k. rewrite Nat.lt_gt_cases. intros [LT|GT].
-   + rewrite nth_error_app1; auto. omega.
-   + rewrite !(proj2 (nth_error_None _ _)); simpl; auto. omega.
-     rewrite app_length; simpl. omega.
+   + rewrite nth_error_app1; auto. lia.
+   + rewrite !(proj2 (nth_error_None _ _)); simpl; auto. lia.
+     rewrite app_length; simpl. lia.
 Qed.
 
 Lemma finterp_bsubst_gen G L L' u m n A :
@@ -261,9 +261,9 @@ Proof.
    rewrite Nat.sub_diag; simpl. f_equal. rewrite <- Hu. symmetry.
    apply tinterp_bclosed; auto.
  - intro k. rewrite Nat.lt_gt_cases. intros [LT|GT].
-   + rewrite nth_error_app1; auto. omega.
-   + rewrite !(proj2 (nth_error_None _ _)); simpl; auto. omega.
-     rewrite app_length; simpl. omega.
+   + rewrite nth_error_app1; auto. lia.
+   + rewrite !(proj2 (nth_error_None _ _)); simpl; auto. lia.
+     rewrite app_length; simpl. lia.
 Qed.
 
 Lemma finterp_bsubst0 G u m A :
@@ -340,20 +340,20 @@ Proof.
   cbn in CL; rewrite ?eqb_eq, ?max_0 in CL;
   instlevel; cbn in *; try (tryinstG; intuition eauto 3; fail).
  - intros m.
-   rewrite finterp_bsubst_adhoc with (x:=x) by auto with *.
+   rewrite finterp_bsubst_adhoc with (x:=x) by (auto with *; lia).
    apply IHValid.
    rewrite <- (cinterp_ext G); eauto with *.
- - rewrite <- finterp_bsubst0 with (u:=t); auto with *.
-   destruct d as (?,s,?); cbn in *; subst s; cbn in *; omega with *.
+ - rewrite <- finterp_bsubst0 with (u:=t); auto with *; try easy.
+   destruct d as (?,s,?); cbn in *; subst s; cbn in *; lia.
  - exists (tinterp G [] t).
-   rewrite finterp_bsubst0 with (u:=t); auto with *.
+   rewrite finterp_bsubst0 with (u:=t); auto; try easy. lia.
  - destruct (IHValid1 G) as (m & Hm); auto.
    rewrite finterp_bsubst_adhoc with (x:=x) in Hm; [ | | namedec].
    erewrite finterp_ext.
    eapply IHValid2; eauto.
    apply cinterp_cons. apply Hm.
    rewrite <- (cinterp_ext G); eauto. prove_ext. prove_ext. auto.
-   destruct d1 as (?,s,?); cbn in *; subst s; cbn in *; omega with *.
+   destruct d1 as (?,s,?); cbn in *; subst s; cbn in *; lia.
  - subst logic.
    destruct (CR (finterp G [] A)); auto.
    destruct (IHValid G); auto.
@@ -409,7 +409,7 @@ Lemma nForall_level n A :
  level (nForall n A) = level A - n.
 Proof.
  induction n; cbn; auto with arith.
- rewrite IHn. omega.
+ rewrite IHn. lia.
 Qed.
 
 Lemma interp_nforall {sign}{M}(Mo : PreModel M sign) G L n A :
@@ -429,7 +429,7 @@ Proof.
      rewrite <- app_assoc. simpl. apply IHn; auto.
    + intros H m. apply IHn. intros stk Len.
      change (m::L) with ([m]++L)%list. rewrite app_assoc.
-     apply H. rewrite app_length. simpl. omega.
+     apply H. rewrite app_length. simpl. lia.
 Qed.
 
 (** Premodel extension *)

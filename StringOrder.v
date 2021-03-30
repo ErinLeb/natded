@@ -11,7 +11,6 @@ Inductive string_lt : string -> string -> Prop :=
  | LtEmpty a s : string_lt "" (String a s)
  | LtHead a a' s s' : ascii_lt a a' -> string_lt (String a s) (String a' s')
  | LtTail a s s' : string_lt s s' -> string_lt (String a s) (String a s').
-Hint Constructors string_lt.
 Local Infix "<" := string_lt.
 
 Definition string_le s s' := s<s' \/ s=s'.
@@ -22,8 +21,9 @@ Proof.
  split.
  - intros s. red. induction s; inversion_clear 1; auto.
    now apply ascii_lt_strorder in H0.
- - red. intros x y z H; revert z. induction H; inversion_clear 1; auto.
-   constructor. eapply ascii_lt_strorder; eauto.
+ - red. intros x y z H; revert z.
+   induction H; inversion_clear 1; try (constructor; auto; fail).
+   constructor; eapply ascii_lt_strorder; eauto.
 Qed.
 
 Lemma string_le_lteq s s' : s<=s' <-> s<s' \/ s=s'.
@@ -48,9 +48,9 @@ Lemma string_compare_spec s s' :
  CompareSpec (s=s') (s<s') (s'<s) (string_compare s s').
 Proof.
  revert s'.
- induction s as [|a s IH]; destruct s' as [|a' s']; simpl; auto.
- case ascii_compare_spec; intros H; subst; simpl; auto.
- case IH; intros H; subst; auto.
+ induction s as [|a s IH]; destruct s' as [|a' s']; simpl; repeat constructor.
+ case ascii_compare_spec; intros H; subst; simpl; repeat constructor; trivial.
+ case IH; intros H; subst; constructor; trivial; now apply LtTail.
 Qed.
 
 Definition string_eqb s s' :=

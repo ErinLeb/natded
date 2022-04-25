@@ -1,0 +1,29 @@
+
+fol.v : codage nommé, termes mutuels plutôt que listes,
+        types dépendents très tôt,
+        formules avec equalité en dur
+	opérateurs notH, impH, forallH. Par contre
+	 pas de or/and/exists, codés via notH+impH, notH(forallH(notH
+
+folProofs.v :
+ Prf prouvabilité (dans Set ;-) avec 
+ eq R S T et
+ compat de tous les symbPred R et symbFun f
+  AxmEq4 : x0=x1->x2=x3->... -> x2n=x2n+1 -> (R x0 x2 ... x2n <-> R x1 ... x2n+1)
+  AxmEq5 : x0=x1->x2=x3->... -> x2n=x2n+1 -> (f x0 x2 ... x2n = f x1 ... x2n+1)
+
+ gestion des contextes à la HOL : MP dit Gamma|-A->B et Delta|-A alos Gamma++Delta|-B
+
+ AXM
+ MP
+ GEN
+ IMP1 : A->B->A
+ IMP2 : (A->B->C)->(A->B)->(A->C)
+ CP : (~A->~B)->(B->A)   (classique !)
+ FA1 : forall_elim, à savoir (\forall x, A) -> A{x:=...}
+ FA2 : A -> \forall x, A  (avec une condition sur les FV)
+ FA3 : (forall x (A->B)) -> (forall x A) -> (forall x B)
+       Pourquoi pas, mais pourquoi est-ce fondamental ???
+
+ Système à la Hilbert !!! (cf boulot de Quentin Garchery, cf ~/archives/hilbert_system ?)
+ 

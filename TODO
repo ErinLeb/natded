@@ -46,6 +46,7 @@ KO : PreModel : revoir a se passer de BClosed general,
 (x) Skolem
 
  - Bridge with Goedel contribution by R O'Connor (seems to be a named encoding)
+   cf TODO-GOEDEL
 
  - Equality :
    * variant of Mix with equality hardwired ?

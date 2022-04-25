@@ -1,0 +1,25 @@
+Pierre Letouzey - Certification Coq d'un cours de logique de master
+
+Résumé : Depuis une dizaine d'années, je m'occupe d'un cours de
+logique à destination de nos Master 1 : on y parle essentiellement de
+calcul des prédicats du 1er ordre façon déduction naturelle (avec
+contextes), de modèles classiques, et du théorème de complétude. Tout
+ceci suit toujours un (très bon) poly d'Alexandre Miquel. Dans cet
+exposé, je vais présenter la “traduction” Coq récente de ce
+poly. Evidemment, pour des théorèmes aussi standards, la motivation
+n'était pas tellement de garantir l'absence d'erreur dans les preuves
+d'origines.
+
+Par contre, les preuves Coq peuvent venir en complément de preuves au
+tableau devant les étudiants, soit comme référence lors des moments
+les plus délicats, soit au contraire pour justifier qu'on zappe
+certaines parties répétitives. De plus, la présentation des encodages
+Coq aux étudiants a permis de souligner le côté mécanisable de cette
+logique, avec à terme l'obtention d'un micro assistant de preuve. Cela
+fut également l'occasion d'un premier contact des étudiants avec Coq,
+ce qui est un des autres objectifs de ce cours. Enfin, Coq a également
+permis d'essayer différentes variantes (encodage avec nom ou “locally
+nameless”, divers substitutions nommées, etc). À terme, on peut
+imaginer une utilisation plus interactive de ce développement par les
+étudiants (p.ex. exos de déduction naturelle avec Coq comme
+correcteur).

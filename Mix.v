@@ -10,6 +10,7 @@ Import ListNotations.
 Local Open Scope bool_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope string_scope.
+Local Open Scope nat_scope.
 Local Open Scope eqb_scope.
 (** We use here a Locally nameless representation of terms.
     See for instance http://www.chargueraud.org/research/2009/ln/main.pdf

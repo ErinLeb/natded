@@ -636,7 +636,7 @@ Proof.
    + apply Replacement.
    + intros x x' Hx y y' Hy. apply finterp_zf_congr; auto.
      destruct k as [|[|?]]; cbn -[EQ]; auto with zfc.
-   + intros x Hx. destruct (Ha x Hx) as (y,Hy). exists y.
+   + intros x Hx. simpl in Ha. destruct (Ha x Hx) as (y,Hy). exists y.
      cbn -[EQ] in Hy. now setoid_rewrite finterp_lift in Hy.
 Qed.
 

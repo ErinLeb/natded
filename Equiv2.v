@@ -4,7 +4,7 @@
 (** The NatDed development, Pierre Letouzey, 2019-2020.
     This file is released under the CC0 License, see the LICENSE file *)
 
-Require Import RelationClasses Arith Omega.
+Require Import RelationClasses Arith.
 Require Import Defs NameProofs Equiv Meta.
 Require Nam Mix.
 Import ListNotations.

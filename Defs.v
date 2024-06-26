@@ -171,15 +171,16 @@ Qed.
 
 (** Which logic are we using : classical or intuitionistic ? *)
 
-Inductive logic := K | J.
+Inductive logic := K | J | M.
 
 Definition Classic := K.
 Definition Intuiti := J.
+Definition Minimal := M.
 
 Instance logic_eqb : Eqb logic :=
   fun l1 l2 =>
     match l1, l2 with
-    | K, K | J, J => true
+    | K, K | J, J | M, M => true
     | _, _ => false
     end.
 

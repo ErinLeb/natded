@@ -29,6 +29,8 @@ Peano.v
 contribs/zfc/zfc.v
 ZF.v
 Skolem.v
+SeqJ.v
+SeqK.v
 Equality.v
 # parser.v
 # FormulaReader.v

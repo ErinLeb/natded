@@ -936,14 +936,24 @@ Proof.
  induction 1; eauto 2.
 Qed.
 
-Lemma Pr_intuit_any lg s : Pr J s -> Pr lg s.
+Lemma Pr_minimal_intuit s : Pr M s -> Pr J s.
 Proof.
- destruct lg. apply Pr_intuit_classic. trivial.
+ induction 1; eauto 2; try easy. 
+ (*unfold not in H.
+ destruct H; easy. easy. *)
+Qed.
+
+Lemma Pr_minimal_any lg s : Pr M s -> Pr lg s.
+Proof.
+ destruct lg; trivial. 
+  - intros. apply Pr_intuit_classic, Pr_minimal_intuit. trivial. 
+  - apply Pr_minimal_intuit.
 Qed.
 
 Lemma Pr_any_classic lg s : Pr lg s -> Pr K s.
 Proof.
- destruct lg. trivial. apply Pr_intuit_classic.
+ destruct lg. trivial. apply Pr_intuit_classic. 
+ apply Pr_minimal_any.
 Qed.
 
 Lemma intuit_classic d : Valid J d -> Valid K d.
@@ -951,10 +961,18 @@ Proof.
  induction 1; eauto.
 Qed.
 
+Lemma minimal_intuit d : Valid M d -> Valid J d.
+Proof.
+ induction 1; eauto. discriminate.
+Qed.
+
 Lemma any_classic d lg : Valid lg d -> Valid K d.
 Proof.
- destruct lg. trivial. apply intuit_classic.
+ destruct lg. trivial. apply intuit_classic. 
+ intros. apply intuit_classic, minimal_intuit. 
+ easy.
 Qed.
+
 
 (** A direct boolean version of [FClosed], easier to use than
     [Names.is_empty (fvars ...)] *)

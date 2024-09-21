@@ -8,6 +8,7 @@ Utils.v
 Defs.v
 Nam.v
 Mix.v
+Mix_Erin.v
 NameProofs.v
 Subst.v
 Restrict.v

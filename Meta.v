@@ -544,7 +544,6 @@ Proof.
 Qed.
 
 Lemma R'_All_e logic Γ A B t :
- BClosed t ->
  Pr logic (bsubst 0 t A :: Γ ⊢ B) ->
  Pr logic ((∀A) :: Γ ⊢ B)%form.
 Proof.

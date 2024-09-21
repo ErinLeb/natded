@@ -299,7 +299,7 @@ Hint Resolve cinterp_cons.
 Definition CoqRequirements lg :=
  match lg with
  | K => forall A:Prop, A\/~A
- | J => Logic.True
+ | _ => Logic.True
  end.
 
 (** Note: we do not ask here for the derivation [d] to be
